@@ -143,14 +143,14 @@ FARG(fast, "Play", "Makes monsters fast on lower difficulties.", "",
 	"Sets the dmflags CVAR to make the monsters as fast as in Nightmare mode even if you are not"
 	" playing Nightmare.");
 FARG(turbo, "Play", "Adjusts the player's movement speed.", "x",
-	"Causes player movement to be x% as fast as normal. Valid values are 10–255, with 100 being"
+	"Causes player movement to be x% as fast as normal. Valid values are 10�255, with 100 being"
 	" normal. Values larger than 100 are considered cheating. This is equivalent to +set turbo"
 	" x.");
 FARG(timer, "Play", "Time limit in minutes before automatically advancing levels.", "x",
 	"Causes " GAMENAME " to automatically advance to the next level after x minutes. This is"
 	" equivalent to +set timelimit x.");
 FARG(avg, "Play", "Automatically advances to the next level after 20 minutes.", "",
-	"Stands for “Austin Virtual Gaming”. Automatically advances to the next level after 20"
+	"Stands for �Austin Virtual Gaming�. Automatically advances to the next level after 20"
 	" minutes. This is equivalent to +set timelimit 20 or -timer 20.");
 FARG(coop, "Play", "Co-op settings preset", "",
 	"A convenient settings preset (not accurate to vanilla Doom's Co-op). Enabling this ensures"
@@ -1407,7 +1407,7 @@ void D_Display ()
 void D_ErrorCleanup ()
 {
 	savegamerestore = false;
-	primaryLevel->BotInfo.RemoveAllBots (primaryLevel, true);
+	DBotManager::RemoveAllBots(primaryLevel);
 	D_QuitNetGame ();
 	if (demorecording || demoplayback)
 		G_CheckDemoStatus ();
@@ -3725,17 +3725,11 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<FileSys::ResourceN
 	InitSpawnablesFromMapinfo();
 	PClassActor::StaticSetActorNums();
 
-	//Added by MC:
-	primaryLevel->BotInfo.getspawned.Clear();
-
+	DBotManager::ParseBotDefinitions();
+	
 	FString *args;
-	int argcount = Args->CheckParmList(FArg_bots, &args);
-	for (int p = 0; p < argcount; ++p)
-	{
-		primaryLevel->BotInfo.getspawned.Push(args[p]);
-	}
-	primaryLevel->BotInfo.spawn_tries = 0;
-	primaryLevel->BotInfo.wanted_botnum = primaryLevel->BotInfo.getspawned.Size();
+	const int argCount = Args->CheckParmList(FArg_bots, &args);
+	DBotManager::SetNamedBots(args, argCount);
 
 	if (!batchrun) Printf ("P_Init: Init Playloop state.\n");
 	if (StartScreen) StartScreen->LoadingStatus ("Init game engine", 0x3f);

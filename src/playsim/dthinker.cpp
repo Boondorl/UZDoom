@@ -43,7 +43,6 @@ static int ThinkCount, ClientSideThinkCount;
 static cycle_t ThinkCycles, ClientSideThinkCycles;
 extern cycle_t BotSupportCycles;
 extern cycle_t ActionCycles;
-extern int BotWTG;
 
 IMPLEMENT_CLASS(DThinker, false, false)
 
@@ -96,9 +95,8 @@ void FThinkerCollection::RunThinkers(FLevelLocals *Level)
 
 	ThinkCount = 0;
 	ThinkCycles.Reset();
-	BotSupportCycles.Reset();
+	DBotManager::BotThinkCycles.Reset(); // Boon TODO: This probably shouldn't be here? Might be called too late
 	ActionCycles.Reset();
-	BotWTG = 0;
 
 	ThinkCycles.Clock();
 

@@ -648,12 +648,6 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 	automapactive = false;
 	viewactive = true;
 
-	//Added by MC: Initialize bots.
-	if (!deathmatch)
-	{
-		primaryLevel->BotInfo.Init ();
-	}
-
 	if (bTitleLevel)
 	{
 		gamestate = GS_TITLELEVEL;
@@ -800,8 +794,6 @@ void FLevelLocals::ChangeLevel(const char *levelname, int position, int inflags,
 		}
 	}
 	changeflags = inflags;
-
-	BotInfo.End();	//Added by MC:
 
 	// [RH] Give scripts a chance to do something
 	unloading = true;
@@ -1464,15 +1456,6 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 
 	P_SetupLevel (this, position, newGame);
 
-
-
-
-	//Added by MC: Initialize bots.
-	if (deathmatch)
-	{
-		BotInfo.Init ();
-	}
-
 	if (timingdemo)
 	{
 		static bool firstTime = true;
@@ -1548,6 +1531,8 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 		I_Error("no start for player %d found.", pnumerr);
 	}
 
+	DBotManager::SpawnNamedBots(this);
+
 	// If loading in from existing data, allow things to reinitialize if needed.
 	if (FromSnapshot || savegamerestore)
 		Thinkers.OnLoad();
@@ -1562,15 +1547,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 
 void FLevelLocals::WorldDone (void)
 {
-	gameaction = ga_worlddone;
-
-
-	//Added by mc
-	if (deathmatch)
-	{
-		BotInfo.RemoveAllBots(this, consoleplayer != Net_Arbitrator);
-	}
-
+	gameaction = ga_worlddone; 
 }
 
 DEFINE_ACTION_FUNCTION(FLevelLocals, WorldDone)
@@ -1621,7 +1598,7 @@ void G_DoWorldDone (void)
 //
 // Moves players (and eventually their owned Actors) to a different statnum,
 // so they will not be destroyed when switching levels. This only applies
-// to real players, not voodoo dolls.
+// to real players and bots, not voodoo dolls.
 //
 //==========================================================================
 
@@ -2412,9 +2389,6 @@ void FLevelLocals::Mark()
 	GC::Mark(automap);
 	GC::Mark(interpolator.Head);
 	GC::Mark(SequenceListHead);
-	GC::Mark(BotInfo.firstthing);
-	GC::Mark(BotInfo.body1);
-	GC::Mark(BotInfo.body2);
 	if (localEventManager)
 	{
 		GC::Mark(localEventManager->FirstEventHandler);

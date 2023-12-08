@@ -232,6 +232,8 @@ class Ripper : Actor
 		+RIPPER
 		DeathSound "weapons/blasterpowhit";
 		Obituary "$OB_MPPBLASTER";
+
+		+WARNBOT
 	}
 
 	States

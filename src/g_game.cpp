@@ -1021,7 +1021,7 @@ static void ChangeSpy (int changespy)
 			pnum &= MAXPLAYERS-1;
 			if (playeringame[pnum] &&
 				(!checkTeam || players[pnum].mo->IsTeammate (players[consoleplayer].mo) ||
-				(bot_allowspy && players[pnum].Bot != NULL)))
+				(bot_allowspy && players[pnum].Bot != nullptr)))
 			{
 				break;
 			}
@@ -1329,9 +1329,6 @@ void G_Ticker ()
 	// get commands
 	const int curTic = gametic / TicDup;
 
-	//Added by MC: For some of that bot stuff. The main bot function.
-	primaryLevel->BotInfo.Main (primaryLevel);
-
 	for (auto client : NetworkClients)
 	{
 		usercmd_t *cmd = &players[client].cmd;
@@ -1444,6 +1441,7 @@ void FLevelLocals::PlayerReborn (int player)
 	chasecam = p->cheats & CF_CHASECAM;
 	Bot = p->Bot; //Added by MC:
 	const bool settings_controller = p->settings_controller;
+	const bool isRespawning = p->playerstate == PST_REBORN;
 
 	// Reset player structure to its defaults
 	p->~player_t();
@@ -1481,13 +1479,25 @@ void FLevelLocals::PlayerReborn (int player)
 		p->ReadyWeapon = p->PendingWeapon;
 	}
 
-	//Added by MC: Init bot structure.
-	if (p->Bot != NULL)
+	// Let the bot thinker know its pawn (re)spawned.
+	if (Bot != nullptr)
 	{
-		botskill_t skill = p->Bot->skill;
-		p->Bot->Clear ();
-		p->Bot->player = p;
-		p->Bot->skill = skill;
+		if (isRespawning)
+		{
+			IFVIRTUALPTR(Bot, DBot, BotRespawned)
+			{
+				VMValue params = { Bot };
+				VMCall(func, &params, 1, nullptr, 0);
+			}
+		}
+		else
+		{
+			IFVIRTUALPTR(Bot, DBot, BotSpawned)
+			{
+				VMValue params = { Bot };
+				VMCall(func, &params, 1, nullptr, 0);
+			}
+		}
 	}
 }
 
@@ -1898,6 +1908,13 @@ void G_DoPlayerPop(int playernum)
 	mo->Level->localEventManager->PlayerDisconnected(playernum);
 	// [RH] Let the scripts know the player left
 	mo->Level->Behaviors.StartTypedScripts(SCRIPT_Disconnect, mo, true, playernum, true);
+
+	if (players[playernum].Bot != nullptr)
+	{
+		players[playernum].Bot->Destroy();
+		players[playernum].Bot = nullptr;
+	}
+
 	if (mo != NULL)
 	{
 		P_DisconnectEffect(mo);
@@ -2173,7 +2190,8 @@ void G_DoLoadGame ()
 	// Read intermission data for hubs
 	G_SerializeHub(arc);
 
-	primaryLevel->BotInfo.RemoveAllBots(primaryLevel, true);
+	// Boon TODO: Is this supposed to be here?
+	DBotManager::RemoveAllBots(primaryLevel);
 
 	savegamerestore = true; // Use the player actors in the savegame
 

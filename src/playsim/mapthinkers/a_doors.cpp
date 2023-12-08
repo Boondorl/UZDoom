@@ -476,9 +476,8 @@ bool FLevelLocals::EV_DoDoor (DDoor::EVlDoor type, line_t *line, AActor *thing,
 						//		run into them (otherwise opening them would be
 						//		a real pain).
 					{
-						if (!thing->player || thing->player->Bot != NULL)
+						if (!thing->player)
 							return false;	// JDC: bad guys never close doors
-											//Added by MC: Neither do bots.
 
 						// Don't let users spam open/close doors when playing online.
 						if (net_repeatableactioncooldown && NetworkClients.Size() > 1)

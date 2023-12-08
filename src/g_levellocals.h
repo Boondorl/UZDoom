@@ -560,7 +560,6 @@ public:
 	TArray<FStrifeDialogueNode *> StrifeDialogues;
 	FDialogueIDMap DialogueRoots;
 	FDialogueMap ClassRoots;
-	FCajunMaster BotInfo;
 
 	ELevelCompatFlags ii_compatflags = 0;
 	ELevelCompatFlags2 ii_compatflags2 = 0;

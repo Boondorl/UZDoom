@@ -430,6 +430,7 @@ xx(Sorcerer2)
 // Bots check this
 xx(Megasphere)
 xx(MegasphereHealth)
+xx(ItemFlags)
 
 // Standard player classes
 xx(DoomPlayer)

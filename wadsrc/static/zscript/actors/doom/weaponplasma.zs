@@ -76,6 +76,8 @@ class PlasmaBall : Actor
 		SeeSound "weapons/plasmaf";
 		DeathSound "weapons/plasmax";
 		Obituary "$OB_MPPLASMARIFLE";
+
+		+WARNBOT
 	}
 	States
 	{

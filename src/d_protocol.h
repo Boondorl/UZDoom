@@ -98,7 +98,7 @@ enum EDemoCommand
 	DEM_DROPPLAYER,		// 13 Not implemented, takes a byte
 	DEM_CHANGEMAP,		// 14 Name of map to change to
 	DEM_SUICIDE,		// 15 Player wants to die
-	DEM_ADDBOT,			// 16 Byte: botshift, String: userinfo for bot, 4 Bytes: skill (aiming, perfection, reaction, isp)
+	DEM_ADDBOT,			// 16 Byte: Player slot, String: Bot key
 	DEM_KILLBOTS,		// 17 Remove all bots from the world
 	DEM_INVUSEALL,		// 18 Use every item (panic!)
 	DEM_INVUSE,			// 19 4 bytes: ID of item to use
@@ -162,6 +162,7 @@ enum EDemoCommand
 	DEM_READIED,		// 77
 	DEM_WEAPSELECT,		// 78 Byte: Slot
 	DEM_USEFLECHETTE,	// 79
+	DEM_KILLBOT,		// 80 Byte: Player index of the bot
 };
 
 // The following are implemented by cht_DoCheat in m_cheat.cpp

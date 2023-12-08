@@ -2706,12 +2706,15 @@ void Net_DoCommand(int cmd, TArrayView<uint8_t>& stream, int player)
 		break;
 
 	case DEM_ADDBOT:
-		primaryLevel->BotInfo.TryAddBot(primaryLevel, stream, player);
+		DBotManager::TryAddBot(primaryLevel, ReadInt8(stream), ReadStringConst(stream));
 		break;
 
 	case DEM_KILLBOTS:
-		primaryLevel->BotInfo.RemoveAllBots(primaryLevel, true);
-		Printf ("Removed all bots\n");
+		DBotManager::RemoveAllBots(primaryLevel);
+		break;
+
+	case DEM_KILLBOT:
+		DBotManager::RemoveBot(primaryLevel, ReadInt8(stream));
 		break;
 
 	case DEM_CENTERVIEW:

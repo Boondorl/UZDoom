@@ -1628,6 +1628,9 @@ FSerializer& FSafePosition::Serialize(FSerializer& arc, const char* name)
 
 void P_PlayerThink (player_t *player)
 {
+	if (player->Bot != nullptr)
+		player->Bot->CallBotThink();
+
 	usercmd_t *cmd = &player->cmd;
 
 	if (player->mo == NULL)
@@ -1656,12 +1659,6 @@ void P_PlayerThink (player_t *player)
 		player->LastSafePos.Update(*player->mo);
 
 	++player->BobTimer;
-
-	// Bots do not think in freeze mode.
-	if (player->mo->Level->isFrozen() && player->Bot != nullptr)
-	{
-		return;
-	}
 
 	if (debugfile && !(player->cheats & CF_PREDICTING))
 	{

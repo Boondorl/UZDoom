@@ -4658,7 +4658,7 @@ int DLevelScript::DoClassifyActor(int tid)
 		{
 			classify |= ACTOR_VOODOODOLL;
 		}
-		if (actor->player->Bot != NULL)
+		if (actor->player->Bot != nullptr)
 		{
 			classify |= ACTOR_BOT;
 		}
