@@ -1755,14 +1755,12 @@ FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, FString>& 
 {
 	if (arc.isWriting())
 	{
-		if (value.CountUsed())
+		if (value.CountUsed() && arc.BeginObject(key))
 		{
-			arc.BeginObject(key);
-
-			TMap<FName, FString>::ConstPair* pair = nullptr;
-			TMap<FName, FString>::ConstIterator it{ value };
+			TMap<FName, FString>::Pair* pair = nullptr;
+			TMap<FName, FString>::ConstIterator it = { value };
 			while (it.NextPair(pair))
-				arc(pair->Key.GetChars(), pair->Value);
+				Serialize(arc, pair->Key.GetChars(), pair->Value, defval != nullptr ? defval->CheckKey(pair->Key) : nullptr);
 
 			arc.EndObject();
 		}
@@ -1773,13 +1771,9 @@ FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, FString>& 
 		{
 			const char* key = nullptr;
 			while ((key = arc.GetKey()) != nullptr)
-				value[key] = arc.r->mKeyValue->GetString();
+				value.Insert(key, arc.r->mKeyValue->GetString());
 
 			arc.EndObject();
-		}
-		else if (defval != nullptr)
-		{
-			value = *defval;
 		}
 	}
 
