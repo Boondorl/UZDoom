@@ -28,6 +28,7 @@
 #include "a_morph.h"
 #include "am_map.h"
 #include "basics.h"
+#include "b_bot.h"
 #include "c_bind.h"
 #include "c_buttons.h"
 #include "c_console.h"

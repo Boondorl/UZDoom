@@ -42,6 +42,7 @@
 #include "am_map.h"
 #include "animations.h"
 #include "autosegs.h"
+#include "b_bot.h"
 #include "c_buttons.h"
 #include "c_console.h"
 #include "c_cvars.h"

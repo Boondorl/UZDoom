@@ -36,6 +36,7 @@
 #include "g_cvars.h"
 #include "d_main.h"
 #include "r_utility.h"
+#include "b_bot.h"
 
 #include "p_visualthinker.h"
 

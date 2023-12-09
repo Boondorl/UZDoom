@@ -25,6 +25,7 @@
 #include "a_keys.h"
 #include "a_sharedglobal.h"
 #include "actorinlines.h"
+#include "b_bot.h"
 #include "c_dispatch.h"
 #include "cmdlib.h"
 #include "d_eventbase.h"

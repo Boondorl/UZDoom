@@ -39,8 +39,6 @@
 #include "p_effect.h"
 #include "p_acs.h"
 
-#include "b_bot.h"	//Added by MC:
-
 #include "d_player.h"
 #include "gi.h"
 #include "sbar.h"
@@ -53,7 +51,6 @@
 #include "actorinlines.h"
 #include "d_main.h"
 
-static FRandom pr_botrespawn ("BotRespawn");
 static FRandom pr_killmobj ("ActorDie");
 FRandom pr_damagemobj ("ActorTakeDamage");
 static FRandom pr_lightning ("LightningDamage");

@@ -28,7 +28,6 @@
 #include "m_random.h"
 #include "p_lnspec.h"
 #include "po_man.h"
-#include "b_bot.h"
 #include "p_spec.h"
 #include "vm.h"
 #include "m_round.h"
@@ -36,7 +35,6 @@
 #include "g_levellocals.h"
 #include "actorinlines.h"
 
-static FRandom pr_botchecksight ("BotCheckSight");
 static FRandom pr_checksight ("CheckSight");
 
 /*
