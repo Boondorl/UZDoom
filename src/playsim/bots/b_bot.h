@@ -93,7 +93,7 @@ public:
 		_properties.Remove(key);
 	}
 
-	constexpr const TMap<FName, FString>& GetProperties() const
+	inline const TMap<FName, FString>& GetProperties() const
 	{
 		return _properties;
 	}
@@ -191,7 +191,7 @@ public:
 		return reinterpret_cast<uint8_t*>(const_cast<char*>(_userInfo.GetChars()));
 	}
 
-	constexpr const FEntityProperties& GetProperties() const
+	inline const FEntityProperties& GetProperties() const
 	{
 		return _properties;
 	}
@@ -243,7 +243,7 @@ public:
 class DBotManager final
 {
 private:
-	static TArray<FString> _botNameArgs; // Bot names given when the host launched the game with the "-bots" arg.
+	static inline TArray<FString> _botNameArgs = {}; // Bot names given when the host launched the game with the "-bots" arg.
 
 	static FBotDefinition& ParseBot(FScanner& sc, FBotDefinition& def);				// Function that parses a bot block in BOTDEFS.
 	static FEntityProperties& ParseWeapon(FScanner& sc, FEntityProperties& props);	// Function that parses a weapon block in BOTDEFS.
@@ -251,9 +251,9 @@ private:
 	DBotManager(); // Don't instantiate it.
 
 public:
-	static cycle_t BotThinkCycles;							// For tracking think time of bots specifically.
-	static TMap<FName, FBotDefinition> BotDefinitions;		// Default properties and userinfo to give when spawning a bot. Stored by bot ID.
-	static TMap<FName, FEntityProperties> BotWeaponInfo;	// Key information about how bots should use each weapon. Stored by weapon class name.
+	static inline cycle_t BotThinkCycles = {};							// For tracking think time of bots specifically.
+	static inline TMap<FName, FBotDefinition> BotDefinitions = {};		// Default properties and userinfo to give when spawning a bot. Stored by bot ID.
+	static inline TMap<FName, FEntityProperties> BotWeaponInfo = {};	// Key information about how bots should use each weapon. Stored by weapon class name.
 
 	static void ParseBotDefinitions();											// Parses the BOTDEF lumps.
 	static void SetNamedBots(const FString* const args, const int argCount);	// Parses the "-bots" arg for the names of the bots.
@@ -285,8 +285,8 @@ public:
 	void OnDestroy() override;									// Clear the Properties map.
 	void Serialize(FSerializer &arc);							// Stuff to write to and load from the save file.
 
-	constexpr player_t* GetPlayer() const;
-	constexpr const FName& GetBotID() const;
+	inline player_t* GetPlayer() const { return _player; }
+	inline const FName& GetBotID() const { return _botID; }
 
 	void CallBotThink(); // Handles overall thinking logic. Called directly before PlayerThink.
 	
