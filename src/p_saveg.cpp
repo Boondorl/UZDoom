@@ -644,7 +644,6 @@ void FLevelLocals::SerializePlayers(FSerializer &arc, bool skipload)
 			}
 			arc.EndArray();
 
-			// Boon TODO: Bots need to be checked for a valid player slot
 
 			if (!skipload)
 			{
@@ -659,6 +658,7 @@ void FLevelLocals::SerializePlayers(FSerializer &arc, bool skipload)
 		{
 			SpawnExtraPlayers();
 		}
+
 		// Redo pitch limits, since the spawned player has them at 0.
 		auto p = GetConsolePlayer();
 		if (p) p->SendPitchLimits();
@@ -813,15 +813,13 @@ void FLevelLocals::ReadMultiplePlayers(FSerializer &arc, int numPlayers, bool fr
 
 void FLevelLocals::CopyPlayer(player_t *dst, player_t *src, const char *name)
 {
-	// The userinfo needs to be saved for real players, but it
-	// needs to come from the save for bots.
-	userinfo_t uibackup;
-	userinfo_t uibackup2;
+	userinfo_t destInfo;
+	userinfo_t srcInfo;
 
-	uibackup.TransferFrom(dst->userinfo);
-	uibackup2.TransferFrom(src->userinfo);
+	destInfo.TransferFrom(dst->userinfo);
+	srcInfo.TransferFrom(src->userinfo);
 
-	int chasecam = dst->cheats & CF_CHASECAM;	// Remember the chasecam setting
+	int chasecam = dst->cheats & CF_CHASECAM;
 	bool attackdown = dst->attackdown;
 	bool usedown = dst->usedown;
 
@@ -829,32 +827,28 @@ void FLevelLocals::CopyPlayer(player_t *dst, player_t *src, const char *name)
 
 	dst->cheats |= chasecam;
 
+	// Bots don't have their userinfo built on connect so it should retrieve it directly from
+	// the save file.
 	if (dst->Bot != nullptr)
-	{
-		dst->userinfo.TransferFrom(uibackup2);
-	}
+		dst->userinfo.TransferFrom(srcInfo);
 	else
-	{
-		dst->userinfo.TransferFrom(uibackup);
-		// The player class must come from the save, so that the menu reflects the currently playing one.
-		dst->userinfo.PlayerClassChanged(src->mo->GetInfo()->DisplayName.GetChars());
-	}
+		dst->userinfo.TransferFrom(destInfo);
+
+	// The player class must come from the save, so that the menu reflects the currently playing one.
+	dst->userinfo.PlayerClassChanged(src->mo->GetInfo()->DisplayName.GetChars());
 
 	// Validate the skin
 	dst->userinfo.SkinNumChanged(R_FindSkin(Skins[dst->userinfo.GetSkin()].Name.GetChars(), dst->CurrentPlayerClass));
 
 	// Make sure the player pawn points to the proper player struct.
 	if (dst->mo != nullptr)
-	{
 		dst->mo->player = dst;
-	}
 
 	// Same for the psprites.
 	DPSprite *pspr = dst->psprites;
 	while (pspr)
 	{
 		pspr->Owner = dst;
-
 		pspr = pspr->Next;
 	}
 
@@ -870,6 +864,8 @@ void FLevelLocals::CopyPlayer(player_t *dst, player_t *src, const char *name)
 //
 //==========================================================================
 
+// If there are more players now than there were in the savegame,
+// be sure to spawn the extra players.
 void FLevelLocals::SpawnExtraPlayers()
 {
 	// If there are more players now than there were in the savegame,
@@ -881,9 +877,9 @@ void FLevelLocals::SpawnExtraPlayers()
 		return;
 	}
 
-	for (i = 0; i < MAXPLAYERS; ++i)
+	for (int i = 0; i < MAXPLAYERS; ++i)
 	{
-		if (PlayerInGame(i) && Players[i]->mo == NULL)
+		if (PlayerInGame(i) && Players[i]->mo == nullptr)
 		{
 			Players[i]->playerstate = PST_ENTER;
 			SpawnPlayer(&playerstarts[i], i, (flags2 & LEVEL2_PRERAISEWEAPON) ? SPF_WEAPONFULLYUP : 0);
