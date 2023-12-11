@@ -3725,8 +3725,6 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<FileSys::ResourceN
 	InitActorNumsFromMapinfo();
 	InitSpawnablesFromMapinfo();
 	PClassActor::StaticSetActorNums();
-
-	DBotManager::ParseBotDefinitions();
 	
 	FString *args;
 	const int argCount = Args->CheckParmList(FArg_bots, &args);
@@ -3741,6 +3739,8 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<FileSys::ResourceN
 
 	//SBarInfo support. Note that the first SBARINFO lump contains the mugshot definition so it even needs to be read when a regular status bar is being used.
 	SBarInfo::Load();
+
+	DBotManager::ParseBotDefinitions();
 
 	if (!batchrun)
 	{
