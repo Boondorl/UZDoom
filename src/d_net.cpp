@@ -2707,16 +2707,23 @@ void Net_DoCommand(int cmd, TArrayView<uint8_t>& stream, int player)
 		break;
 
 	case DEM_ADDBOT:
-		DBotManager::TryAddBot(primaryLevel, ReadInt8(stream), ReadStringConst(stream));
+	{
+		const unsigned int playerID = ReadInt8(stream);
+		const FName botID = ReadStringConst(stream);
+		DBotManager::TryAddBot(primaryLevel, playerID, botID);
 		break;
+	}
 
 	case DEM_KILLBOTS:
 		DBotManager::RemoveAllBots(primaryLevel);
 		break;
 
 	case DEM_KILLBOT:
-		DBotManager::RemoveBot(primaryLevel, ReadInt8(stream));
+	{
+		const unsigned int playerID = ReadInt8(stream);
+		DBotManager::RemoveBot(primaryLevel, playerID);
 		break;
+	}
 
 	case DEM_CENTERVIEW:
 		players[player].centering = true;
@@ -3211,7 +3218,11 @@ void Net_SkipCommand(int cmd, TArrayView<uint8_t>& stream)
 			break;
 
 		case DEM_ADDBOT:
-			skip = strlen((char *)(stream.Data() + 1)) + 6;
+			skip = strlen ((char *)(stream.Data() + 1)) + 2;
+			break;
+
+		case DEM_KILLBOT:
+			skip = 1;
 			break;
 
 		case DEM_GIVECHEAT:

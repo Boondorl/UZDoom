@@ -657,7 +657,6 @@ void FLevelLocals::SerializePlayers(FSerializer &arc, bool skipload)
 		if (!skipload && numPlayersNow > numPlayers)
 		{
 			SpawnExtraPlayers();
-		}
 
 		// Redo pitch limits, since the spawned player has them at 0.
 		auto p = GetConsolePlayer();
