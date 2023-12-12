@@ -851,7 +851,7 @@ void InitThingdef()
 	fspp->Size = sizeof(FSpawnParticleParams);
 	fspp->Align = alignof(FSpawnParticleParams);
 
-	auto fep = NewStruct("EntityProperties", nullptr);
+	auto fep = NewStruct("EntityProperties", nullptr, true);
 	fep->Size = sizeof(FEntityProperties);
 	fep->Align = alignof(FEntityProperties);
 

@@ -62,7 +62,7 @@ class Bot : Thinker native
 	const MIN_RESPAWN_TIME = int(0.25 * TICRATE);
 	const MAX_RESPAWN_TIME = int(1.0 * TICRATE);
 
-	native EntityProperties Properties;
+	native @EntityProperties Properties;
 
 	Actor Evade;
 
@@ -71,8 +71,6 @@ class Bot : Thinker native
 	protected int evadeCoolDown;
 	protected int goalCoolDown;
 	protected int reactionCoolDown;
-	protected int strafeCoolDown;
-	protected EBotMoveDirection curStrafeDir;
 
 	native clearscope static EntityProperties GetEntityInfo(Name entity, Name baseClass = 'Actor');
 	native clearscope static bool IsSectorDangerous(Sector sec);
@@ -95,7 +93,7 @@ class Bot : Thinker native
 	native bool CanReach(Actor mo, double maxDistance = 320.0, bool jump = true);
 	native bool CheckMove(Vector2 dest, bool jump = true);
 	native bool Move(bool jump = true);
-	native void NewChaseDir(bool jump = true);
+	native void NewMoveDirection(Actor goal = null, bool jump = true);
 	native EBotMoveDirection PickStrafeDirection(EBotMoveDirection startDir = MDIR_NONE, bool jump = true);
 
 	clearscope PlayerPawn GetActor() const
@@ -124,9 +122,9 @@ class Bot : Thinker native
 		GetActor().target = target;
 	}
 
-	void SetPartner(int pNum)
+	void SetPartner(uint pNum)
 	{
-		GetActor().friendPlayer = pNum < 0 || pNum >= MAXPLAYERS ? 0 : pNum + 1;
+		GetActor().friendPlayer = pNum > MAXPLAYERS ? 0u : pNum;
 	}
 
 	void SetGoal(Actor goal)
@@ -161,7 +159,7 @@ class Bot : Thinker native
 	{
 		// TODO: Check partner status
 		if (!deathmatch || teamplay)
-			FindPartner();
+			SetPartner(FindPartner());
 	}
 
 	virtual void SearchForTarget()
@@ -180,7 +178,7 @@ class Bot : Thinker native
 
 		if (!GetTarget() || (deathmatch && targetCoolDown <= 0))
 		{
-			FindTarget();
+			SetTarget(FindTarget());
 			if (GetTarget())
 				targetCoolDown = TARGET_COOL_DOWN_TICS;
 		}
@@ -302,7 +300,7 @@ class Bot : Thinker native
 		}
 
 		Actor partner = GetPartner();
-		if (partner)
+		if (partner && (!mo.CheckSight(partner, 15) || CanReach(partner)))
 		{
 			SetGoal(partner);
 			goalCoolDown = GOAL_COOL_DOWN_TICS;
@@ -352,8 +350,27 @@ class Bot : Thinker native
 
 	virtual void HandleMovement()
 	{
-		if (--GetActor().movecount < 0 || !Move())
-			NewChaseDir();
+		// Dodging takes priority
+		let pawn = GetActor();
+		if (Evade)
+		{
+			double dir = pawn.AngleTo(Evade);
+			pawn.moveDir = (int(dir / 45.0) + 4) % 8;
+			pawn.moveCount = 0;
+
+			Move();
+			return;
+		}
+
+		if (--pawn.moveCount < 0 || !Move())
+		{
+			Actor partner = GetPartner();
+			Actor goal = GetGoal();
+			if (partner && partner == goal && !pawn.CheckSight(partner, 15))
+				NewMoveDirection(null);
+			else
+				NewMoveDirection(goal);
+		}
 	}
 
 	virtual bool TryFire()
@@ -378,8 +395,7 @@ class Bot : Thinker native
 
 	virtual void BotDied(Actor source, Actor inflictor, EDmgFlags dmgFlags = 0, Name meansOfDeath = 'None')
 	{
-		partnerCoolDown = evadeCoolDown = targetCoolDown = goalCoolDown = reactionCoolDown = strafeCoolDown = 0;
-		curStrafeDir = MDIR_NONE;
+		partnerCoolDown = evadeCoolDown = targetCoolDown = goalCoolDown = reactionCoolDown = 0;
 		Evade = null;
 		SetGoal(null);
 		SetPartner(-1);
