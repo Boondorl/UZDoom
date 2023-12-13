@@ -231,6 +231,7 @@ public:
 	inline FString &StringVar(FName field);
 	template<class T> T*& PointerVar(FName field);
 	inline int* IntArray(FName field);
+	inline double* FloatArray(FName field);
 
 	// Make sure native data is wiped correctly since it has no read barriers.
 	void ClearNativePointerFields(const TArrayView<FName>& types);
@@ -426,6 +427,11 @@ inline int &DObject::IntVar(FName field)
 inline int* DObject::IntArray(FName field)
 {
 	return (int*)ScriptVar(field, nullptr);
+}
+
+inline double* DObject::FloatArray(FName field)
+{
+	return (double*)ScriptVar(field, nullptr);
 }
 
 inline FTextureID &DObject::TextureIDVar(FName field)
