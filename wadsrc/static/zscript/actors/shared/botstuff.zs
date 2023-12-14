@@ -481,13 +481,9 @@ class Bot : Thinker native
 		{
 			destPos = target.Pos.PlusZ(target.Height * 0.75 - target.FloorClip);
 		}
-		else if (goal)
+		else if (goal is "Inventory")
 		{
-			destPos = goal is "Inventory"
-						? goal.Pos.PlusZ(goal.Height * 0.5)
-						: goal.Pos.PlusZ(goal.Height * 0.75);
-
-			destPos.z -= goal.FloorClip;
+			destPos = goal.Pos.PlusZ(goal.Height * 0.5 - goal.FloorClip);
 		}
 		else
 		{
@@ -525,7 +521,7 @@ class Bot : Thinker native
 		if (--GetPawn().MoveCount < 0 || !Move(running))
 		{
 			if (Evade)
-				NewMoveDirection(Evade, true);
+				NewMoveDirection(Evade, true, Evade != partner);
 			else
 				NewMoveDirection(goal, running: running);
 		}
