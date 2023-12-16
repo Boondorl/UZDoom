@@ -429,6 +429,9 @@ class PlayerPawn : Actor
 		{
 			SoundAlert (self, false);
 		}
+
+		if (player.Bot)
+			player.Bot.FiredWeapon(false);
 	}
 
 	//---------------------------------------------------------------------------
@@ -459,6 +462,9 @@ class PlayerPawn : Actor
 		{
 			SoundAlert (self, false);
 		}
+
+		if (player.Bot)
+			player.Bot.FiredWeapon(true);
 	}
 
 	//---------------------------------------------------------------------------

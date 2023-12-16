@@ -220,6 +220,10 @@ extend class PlayerPawn
 		PostMorph(morphed, false);		// No longer the current body
 		morphed.PostMorph(self, true);	// This is the current body
 
+		if (p.Bot)
+			p.Bot.Morphed();
+
+
 		if (enterFlash)
 		{
 			Actor fog = Spawn(enterFlash, morphed.Pos.PlusZ(GameInfo.TelefogHeight), ALLOW_REPLACE);
@@ -375,6 +379,9 @@ extend class PlayerPawn
 
 		PostUnmorph(alt, false);		// This body is no longer current.
 		alt.PostUnmorph(self, true);	// altmo body is current.
+
+		if (player.Bot)
+			player.Bot.Unmorphed();
 
 		if (exitFlash)
 		{

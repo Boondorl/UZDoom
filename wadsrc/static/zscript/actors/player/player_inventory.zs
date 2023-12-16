@@ -160,6 +160,9 @@ extend class PlayerPawn
 		{
 			InvSel = item;
 		}
+
+		if (player.Bot)
+			player.Bot.AddedInventory(item);
 	}
 
 	//===========================================================================
@@ -212,6 +215,9 @@ extend class PlayerPawn
 		{
 			PickNewWeapon (NULL);
 		}
+
+		if (player.Bot)
+			player.Bot.RemovedInventory(item);
 	}
 
 	//===========================================================================
@@ -236,6 +242,9 @@ extend class PlayerPawn
 
 		if (!Super.UseInventory (item))
 		{
+			if (player.Bot)
+				player.Bot.UsedInventory(item, true);
+
 			// Heretic and Hexen advance the inventory cursor if the use failed.
 			// Should this behavior be retained?
 			return false;
@@ -245,6 +254,10 @@ extend class PlayerPawn
 			A_StartSound(item.UseSound, CHAN_ITEM);
  			StatusBar.FlashItem (itemtype);	// Fixme: This shouldn't be called from here, because it is in the UI.
 		}
+
+		if (player.Bot)
+			player.Bot.UsedInventory(item, false);
+
 		return true;
 	}
 
