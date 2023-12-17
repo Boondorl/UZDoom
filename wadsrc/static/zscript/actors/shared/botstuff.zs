@@ -650,6 +650,11 @@ class Bot : Thinker native
 		return true;
 	}
 
+	virtual string ModifySpawnProperty(Name property, string value)
+	{
+		return value;
+	}
+
 	virtual void BotRespawned()
 	{
 		SetTarget(null);
