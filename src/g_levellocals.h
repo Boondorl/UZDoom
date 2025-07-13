@@ -276,7 +276,7 @@ public:
 	int FinishTravel();
 	void UnlinkActorFromLevel(AActor& mo);
 	void LinkActorToLevel(AActor& mo);
-	void ChangeLevel(const char *levelname, int position, int flags, int nextSkill = -1);
+	void ChangeLevel(const FString& levelname, int position, int flags, int nextSkill = -1);
 	const char *GetSecretExitMap();
 	void ExitLevel(int position, bool keepFacing);
 	void SecretExitLevel(int position);
