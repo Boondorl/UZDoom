@@ -1477,7 +1477,7 @@ nodetype *RestoreNodeList(AActor *act, nodetype *linktype::*otherlist, TArray<no
 
 void P_PredictPlayer (player_t *player)
 {
-	if (demoplayback || gamestate != GS_LEVEL ||
+	if (DemoPlayback || gamestate != GS_LEVEL ||
 		player->mo == NULL ||
 		player != player->mo->Level->GetConsolePlayer() ||
 		(player->cheats & CF_PREDICTING))

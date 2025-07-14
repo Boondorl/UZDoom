@@ -37,7 +37,7 @@
 #include "v_video.h"
 #include <csignal>
 
-extern bool		advancedemo;
+extern bool		AdvanceDemo;
 extern volatile sig_atomic_t gameloop_abort;
 EXTERN_CVAR(Bool, hud_toggled);
 void D_ToggleHud();

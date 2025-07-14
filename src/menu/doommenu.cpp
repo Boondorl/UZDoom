@@ -240,7 +240,7 @@ bool M_SetSpecialMenu(FName& menu, int param)
 		return false;
 
 	case NAME_SavegameMenu:
-		if (!usergame || (players[consoleplayer].health <= 0 && !multiplayer) || gamestate != GS_LEVEL)
+		if (!PlayerControlledGame || (players[consoleplayer].health <= 0 && !multiplayer) || gamestate != GS_LEVEL)
 		{
 			// cannot save outside the game.
 			M_StartMessage (GStrings.GetString("SAVEDEAD"), 1);
@@ -287,7 +287,7 @@ bool M_SetSpecialMenu(FName& menu, int param)
 	DMenuDescriptor** desc = MenuDescriptors.CheckKey(menu);
 	if (desc != nullptr)
 	{
-		if ((*desc)->mNetgameMessage.IsNotEmpty() && netgame && !demoplayback)
+		if ((*desc)->mNetgameMessage.IsNotEmpty() && netgame && !DemoPlayback)
 		{
 			M_StartMessage((*desc)->mNetgameMessage.GetChars(), 1);
 			return false;
@@ -443,8 +443,8 @@ void ActivateEndGameMenu()
 		M_ClearMenus();
 		if (!netgame)
 		{
-			if (demorecording)
-				G_CheckDemoStatus();
+			if (RecordingDemo)
+				G_CheckDemoEnd();
 			D_StartTitle();
 		}
 	});
@@ -454,7 +454,7 @@ void ActivateEndGameMenu()
 
 CCMD (menu_endgame)
 {	// F7
-	if (!usergame)
+	if (!PlayerControlledGame)
 	{
 		S_Sound (CHAN_VOICE, CHANF_UI|(haptics_do_menus?CHANF_RUMBLE:CHANF_NORUMBLE), "menu/invalid", snd_menuvolume, ATTN_NONE);
 		return;
@@ -474,7 +474,7 @@ CCMD (menu_endgame)
 
 CCMD (quicksave)
 {	// F6
-	if (!usergame || (players[consoleplayer].health <= 0 && !multiplayer))
+	if (!PlayerControlledGame || (players[consoleplayer].health <= 0 && !multiplayer))
 	{
 		S_Sound (CHAN_VOICE, CHANF_UI|(haptics_do_menus?CHANF_RUMBLE:CHANF_NORUMBLE), "menu/invalid", snd_menuvolume, ATTN_NONE);
 		return;
