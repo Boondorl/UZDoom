@@ -576,6 +576,11 @@ bool IsPlayingDemo()
 	return DemoState == DEMO_PLAYING;
 }
 
+void ClearDemoState()
+{
+	DemoState = DEMO_NONE;
+}
+
 static inline int joyint(double val)
 {
 	if (val >= 0)
@@ -2039,7 +2044,7 @@ void G_DoLoadGame ()
 
 	if (gameaction != ga_autoloadgame)
 	{
-		DemoState = DEMO_NONE;
+		ClearDemoState();
 	}
 	hidecon = gameaction == ga_loadgamehidecon;
 	gameaction = ga_nothing;
@@ -2713,7 +2718,7 @@ UNSAFE_CCMD(playdemo)
 		Printf("End your current netgame first!\n");
 		return;
 	}
-	if (DemoState != DEMO_NONE)
+	if (IsPlayingDemo() || IsRecordingDemo())
 	{
 		Printf("End your current demo first!\n");
 		return;
@@ -2862,7 +2867,7 @@ bool G_VerifyDemoHeader(FString& map, TArrayView<const uint8_t> fileData)
 
 	if (compressed)
 	{
-		uLong uncompSize = 0u;
+		uLong uncompSize = compressed;
 		TArray<uint8_t> uncompressed(compressed, true);
 		const int r = uncompress(uncompressed.Data(), &uncompSize, bodyData.Data(), uLong(bodyData.Size()));
 		// If this happens, we need to abort the entire engine ASAP.
@@ -2918,7 +2923,7 @@ void G_DoPlayDemo()
 		if (SingleDemoPlayback)
 			I_Error("Failed to read demo file\n");
 		else
-			gameaction = ga_nothing;;
+			gameaction = ga_nothing;
 	}
 	else
 	{
@@ -2986,7 +2991,7 @@ void G_EndDemo()
 			StatusBar->AttachToPlayer(&players[0]);
 
 		DemoPlaybackBuffer = {};
-		DemoState = DEMO_NONE;
+		ClearDemoState();
 		if (SingleDemoPlayback || BenchmarkDemo)
 		{
 			if (BenchmarkDemo)
@@ -3058,7 +3063,7 @@ void G_EndDemo()
 		DemoBuffer.Reset();
 		DemoTempBuffer.Reset();
 		DemoBody.Reset();
-		DemoState = DEMO_NONE;
+		ClearDemoState();
 		StopRecordingDemo = false;
 		if (saved)
 			Printf("Demo %s recorded\n", DemoFileName.GetChars()); 
