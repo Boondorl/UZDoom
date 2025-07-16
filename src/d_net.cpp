@@ -261,6 +261,11 @@ public:
 			Streams[CurrentStream].WriteBytes(data);
 	}
 
+	DynamicWriteStream& GetCurrentStream()
+	{
+		return Streams[CurrentStream];
+	}
+
 	TArrayView<const uint8_t> GetCurrentStreamData() const
 	{
 		return Streams[CurrentStream].GetView();
@@ -2153,10 +2158,7 @@ void Net_Initialize()
 
 void Net_WritePacket(NetPacket& p)
 {
-	auto buffer = NetEvents.GetWriteBuffer();
-	auto stream = buffer;
-	WritePacket(p, stream);
-	NetEvents.AddData({ buffer.Data(), buffer.Size() - stream.Size() });
+	WritePacket(p, NetEvents.GetCurrentStream());
 }
 
 static int RemoveClass(FLevelLocals *Level, const PClass *cls)
@@ -2198,11 +2200,11 @@ static int RemoveClass(FLevelLocals *Level, const PClass *cls)
 void Net_SkipCommands(ReadStream& stream)
 {
 	EDemoCommand cmd;
-	while ((cmd = GetPacketType(stream.GetRemainingData())) != DEM_USERCMD && cmd != DEM_EMPTYUSERCMD)
+	while ((cmd = GetPacketType(stream)) != DEM_USERCMD && cmd != DEM_EMPTYUSERCMD)
 		SkipPacket(*CreatePacket(cmd), stream);
 }
 
-void Net_ReadCommands(int player, TArrayView<const uint8_t>& stream)
+void Net_ReadCommands(int player, ReadStream& stream)
 {
 	EDemoCommand cmd;
 	while ((cmd = GetPacketType(stream)) != DEM_USERCMD && cmd != DEM_EMPTYUSERCMD)
