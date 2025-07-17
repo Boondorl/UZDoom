@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "m_argv.h"
 #include "tarray.h"
+#include "tflags.h"
 
 inline constexpr size_t MAXPLAYERS = 64u;
 
@@ -40,6 +41,8 @@ enum ENetFlags : uint8_t
 	NCMD_LATENCY = 0x01,		// Latency packet, used for measuring RTT.		
 };
 
+typedef TFlags<ENetFlags, uint8_t> NetFlags;
+DEFINE_TFLAGS_OPERATORS(NetFlags)
 struct FClientStack : public TArray<int>
 {
 	inline bool InGame(int i) const { return Find(i) < Size(); }
@@ -61,8 +64,9 @@ extern int consoleplayer;
 extern int Net_Arbitrator;
 extern FClientStack NetworkClients;
 extern uint8_t NetBuffer[MAX_MSGLEN];
-extern TArrayView<uint8_t> NetBufferView;
 extern size_t NetBufferLength;
+extern TArrayView<uint8_t> NetBufferWriteView;
+extern TArrayView<const uint8_t> NetBufferReadView;
 extern uint8_t TicDup;
 extern int RemoteClient;
 extern int MaxClients;

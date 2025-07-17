@@ -28,12 +28,9 @@
 #ifndef __D_NET__
 #define __D_NET__
 
-#include "doomtype.h"
 #include "doomdef.h"
 #include "d_protocol.h"
-#include "d_netpackets.h"
 #include "i_net.h"
-#include <queue>
 
 uint64_t I_msTime();
 struct particle_t;
@@ -45,7 +42,7 @@ enum EChatType
 	CHAT_GLOBAL,
 };
 
-enum EClientFlags
+enum EClientFlags : uint8_t
 {
 	CF_NONE = 0,
 	CF_QUIT = 1,		// If set, this client sent an exit command and needs to be disconnected.
@@ -58,6 +55,9 @@ enum EClientFlags
 	CF_RETRANSMIT = CF_RETRANSMIT_CON | CF_RETRANSMIT_SEQ,
 	CF_MISSING = CF_MISSING_CON | CF_MISSING_SEQ,
 };
+
+typedef TFlags<EClientFlags, uint8_t> ClientFlags;
+DEFINE_TFLAGS_OPERATORS(ClientFlags)
 
 // The following are implemented by cht_DoCheat in m_cheat.cpp
 enum ECheatCommand : uint8_t
@@ -154,7 +154,7 @@ struct FClientNetState
 	uint64_t	SentTime[MAXSENDTICS] = {};	// Timestamp for when we sent out the packet to this client.
 	uint64_t	RecvTime[MAXSENDTICS] = {};	// Timestamp for when the client acknowledged our last packet.
 
-	int				Flags = 0;				// State of this client.
+	ClientFlags		Flags = CF_NONE;		// State of this client.
 
 	uint8_t			StabilityBuffer = 0u;	// Account for if the client is trying to stabilize when measuring their performance.
 	uint8_t			ResendID = 0u;			// Make sure that if the retransmit happened on a wait barrier, it can be properly resent back over.
