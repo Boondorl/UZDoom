@@ -619,8 +619,9 @@ ADD_STAT(velocity)
 {
 	FString compose;
 	if (players[consoleplayer].mo != NULL && gamestate == GS_LEVEL) {
-		compose.AppendFormat("Current velocity: %.2f\n", players[consoleplayer].mo->Vel.Length());
-		compose.AppendFormat("Level %s - Velocity Max: %.2f, Velocity Average: %.2f\n", primaryLevel->MapName.GetChars(), primaryLevel->max_velocity, primaryLevel->avg_velocity);
+		auto level = players[consoleplayer].mo->Level;
+		compose.AppendFormat("Current velocity: %.2f\n", level->cur_velocity);
+		compose.AppendFormat("Level %s - Velocity Max: %.2f, Velocity Average: %.2f\n", level->MapName.GetChars(), level->max_velocity, level->avg_velocity);
 	}
 	return compose;
 }

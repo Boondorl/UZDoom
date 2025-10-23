@@ -714,6 +714,7 @@ public:
 	int			total_monsters;
 	int			killed_monsters;
 
+	double		cur_velocity;
 	double      max_velocity;
 	double      avg_velocity;
 

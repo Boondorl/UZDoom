@@ -1352,6 +1352,18 @@ void P_PlayerThink (player_t *player)
 		VMValue param = player->mo;
 		VMCall(func, &param, 1, nullptr, 0);
 	}
+
+	// Moved this to directly after player thinking to get more accurate velocity values. Also takes
+	// 3D vs 2D movement into account now.
+	if (!bPredictionGuard && player == &players[consoleplayer] && player->mo != nullptr)
+	{
+		double spd = (player->mo->flags & MF_NOGRAVITY) ? player->mo->Vel.Length() : player->mo->Vel.XY().Length();
+		auto level = player->mo->Level;
+		level->cur_velocity = spd;
+		if (spd > level->max_velocity)
+			level->max_velocity = spd;
+		level->avg_velocity += (spd - level->avg_velocity) / (level->maptime + 1);
+	}
 }
 
 void P_PredictionLerpReset()
