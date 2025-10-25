@@ -4098,7 +4098,7 @@ static int D_DoomMain_Internal (void)
 				index++;
 			}
 			if (failedcheck)
-				GameStartupInfo.DiscordAppId = '\0';
+				GameStartupInfo.DiscordAppId = "";
 		}
 
 		if (GameStartupInfo.SteamAppId.GetChars())
@@ -4116,7 +4116,7 @@ static int D_DoomMain_Internal (void)
 				index++;
 			}
 			if (failedcheck)
-				GameStartupInfo.SteamAppId = '\0';
+				GameStartupInfo.SteamAppId = "";
 		}
 
 		int ret = D_InitGame(iwad_info, allwads, pwads);

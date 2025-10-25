@@ -59,8 +59,6 @@ private:
 
 	NetworkPage* MainTab = nullptr;
 
-	TextLabel* NetModesLabel = nullptr;
-	Dropdown* NetModesDropdown = nullptr;
 	TextLabel* TicDupLabel = nullptr;
 	Dropdown* TicDupDropdown = nullptr;
 	CheckboxLabel* ExtraTicCheckbox = nullptr;

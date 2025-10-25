@@ -1239,7 +1239,7 @@ double DBaseStatusBar::DrawConsistancy(double yOfs) const
 		{
 			desync = true;
 			// Fell out of sync with the host in packet server mode. Which specific user it is doesn't really matter.
-			if (NetMode == NET_PacketServer && consoleplayer != Net_Arbitrator)
+			if (consoleplayer != Net_Arbitrator)
 			{
 				text = "Out of sync with host";
 				break;
@@ -1280,7 +1280,7 @@ double DBaseStatusBar::DrawWaiting(double yOfs) const
 		if (players[client].waiting)
 		{
 			isWaiting = true;
-			if (NetMode == NET_PacketServer && consoleplayer != Net_Arbitrator)
+			if (consoleplayer != Net_Arbitrator)
 			{
 				text = "Waiting for host";
 				break;

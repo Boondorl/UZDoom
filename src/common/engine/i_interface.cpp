@@ -70,7 +70,6 @@ CVAR(String, defaultnetargs, "", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int, defaultnetplayers, 8, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int, defaultnethostport, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int, defaultnetticdup, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Int, defaultnetmode, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Int, defaultnetgamemode, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool, defaultnetaltdm, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(String, defaultnetaddress, "", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -134,7 +133,6 @@ FStartupSelectionInfo::FStartupSelectionInfo(const TArray<WadStuff>& wads, FArgs
 	DefaultNetPlayers = defaultnetplayers;
 	DefaultNetHostPort = defaultnethostport;
 	DefaultNetTicDup = defaultnetticdup;
-	DefaultNetMode = defaultnetmode;
 	DefaultNetGameMode = defaultnetgamemode;
 	DefaultNetAltDM = defaultnetaltdm;
 	DefaultNetHostTeam = defaultnethostteam;
@@ -178,7 +176,6 @@ int FStartupSelectionInfo::SaveInfo()
 			defaultnetplayers = DefaultNetPlayers;
 			defaultnethostport = DefaultNetHostPort;
 			defaultnetticdup = DefaultNetTicDup;
-			defaultnetmode = DefaultNetMode;
 			defaultnetgamemode = DefaultNetGameMode;
 			defaultnetaltdm = DefaultNetAltDM;
 			defaultnethostteam = DefaultNetHostTeam;

@@ -122,9 +122,6 @@ FARG(dup, "Multiplayer", "Send less player movement commands over the network.",
 FARG(port, "Multiplayer", "Specifies an alternative IP port for a network game.", "x",
 	"Specifies an alternate IP port for this machine to use during a network game. By default,"
 	" port 5029 is used.");
-FARG(netmode, "Multiplayer", "Changes the network mode", "0|1",
-	"Changes the network mode the game uses (Peer-to-Peer or Packet Server). More information on"
-	" each mode can be found on the Multiplayer page.");
 FARG(password, "", "", "",
 	"");
 
@@ -136,12 +133,12 @@ constexpr size_t MaxPasswordSize = 256u;
 
 enum ENetConnectType : uint8_t
 {
-	PRE_HEARTBEAT,			// Host and guests are keep each other's connections alive
+	PRE_HEARTBEAT,			// Clients are keeping each other's connections alive
 	PRE_CONNECT,			// Sent from guest to host for initial connection
 	PRE_CONNECT_ACK,		// Sent from host to guest to confirm they've been connected
 	PRE_DISCONNECT,			// Sent from host to guest when another guest leaves
-	PRE_USER_INFO,			// Host and guests are sending each other user infos
-	PRE_USER_INFO_ACK,		// Host and guests are confirming sent user infos
+	PRE_USER_INFO,			// Clients are sending each other user infos
+	PRE_USER_INFO_ACK,		// Clients are confirming sent user infos
 	PRE_GAME_INFO,			// Sent from host to guest containing general game info
 	PRE_GAME_INFO_ACK,		// Sent from guest to host confirming game info was gotten
 	PRE_GO,					// Sent from host to guest telling them to start the game
@@ -151,7 +148,7 @@ enum ENetConnectType : uint8_t
 	PRE_WRONG_PASSWORD,		// Sent from host to guest if their provided password was wrong
 	PRE_WRONG_ENGINE,		// Sent from host to guest if their engine version doesn't match the host's
 	PRE_INVALID_FILES,		// Sent from host to guest if their files do not match the host's
-	PRE_KICKED,				// Sent from hsot to guest if the host kicked them from the game
+	PRE_KICKED,				// Sent from host to guest if the host kicked them from the game
 	PRE_BANNED,				// Sent from host to guest if the host banned them from the game
 };
 
@@ -190,7 +187,6 @@ struct FConnection
 
 bool netgame = false;
 bool multiplayer = false;
-ENetMode NetMode = NET_PeerToPeer;
 int consoleplayer = 0;
 int Net_Arbitrator = 0;
 FClientStack NetworkClients = {};
@@ -332,59 +328,6 @@ void CloseNetwork()
 		WSACleanup();
 	}
 #endif
-}
-
-static int PrivateNetOf(const in_addr& in)
-{
-	int addr = ntohl(in.s_addr);
-	if ((addr & 0xFFFF0000) == 0xC0A80000)		// 192.168.0.0
-	{
-		return 0xC0A80000;
-	}
-	else if ((addr & 0xFFFF0000) >= 0xAC100000 && (addr & 0xFFFF0000) <= 0xAC1F0000)	// 172.16.0.0 - 172.31.0.0
-	{
-		return 0xAC100000;
-	}
-	else if ((addr & 0xFF000000) == 0x0A000000)		// 10.0.0.0
-	{
-		return 0x0A000000;
-	}
-	else if ((addr & 0xFF000000) == 0x7F000000)		// 127.0.0.0 (localhost)
-	{
-		return 0x7F000000;
-	}
-	// Not a private IP
-	return 0;
-}
-
-// The best I can really do here is check if the others are on the same
-// private network, since that means we (probably) are too.
-static bool ClientsOnSameNetwork()
-{
-	int start = 1;
-	for (; start < MaxClients; ++start)
-	{
-		if (Connected[start].Status != CSTAT_NONE)
-			break;
-	}
-
-	if (start >= MaxClients)
-		return false;
-
-	const int firstClient = PrivateNetOf(Connected[start].Address.sin_addr);
-	if (!firstClient)
-		return false;
-
-	for (int i = 1; i < MaxClients; ++i)
-	{
-		if (i == start)
-			continue;
-
-		if (Connected[i].Status == CSTAT_NONE || PrivateNetOf(Connected[i].Address.sin_addr) != firstClient)
-			return false;
-	}
-
-	return true;
 }
 
 static void GenerateGameID()
@@ -581,10 +524,9 @@ static void GetPacket(sockaddr_in* const from = nullptr)
 			}
 			else
 			{
-				// The remote node aborted unexpectedly, so pretend it sent an exit packet. If in packet server
-				// mode and it was the host, just consider the game too bricked to continue since the host has
-				// to determine the new host properly.
-				if (NetMode == NET_PacketServer && client == Net_Arbitrator)
+				// The remote node aborted unexpectedly, so pretend it sent an exit packet. If it was the host,
+				// just consider the game too bricked to continue since the host has to determine the new host properly.
+				if (client == Net_Arbitrator)
 					I_NetError("Host unexpectedly disconnected");
 
 				NetBuffer[0] = NCMD_EXIT;
@@ -757,8 +699,7 @@ void HandleIncomingConnection()
 	{
 		NetBuffer[0] = NCMD_SETUP;
 		NetBuffer[1] = PRE_GO;
-		NetBuffer[2] = NetMode;
-		NetBufferLength = 3u;
+		NetBufferLength = 2u;
 		SendPacket(Connected[RemoteClient].Address);
 	}
 }
@@ -977,7 +918,6 @@ static bool Host_CheckForConnections(void* connected)
 	return ready && (*connectedPlayers >= MaxClients || forceStarting);
 }
 
-// Boon TODO: Add cool down between sends
 static void SendAbort()
 {
 	NetBuffer[0] = NCMD_EXIT;
@@ -997,7 +937,7 @@ static void SendAbort()
 	}
 }
 
-static bool HostGame(int arg, bool forcedNetMode)
+static bool HostGame(int arg)
 {
 	if (arg >= Args->NumArgs() || !(MaxClients = atoi(Args->GetArg(arg))))
 	{	// No player count specified, assume 2
@@ -1047,27 +987,18 @@ static bool HostGame(int arg, bool forcedNetMode)
 		return true;
 	}
 
-	if (!forcedNetMode)
-	{
-		if (MaxClients < 3)
-			NetMode = NET_PeerToPeer;
-		else if (!ClientsOnSameNetwork())
-			NetMode = NET_PacketServer;
-	}
-
 	I_NetLog("Go");
 
 	NetBuffer[0] = NCMD_SETUP;
 	NetBuffer[1] = PRE_GO;
-	NetBuffer[2] = NetMode;
-	NetBufferLength = 3u;
+	NetBufferLength = 2u;
 	for (size_t client = 1u; client < (size_t)MaxClients; ++client)
 	{
 		if (Connected[client].Status != CSTAT_NONE)
 			SendPacket(Connected[client].Address);
 	}
 
-	I_NetLog("Total players: %u", connectedPlayers);
+	I_NetLog("Total players: %d", connectedPlayers);
 
 	return true;
 }
@@ -1212,7 +1143,6 @@ static bool Guest_ContactHost(void* unused)
 		}
 		else if (NetBuffer[1] == PRE_GO)
 		{
-			NetMode = static_cast<ENetMode>(NetBuffer[2]);
 			I_NetMessage("Starting game");
 			I_NetLog("Received GO");
 			return true;
@@ -1294,8 +1224,6 @@ static bool JoinGame(int arg)
 //
 // I_InitNetwork
 //
-// Returns true if packet server mode might be a good idea.
-//
 bool I_InitNetwork()
 {
 	// set up for network
@@ -1310,10 +1238,6 @@ bool I_InitNetwork()
 		Printf("Using alternate port %d\n", GamePort);
 	}
 
-	v = Args->CheckValue(FArg_netmode);
-	if (v != nullptr)
-		NetMode = atoi(v) ? NET_PacketServer : NET_PeerToPeer;
-
 	net_password = Args->CheckValue(FArg_password);
 
 	// parse network game options,
@@ -1322,7 +1246,7 @@ bool I_InitNetwork()
 	int arg = -1;
 	if ((arg = Args->CheckParm(FArg_host)))
 	{
-		if (!HostGame(arg + 1, v != nullptr))
+		if (!HostGame(arg + 1))
 			return false;
 	}
 	else if ((arg = Args->CheckParm(FArg_join)))

@@ -47,7 +47,7 @@ enum EChatType
 enum EClientFlags
 {
 	CF_NONE = 0,
-	CF_QUIT = 1,		// If in packet server mode, this client sent an exit command and needs to be disconnected.
+	CF_QUIT = 1,		// If set, this client sent an exit command and needs to be disconnected.
 	CF_MISSING_SEQ = 1 << 1,	// If a sequence was missed/out of order, ask this client to send back over their info.
 	CF_RETRANSMIT_SEQ = 1 << 2,	// If set, this client needs command data resent to them.
 	CF_MISSING_CON = 1 << 3,	// If a consistency was missed/out of order, ask this client to send back over their info.
@@ -78,16 +78,16 @@ private:
 //  One byte for the net command flags.
 //  Four bytes for the last sequence we got from that client.
 //  Four bytes for the last consistency we got from that client.
-//  If NCMD_QUITTERS set, one byte for the number of players followed by one byte for each player's consolenum. Packet server mode only.
+//  If NCMD_QUITTERS set, one byte for the number of players followed by one byte for each player's consolenum.
 //  One byte for the number of players.
 //  One byte for the number of tics.
 //   If > 0, four bytes for the base sequence being worked from.
 //  One byte for the number of world tics ran.
 //   If > 0, four bytes for the base consistency being worked from.
-//  If in packet server mode and from the host, one byte for how far ahead of the host we are.
+//  If from the host, one byte for how far ahead of the host we are.
 //  For each player:
 //   One byte for the player number.
-//	 If in packet server mode and from the host, two bytes for the latency to the host.
+//	 If from the host, two bytes for the latency to the host.
 //   For each consistency:
 //    One byte for the delta from the base consistency.
 //    Two bytes for each consistency.
@@ -107,11 +107,11 @@ struct FClientNetState
 	bool		bNewLatency = true;			// If the sequence was bumped, the next latency packet sent out should record the send time.
 	uint16_t	AverageLatency = 0u;		// Calculate the average latency every second or so, that way it doesn't give huge variance in the scoreboard.
 	uint64_t	SentTime[MAXSENDTICS] = {};	// Timestamp for when we sent out the packet to this client.
-	uint64_t	RecvTime[MAXSENDTICS] = {};	// Timestamp for when the client acknowledged our last packet. If in packet server mode, this is the server's delta.
+	uint64_t	RecvTime[MAXSENDTICS] = {};	// Timestamp for when the client acknowledged our last packet.
 
 	int				Flags = 0;				// State of this client.
 
-	uint8_t			StabilityBuffer = 0u;	// If in packet-server mode, account for if the client is trying to stabilize when measuring their performance.
+	uint8_t			StabilityBuffer = 0u;	// Account for if the client is trying to stabilize when measuring their performance.
 	uint8_t			ResendID = 0u;			// Make sure that if the retransmit happened on a wait barrier, it can be properly resent back over.
 	int				ResendSequenceFrom = -1; // If >= 0, send from this sequence up to the most recent one, capped to MAXSENDTICS.
 	int				SequenceAck = -1;		// The last sequence the client reported from us.

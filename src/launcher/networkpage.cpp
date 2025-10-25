@@ -168,14 +168,6 @@ void NetworkPage::UpdateLanguage()
 
 HostSubPage::HostSubPage(NetworkPage* main, const FStartupSelectionInfo& info) : Widget(nullptr), MainTab(main)
 {
-	NetModesLabel = new TextLabel(this);
-	NetModesDropdown = new Dropdown(this);
-
-	NetModesDropdown->AddItem("Auto (recommended)");
-	NetModesDropdown->AddItem("Packet-Server");
-	NetModesDropdown->AddItem("Peer-to-Peer");
-	NetModesDropdown->SetSelectedItem(max<int>(info.DefaultNetMode, 0));
-
 	TicDupLabel = new TextLabel(this);
 	TicDupDropdown = new Dropdown(this);
 	ExtraTicCheckbox = new CheckboxLabel(this);
@@ -232,16 +224,6 @@ HostSubPage::HostSubPage(NetworkPage* main, const FStartupSelectionInfo& info) :
 void HostSubPage::SetValues(FStartupSelectionInfo& info) const
 {
 	info.AdditionalNetArgs = "";
-	info.DefaultNetMode = NetModesDropdown->GetSelectedItem();
-	switch (info.DefaultNetMode)
-	{
-	case 1:
-		info.AdditionalNetArgs.AppendFormat(" -netmode 1");
-		break;
-	case 2:
-		info.AdditionalNetArgs.AppendFormat(" -netmode 0");
-		break;
-	}
 
 	info.DefaultNetExtraTic = ExtraTicCheckbox->GetChecked();
 	if (info.DefaultNetExtraTic)
@@ -296,11 +278,6 @@ void HostSubPage::SetValues(FStartupSelectionInfo& info) const
 
 void HostSubPage::UpdateLanguage()
 {
-	NetModesLabel->SetText(GStrings.GetString("PICKER_NETMODE"));
-	NetModesDropdown->UpdateItem(GStrings.GetString("PICKER_NETAUTO"), 0);
-	NetModesDropdown->UpdateItem(GStrings.GetString("PICKER_NETSERVER"), 1);
-	NetModesDropdown->UpdateItem(GStrings.GetString("PICKER_NETPEER"), 2);
-
 	TicDupLabel->SetText(GStrings.GetString("PICKER_NETRATE"));
 	ExtraTicCheckbox->SetText(GStrings.GetString("PICKER_NETBACKUP"));
 
@@ -363,11 +340,6 @@ void HostSubPage::OnGeometryChanged()
 	y += TicDupLabel->GetPreferredHeight();
 	TicDupDropdown->SetFrameGeometry(w - DropdownSize, y, DropdownSize, TicDupDropdown->GetPreferredHeight());
 	y += TicDupDropdown->GetPreferredHeight() + 2.0;
-
-	NetModesLabel->SetFrameGeometry(w - DropdownSize, y, DropdownSize, NetModesLabel->GetPreferredHeight());
-	y += NetModesLabel->GetPreferredHeight();
-	NetModesDropdown->SetFrameGeometry(w - DropdownSize, y, DropdownSize, NetModesDropdown->GetPreferredHeight());
-	y += NetModesDropdown->GetPreferredHeight() + 2.0;
 
 	ExtraTicCheckbox->SetFrameGeometry(w - DropdownSize, y, DropdownSize, ExtraTicCheckbox->GetPreferredHeight());
 
