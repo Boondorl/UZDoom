@@ -714,9 +714,34 @@ public:
 	int			total_monsters;
 	int			killed_monsters;
 
-	double		cur_velocity;
-	double      max_velocity;
-	double      avg_velocity;
+	struct VelocityMeasurer {
+		int total = 0;
+		double cur_velocity = 0.0;
+		double max_velocity = 0.0;
+		double avg_velocity = 0.0;
+
+		void SetVelocity(double spd)
+		{
+			cur_velocity = spd;
+			if (spd > max_velocity)
+				max_velocity = spd;
+			avg_velocity += (spd - avg_velocity) / ++total;
+		}
+
+		void Clear()
+		{
+			total = 0;
+			cur_velocity = max_velocity = avg_velocity = 0.0;
+		}
+	};
+
+	VelocityMeasurer velocities[MAXPLAYERS] = {};
+
+	void ClearVelocities()
+	{
+		for (auto& vel : velocities)
+			vel.Clear();
+	}
 
 	double		gravity;
 	double		aircontrol;
