@@ -582,7 +582,7 @@ struct LevelLocals native
 	native bool IsFreelookAllowed() const;
 	native void StartIntermission(Name type, int state) const;
 	native play SpotState GetSpotState(bool create = true);
-	native int FindUniqueTid(int start = 0, int limit = 0, bool clientSide = false);
+	native clearscope int FindUniqueTid(int start = 0, int limit = 0, bool clientSide = false);
 	native uint GetSkyboxPortal(Actor actor);
 	native void ReplaceTextures(String from, String to, int flags);
     clearscope native HealthGroup FindHealthGroup(int id);
@@ -623,10 +623,11 @@ struct LevelLocals native
 	native void SetThickFog(float distance, float multiplier);
 	native void ForceLightning(int mode = 0, sound tempSound = "");
 
-	native clearscope Thinker CreateThinker(class<Thinker> type, int statnum = Thinker.STAT_DEFAULT, bool clientSide = false);
-	native SectorTagIterator CreateSectorTagIterator(int tag, line defline = null);
-	native LineIdIterator CreateLineIdIterator(int tag);
-	native ActorIterator CreateActorIterator(int tid, class<Actor> type = "Actor", bool clientSide = false);
+	native play Thinker CreateThinker(class<Thinker> type, int statnum = Thinker.STAT_DEFAULT);
+	native clearscope Thinker CreateClientSideThinker(class<Thinker> type, int statnum = Thinker.STAT_DEFAULT);
+	native clearscope SectorTagIterator CreateSectorTagIterator(int tag, line defline = null);
+	native clearscope LineIdIterator CreateLineIdIterator(int tag);
+	native clearscope ActorIterator CreateActorIterator(int tid, class<Actor> type = "Actor", bool clientSide = false);
 
 	String TimeFormatted(bool totals = false)
 	{
@@ -644,8 +645,9 @@ struct LevelLocals native
 	native String GetClusterName();
 	native String GetEpisodeName();
 
-	native void SpawnParticle(FSpawnParticleParams p);
-	native VisualThinker SpawnVisualThinker(Class<VisualThinker> type, bool clientSide = false);
+	native clearscope void SpawnParticle(FSpawnParticleParams p);
+	native play VisualThinker SpawnVisualThinker(Class<VisualThinker> type);
+	native clearscope VisualThinker SpawnClientSideVisualThinker(Class<VisualThinker> type);
 
 	clearscope native static bool WorldPaused(bool checkLag = true);
 }

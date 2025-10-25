@@ -2673,7 +2673,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, setFrozen, setFrozen)
 	return 0;
 }
 
-static DThinker* CreateThinker(FLevelLocals* self, PClass* type, int statnum, bool clientSide)
+static DThinker* CreateThinker(FLevelLocals* self, PClass* type, int statnum)
 {
 	if (type->IsDescendantOf(NAME_Actor))
 	{
@@ -2686,7 +2686,7 @@ static DThinker* CreateThinker(FLevelLocals* self, PClass* type, int statnum, bo
 		return nullptr;
 	}
 
-	return clientSide ? self->CreateClientSideThinker(type, statnum) : self->CreateThinker(type, statnum);
+	return self->CreateThinker(type, statnum);
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, CreateThinker, CreateThinker)
@@ -2694,9 +2694,33 @@ DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, CreateThinker, CreateThinker)
 	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
 	PARAM_POINTER_NOT_NULL(type, PClass);
 	PARAM_INT(statnum);
-	PARAM_BOOL(clientSide);
 
-	ACTION_RETURN_OBJECT(CreateThinker(self, type, statnum, clientSide));
+	ACTION_RETURN_OBJECT(CreateThinker(self, type, statnum));
+}
+
+static DThinker* CreateClientSideThinker(FLevelLocals* self, PClass* type, int statnum)
+{
+	if (type->IsDescendantOf(NAME_Actor))
+	{
+		ThrowAbortException(X_OTHER, "Actors cannot be created from this function");
+		return nullptr;
+	}
+	else if (type->IsDescendantOf(NAME_VisualThinker))
+	{
+		ThrowAbortException(X_OTHER, "VisualThinkers cannot be created from this function");
+		return nullptr;
+	}
+
+	return self->CreateClientSideThinker(type, statnum);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, CreateClientSideThinker, CreateClientSideThinker)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_POINTER_NOT_NULL(type, PClass);
+	PARAM_INT(statnum);
+
+	ACTION_RETURN_OBJECT(CreateClientSideThinker(self, type, statnum));
 }
 
 //=====================================================================================

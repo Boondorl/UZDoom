@@ -1096,9 +1096,14 @@ DVisualThinker* DVisualThinker::NewVisualThinker(FLevelLocals* Level, PClass* ty
 	return zs;
 }
 
-static DVisualThinker* SpawnVisualThinker(FLevelLocals* Level, PClass* type, bool clientSide)
+static DVisualThinker* SpawnVisualThinker(FLevelLocals* Level, PClass* type)
 {
-	return DVisualThinker::NewVisualThinker(Level, type, clientSide);
+	return DVisualThinker::NewVisualThinker(Level, type, false);
+}
+
+static DVisualThinker* SpawnClientSideVisualThinker(FLevelLocals* Level, PClass* type)
+{
+	return DVisualThinker::NewVisualThinker(Level, type, true);
 }
 
 void DVisualThinker::UpdateSector(subsector_t * newSubsector)
@@ -1132,8 +1137,15 @@ DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, SpawnVisualThinker, SpawnVisualThink
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
 	PARAM_CLASS_NOT_NULL(type, DVisualThinker);
-	PARAM_BOOL(clientSide);
-	DVisualThinker* zs = SpawnVisualThinker(self, type, clientSide);
+	DVisualThinker* zs = SpawnVisualThinker(self, type);
+	ACTION_RETURN_OBJECT(zs);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, SpawnClientSideVisualThinker, SpawnClientSideVisualThinker)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_CLASS_NOT_NULL(type, DVisualThinker);
+	DVisualThinker* zs = SpawnClientSideVisualThinker(self, type);
 	ACTION_RETURN_OBJECT(zs);
 }
 
