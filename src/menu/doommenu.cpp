@@ -71,7 +71,7 @@ EXTERN_CVAR(Bool, show_messages)
 EXTERN_CVAR(Bool, haptics_do_menus)
 EXTERN_CVAR(Float, hud_scalefactor)
 
-CVAR(Bool, m_simpleoptions, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG);
+CVAR(Bool, m_simpleoptions, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG);
 CVAR(Bool, m_simpleoptions_view, true, 0);
 
 typedef void(*hfunc)();
