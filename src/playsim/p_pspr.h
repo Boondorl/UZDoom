@@ -86,9 +86,55 @@ enum PSPAlign
 	PSPA_RIGHT = 2
 };
 
+enum EPSPBobType
+{
+	PSPB_None,
+	PSPB_2D,
+	PSPB_3D,
+};
+
 struct WeaponInterp
 {
 	FVector2 v[4];
+};
+
+struct FWeaponBobInfo
+{
+	int Tic2D = -1;
+	FVector2 Bob2D = {};
+
+	int Tic3D = -1;
+	FVector3 Translation = {};
+	FVector3 Rotation = {};
+
+	void Clear2D()
+	{
+		Tic2D = -1;
+		Bob2D = {};
+	}
+
+	void Clear3D()
+	{
+		Tic3D = -1;
+		Translation = Rotation = {};
+	}
+
+	void Clear()
+	{
+		Clear2D();
+		Clear3D();
+	}
+
+	FVector2 Interpolate2D(const FWeaponBobInfo& prev, double ticFrac) const
+	{
+		return prev.Bob2D * (1.0 - ticFrac) + Bob2D * ticFrac;
+	}
+
+	void Interpolate3D(const FWeaponBobInfo& prev, FVector3& t, FVector3& r, double ticFrac) const
+	{
+		t = prev.Translation * (1.0 - ticFrac) + Translation * ticFrac;
+		r = prev.Rotation * (1.0 - ticFrac) + Rotation * ticFrac;
+	}
 };
 
 class DPSprite : public DObject
@@ -156,8 +202,8 @@ void P_CalcSwing (player_t *player);
 void P_SetPsprite(player_t *player, PSPLayers id, FState *state, bool pending = false);
 void P_BringUpWeapon (player_t *player);
 void P_FireWeapon (player_t *player);
-void P_BobWeapon (player_t *player, float *x, float *y, double ticfrac);
-void P_BobWeapon3D (player_t *player, FVector3 *translation, FVector3 *rotation, double ticfrac);
+void P_BobWeapon(player_t* player);
+void P_BobWeapon3D(player_t* player);
 DAngle P_BulletSlope (AActor *mo, FTranslatedLineTarget *pLineTarget = NULL, int aimflags = 0);
 AActor *P_AimTarget(AActor *mo);
 
@@ -166,5 +212,9 @@ void DoReadyWeaponToFire(AActor *self, bool primary = true, bool secondary = tru
 void DoReadyWeaponToSwitch(AActor *self, bool switchable = true);
 
 void A_ReFire(AActor *self, FState *state = NULL);
+
+extern EPSPBobType BobType;
+extern FWeaponBobInfo BobInfo;
+extern FWeaponBobInfo PrevBobInfo;
 
 #endif	// __P_PSPR_H__
