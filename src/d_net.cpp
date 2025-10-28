@@ -396,6 +396,7 @@ void Net_ClearBuffers()
 			state.Tics[j].Data.SetData(nullptr, 0);
 	}
 
+	bPredictionGuard = false;
 	NetBufferLength = 0u;
 	RemoteClient = -1;
 	MaxClients = TicDup = 1u;
