@@ -1124,7 +1124,6 @@ void D_Display ()
 	cycles.Reset();
 	cycles.Clock();
 
-	r_UseVanillaTransparency = UseVanillaTransparency(); // [SP] Cache UseVanillaTransparency() call
 	r_renderercaps = GetCaps(); // [SP] Get the current capabilities of the renderer
 
 	if (players[consoleplayer].camera == NULL)
@@ -3764,9 +3763,6 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<std::string>& allw
 			return 0;
 		}
 	}
-
-	// [SP] Force vanilla transparency auto-detection to re-detect our game lumps now
-	UpdateVanillaTransparency();
 
 	// [RH] Lock any cvars that should be locked now that we're
 	// about to begin the game.

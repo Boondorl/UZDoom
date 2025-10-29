@@ -1331,11 +1331,11 @@ void HWSprite::Process(HWDrawInfo *di, AActor* thing, sector_t * sector, area_t 
 	{
 		trans = 1.f;
 	}
-	if (r_UseVanillaTransparency)
+	if (r_vanillatrans && (thing->renderflags & RF_ZDOOMTRANS))
 	{
 		// [SP] "canonical transparency" - with the flip of a CVar, disable transparency for Doom objects,
 		//   and disable 'additive' translucency for certain objects from other games.
-		if (thing->renderflags & RF_ZDOOMTRANS)
+		if (r_vanillatrans == 1 || AutoTrans.CheckKey(thing->GetClass()->TypeName) != nullptr)
 		{
 			trans = 1.f;
 			RenderStyle.BlendOp = STYLEOP_Add;
