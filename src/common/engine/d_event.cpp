@@ -51,6 +51,7 @@ extern bool ToggleFullscreen;
 int eventhead;
 int eventtail;
 event_t events[MAXEVENTS];
+mousestate_t LastMousePos = {};
 
 CVAR(Float, m_sensitivity_x, 2.f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Float, m_sensitivity_y, 2.f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
