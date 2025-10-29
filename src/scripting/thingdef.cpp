@@ -417,11 +417,14 @@ void ParseAllDecorate();
 void SynthesizeFlagFields();
 void SetDoomCompileEnvironment();
 
+extern TMap<FName, bool> AutoTrans;
+
 void ParseScripts()
 {
 	int lump, lastlump = 0;
 	FScriptPosition::ResetErrorCounter();
 
+	bool firstLump = true;
 	while ((lump = fileSystem.FindLump("ZSCRIPT", &lastlump)) != -1)
 	{
 		ZCCParseState state;
@@ -442,6 +445,18 @@ void ParseScripts()
 			Printf(TEXTCOLOR_ORANGE "%d warnings while compiling %s\n", FScriptPosition::WarnCounter, fileSystem.GetFileFullPath(lump).c_str());
 		}
 
+		if (firstLump)
+		{
+			// Only the core Actors defined in the engine should ever auto to non-transparent as too many things have likely
+			// relied on the forced transparency for their aesthetic. Dehacked Actors should also auto to it, but that's
+			// handled elsewhere when those classes are created.
+			for (auto cls : PClass::AllClasses)
+			{
+				if (cls->IsDescendantOf(NAME_Actor) && (GetDefaultByType(cls)->renderflags & RF_ZDOOMTRANS))
+					AutoTrans[cls->TypeName] = true;
+			}
+		}
+		firstLump = false;
 	}
 }
 

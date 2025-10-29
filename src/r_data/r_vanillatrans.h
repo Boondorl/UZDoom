@@ -36,3 +36,5 @@
 void UpdateVanillaTransparency();
 bool UseVanillaTransparency();
 extern bool r_UseVanillaTransparency;
+extern TMap<FName, bool> AutoTrans;
+EXTERN_CVAR(Int, r_vanillatrans)

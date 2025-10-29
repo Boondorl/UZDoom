@@ -67,6 +67,7 @@
 #include "vmbuilder.h"
 
 extern TArray<PalEntry> TranslationColors;
+extern TMap<FName, bool> AutoTrans;
 
 void JitDumpLog(FILE *file, VMScriptFunction *func);
 
@@ -141,6 +142,7 @@ static PClassActor* FindInfoName(int index, bool mustexist = false)
 			cls = static_cast<PClassActor*>(RUNTIME_CLASS(AActor)->CreateDerivedClass(name.GetChars(), (unsigned)sizeof(AActor)));
 			NewClassType(cls, -1);	// This needs a VM type to work as intended.
 			cls->InitializeDefaults();
+			AutoTrans[cls->TypeName] = true;
 			PClassActor::AllActorClasses.Push(cls);
 		}
 		if (cls)
@@ -3806,6 +3808,7 @@ void FinishDehPatch ()
 			if (newlycreated)
 			{
 				subclass->InitializeDefaults();
+				AutoTrans[subclass->TypeName] = true;
 				PClassActor::AllActorClasses.Push(subclass);
 			}
 		} 

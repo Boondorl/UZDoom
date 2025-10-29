@@ -45,7 +45,8 @@
 #endif
 
 bool r_UseVanillaTransparency;
-CVAR (Int, r_vanillatrans, 0, CVAR_ARCHIVE)
+CVAR(Int, r_vanillatrans, 0, CVAR_ARCHIVE)
+TMap<FName, bool> AutoTrans = {};
 
 namespace
 {
