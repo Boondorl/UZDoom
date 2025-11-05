@@ -266,9 +266,9 @@ static void BuildAddress(sockaddr_in& address, const char* addrName)
 	}
 
 	bool isNamed = false;
-	char c = 0;
-	for (size_t curChar = 0u; (c = target[curChar]); ++curChar)
+	for (size_t curChar = 0u; curChar < target.Len(); ++curChar)
 	{
+		char c = target[curChar];
 		if ((c < '0' || c > '9') && c != '.')
 		{
 			isNamed = true;
