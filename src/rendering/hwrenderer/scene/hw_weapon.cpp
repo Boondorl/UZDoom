@@ -166,7 +166,7 @@ static WeaponPosition2D GetWeaponPosition2D(player_t *player, double ticFrac)
 {
 	WeaponPosition2D w;
 	BobType = PSPB_2D;
-	FVector2 interp = BobInfo.Interpolate2D(PrevBobInfo, Net_ModifyFrac(ticFrac));
+	FVector2 interp = PlayerBob[player - players].Interpolate2D(Net_ModifyFrac(ticFrac));
 	w.bobx = interp.X;
 	w.boby = interp.Y;
 
@@ -197,7 +197,7 @@ static WeaponPosition3D GetWeaponPosition3D(player_t *player, double ticFrac)
 {
 	WeaponPosition3D w;
 	BobType = PSPB_3D;
-	BobInfo.Interpolate3D(PrevBobInfo, w.translation, w.rotation, Net_ModifyFrac(ticFrac));
+	PlayerBob[player - players].Interpolate3D(w.translation, w.rotation, Net_ModifyFrac(ticFrac));
 
 	// Interpolate the main weapon layer once so as to be able to add it to other layers.
 	if ((w.weapon = player->FindPSprite(PSP_WEAPON)) != nullptr)

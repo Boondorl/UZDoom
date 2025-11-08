@@ -651,18 +651,14 @@ void P_BringUpWeapon (player_t *player)
 //============================================================================
 
 EPSPBobType BobType = PSPB_None;
-FWeaponBobInfo BobInfo = {}, PrevBobInfo = {};
+FPlayerBob PlayerBob[MAXPLAYERS] = {};
 
 void P_BobWeapon(player_t* player)
 {
-	const bool isConsolePlayer = player == &players[consoleplayer];
+	auto& bob = PlayerBob[player - players];
 	IFVIRTUALPTRNAME(player->mo, NAME_PlayerPawn, BobWeapon)
 	{
-		if (isConsolePlayer)
-		{
-			BobInfo.Clear3D();
-			PrevBobInfo = BobInfo;
-		}
+		bob.UpdateInterpolation(true);
 
 		DVector2 result = CallVM<DVector2>(func, player->mo, 1.0);
 
@@ -678,32 +674,18 @@ void P_BobWeapon(player_t* player)
 			inv = nextinv;
 		}
 
-		if (isConsolePlayer)
-		{
-			BobInfo.Tic2D = player->BobTimer;
-			BobInfo.Bob2D = FVector2(result);
-			if (PrevBobInfo.Tic2D < 0 || BobInfo.Tic2D - PrevBobInfo.Tic2D != 1)
-				PrevBobInfo = BobInfo;
-		}
+		bob.SetBob2D(player->BobTimer, FVector2(result));
 		return;
 	}
-	if (isConsolePlayer)
-	{
-		BobInfo.Clear();
-		PrevBobInfo.Clear();
-	}
+	bob.ResetInterpolation();
 }
 
 void P_BobWeapon3D(player_t* player)
 {
-	const bool isConsolePlayer = player == &players[consoleplayer];
+	auto& bob = PlayerBob[player - players];
 	IFVIRTUALPTRNAME(player->mo, NAME_PlayerPawn, BobWeapon3D)
 	{
-		if (isConsolePlayer)
-		{
-			BobInfo.Clear2D();
-			PrevBobInfo = BobInfo;
-		}
+		bob.UpdateInterpolation(false);
 
 		auto [t, r] = CallVM<DVector3, DVector3>(func, player->mo, 1.0);
 
@@ -720,21 +702,10 @@ void P_BobWeapon3D(player_t* player)
 			inv = nextinv;
 		}
 
-		if (isConsolePlayer)
-		{
-			BobInfo.Tic3D = player->BobTimer;
-			BobInfo.Translation = FVector3(t);
-			BobInfo.Rotation = FVector3(r);
-			if (PrevBobInfo.Tic3D < 0 || BobInfo.Tic3D - PrevBobInfo.Tic3D != 1)
-				PrevBobInfo = BobInfo;
-		}
+		bob.SetBob3D(player->BobTimer, FVector3(t), FVector3(r));
 		return;
 	}
-	if (isConsolePlayer)
-	{
-		BobInfo.Clear();
-		PrevBobInfo.Clear();
-	}
+	bob.ResetInterpolation();
 }
 
 //---------------------------------------------------------------------------

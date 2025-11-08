@@ -155,7 +155,7 @@ namespace swrenderer
 			viewport->CenterY = viewheight / 2;
 
 			BobType = PSPB_2D;
-			FVector2 interp = BobInfo.Interpolate2D(PrevBobInfo, Net_ModifyFrac(viewport->viewpoint.TicFrac));
+			FVector2 interp = PlayerBob[Thread->Viewport->viewpoint.camera->player - players].Interpolate2D(Net_ModifyFrac(viewport->viewpoint.TicFrac));
 			bobx = interp.X;
 			boby = interp.Y;
 

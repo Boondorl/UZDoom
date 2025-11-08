@@ -98,42 +98,79 @@ struct WeaponInterp
 	FVector2 v[4];
 };
 
-struct FWeaponBobInfo
+struct FPlayerBob
 {
-	int Tic2D = -1;
-	FVector2 Bob2D = {};
+	struct FWeaponBobInfo {
+		int Tic2D = -1;
+		FVector2 Bob2D = {};
 
-	int Tic3D = -1;
-	FVector3 Translation = {};
-	FVector3 Rotation = {};
+		int Tic3D = -1;
+		FVector3 Translation = {};
+		FVector3 Rotation = {};
 
-	void Clear2D()
+		void Clear2D()
+		{
+			Tic2D = -1;
+			Bob2D = {};
+		}
+
+		void Clear3D()
+		{
+			Tic3D = -1;
+			Translation = Rotation = {};
+		}
+
+		void Clear()
+		{
+			Clear2D();
+			Clear3D();
+		}
+	};
+
+	FWeaponBobInfo BobInfo = {}, PrevBobInfo = {};
+
+	void SetBob2D(int tic, FVector2 bob)
 	{
-		Tic2D = -1;
-		Bob2D = {};
+		BobInfo.Tic2D = tic;
+		BobInfo.Bob2D = bob;
+		if (PrevBobInfo.Tic2D < 0 || BobInfo.Tic2D - PrevBobInfo.Tic2D != 1)
+			PrevBobInfo = BobInfo;
 	}
 
-	void Clear3D()
+	void SetBob3D(int tic, const FVector3& trans, const FVector3& rot)
 	{
-		Tic3D = -1;
-		Translation = Rotation = {};
+		BobInfo.Tic3D = tic;
+		BobInfo.Translation = trans;
+		BobInfo.Rotation = rot;
+		if (PrevBobInfo.Tic3D < 0 || BobInfo.Tic3D - PrevBobInfo.Tic3D != 1)
+			PrevBobInfo = BobInfo;
 	}
 
-	void Clear()
+	void UpdateInterpolation(bool sprite)
 	{
-		Clear2D();
-		Clear3D();
+		if (sprite)
+			BobInfo.Clear3D();
+		else
+			BobInfo.Clear2D();
+
+		PrevBobInfo = BobInfo;
 	}
 
-	FVector2 Interpolate2D(const FWeaponBobInfo& prev, double ticFrac) const
+	void ResetInterpolation()
 	{
-		return prev.Bob2D * (1.0 - ticFrac) + Bob2D * ticFrac;
+		BobInfo.Clear();
+		PrevBobInfo.Clear();
 	}
 
-	void Interpolate3D(const FWeaponBobInfo& prev, FVector3& t, FVector3& r, double ticFrac) const
+	FVector2 Interpolate2D(double ticFrac) const
 	{
-		t = prev.Translation * (1.0 - ticFrac) + Translation * ticFrac;
-		r = prev.Rotation * (1.0 - ticFrac) + Rotation * ticFrac;
+		return PrevBobInfo.Bob2D * (1.0 - ticFrac) + BobInfo.Bob2D * ticFrac;
+	}
+
+	void Interpolate3D(FVector3& t, FVector3& r, double ticFrac) const
+	{
+		t = PrevBobInfo.Translation * (1.0 - ticFrac) + BobInfo.Translation * ticFrac;
+		r = PrevBobInfo.Rotation * (1.0 - ticFrac) + BobInfo.Rotation * ticFrac;
 	}
 };
 
@@ -214,7 +251,6 @@ void DoReadyWeaponToSwitch(AActor *self, bool switchable = true);
 void A_ReFire(AActor *self, FState *state = NULL);
 
 extern EPSPBobType BobType;
-extern FWeaponBobInfo BobInfo;
-extern FWeaponBobInfo PrevBobInfo;
+extern FPlayerBob PlayerBob[MAXPLAYERS];
 
 #endif	// __P_PSPR_H__
