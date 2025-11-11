@@ -7,9 +7,11 @@
 
 struct Colormap;
 
-inline int hw_ClampLight(int lightlevel)
+EXTERN_CVAR(Int, r_extralight)
+
+inline int hw_ClampLight(int lightlevel, bool addExtra = true)
 {
-	return clamp(lightlevel, 0, 255);
+	return clamp(lightlevel + r_extralight * addExtra, 0, 255);
 }
 
 EXTERN_CVAR(Int, gl_weaponlight);

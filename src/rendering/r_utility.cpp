@@ -321,19 +321,30 @@ double R_ClampVisibility(double vis)
 	return clamp(vis, -204.7, 204.7);	// (205 and larger do not work in 5:4 aspect ratio)
 }
 
-CUSTOM_CVAR(Float, r_visibility, 8.0f, CVAR_NOINITCALL)
+CUSTOM_CVAR(Float, r_visibility, 8.0f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
-	if (netgame && self != 8.0f)
-	{
-		Printf("Visibility cannot be changed in net games.\n");
-		self = 8.0f;
-	}
-	else
-	{
-		float clampValue = (float)R_ClampVisibility(self);
-		if (self != clampValue)
-			self = clampValue;
-	}
+	if (self < 0.0f)
+		self = 0.0f;
+	else if (self > 16.0f)
+		self = 16.0f;
+}
+
+//==========================================================================
+//
+// r_extralight
+//
+// Amount of sector lighting to add on top of existing sector light levels.
+// This is just an additional amount to add so that the existing lighting mode
+// is preserved.
+//
+//==========================================================================
+
+CUSTOM_CVAR(Int, r_extralight, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+{
+	if (self < -8)
+		self = -8;
+	else if (self > 8)
+		self = 8;
 }
 
 //==========================================================================
