@@ -790,6 +790,8 @@ public:
 	float		thickfogdistance;
 	float		thickfogmultiplier;
 
+	int                LocalWorldTimer = 0;	// For client-sided actions that are still bound to world processing.
+	int                LocalTimer = 0;		// For client-sided actions independent of any world state.
 	FGlobalDLightLists lightlists;
 
 	FDynamicLight *lights;

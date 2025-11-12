@@ -305,6 +305,7 @@ void FLevelLocals::ClearLevelData(bool fullgc)
 
 	total_monsters = total_items = total_secrets =
 	killed_monsters = found_items = found_secrets = 0;
+	LocalTimer = LocalWorldTimer = 0;
 
 	ClearVelocities();
 

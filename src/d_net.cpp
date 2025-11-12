@@ -2231,6 +2231,7 @@ void TryRunTics()
 		}
 	}
 	P_PredictPlayer(&players[consoleplayer]);
+	// TODO: Make this client-sided as well.
 	S_UpdateSounds(players[consoleplayer].camera);	// Update sounds only after predicting the client's newest position.
 
 	// These should use the actual tics since they're not actually tied to the gameplay logic.

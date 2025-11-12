@@ -1641,6 +1641,8 @@ void P_UnPredictPlayer ()
 		auto InvSel = actInvSel;
 		int inventorytics = player->inventorytics;
 		const bool settings_controller = player->settings_controller;
+		FArray attached = *(FArray*)&act->AttachedLights;
+		FArray userLights = *(FArray*)&act->UserLights;
 
 		player->CopyFrom(PredictionPlayerBackup, false);
 
@@ -1711,6 +1713,9 @@ void P_UnPredictPlayer ()
 
 		act->UpdateRenderSectorList();
 		act->renderflags &= ~RF_NOINTERPOLATEVIEW;
+		act->flags8 &= ~MF8_RECREATELIGHTS;
+		memcpy(&act->AttachedLights, &attached, sizeof(FArray));
+		memcpy(&act->UserLights, &userLights, sizeof(FArray));
 
 		actInvSel = InvSel;
 		player->inventorytics = inventorytics;

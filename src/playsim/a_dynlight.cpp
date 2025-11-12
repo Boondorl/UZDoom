@@ -232,7 +232,7 @@ void FDynamicLight::Activate()
 	{
 		float pulseTime = float(specialf1 / TICRATE);
 
-		m_lastUpdate = Level->maptime;
+		m_lastUpdate = GetTimer();
 		if (!swapped) m_cycler.SetParams(float(GetSecondaryIntensity()), float(GetIntensity()), pulseTime);
 		else m_cycler.SetParams(float(GetIntensity()), float(GetSecondaryIntensity()), pulseTime);
 		m_cycler.ShouldCycle(true);
@@ -275,6 +275,8 @@ void FDynamicLight::Tick()
 
 	// Don't bother if the light won't be shown
 	if (!IsActive()) return;
+	if (!target->IsClientSide() && WorldPaused())
+		return;
 
 	// I am doing this with a type field so that I can dynamically alter the type of light
 	// without having to create or maintain multiple objects.
@@ -282,9 +284,10 @@ void FDynamicLight::Tick()
 	{
 	case PulseLight:
 	{
-		float diff = (Level->maptime - m_lastUpdate) / (float)TICRATE;
+		const int timer = GetTimer();
+		float diff = (timer - m_lastUpdate) / (float)TICRATE;
 		
-		m_lastUpdate = Level->maptime;
+		m_lastUpdate = timer;
 		m_cycler.Update(diff);
 		m_currentRadius = float(m_cycler.GetVal());
 		break;
