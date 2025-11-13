@@ -1768,7 +1768,7 @@ class Actor : Thinker native
 				A_StartSound("*grunt", CHAN_VOICE, CHANF_NORUMBLE);
 				grunted = true;
 			}
-			bool isliquid = (pos.Z <= floorz) && HitFloor ();
+			bool isliquid = (pos.Z <= floorz) && GetFloorTerrain().IsLiquid;
 			if (onmobj != NULL || !isliquid)
 			{
 				if (!grunted)
@@ -1823,7 +1823,7 @@ class Actor : Thinker native
 	{
 		if (!CVar.GetCVar("haptics_do_world").GetBool()) return;
 
-		bool isliquid = (pos.Z <= floorz) && HitFloor ();
+		bool isliquid = (pos.Z <= floorz) && GetFloorTerrain().IsLiquid;
 		if (onmobj != NULL || !isliquid)
 		{
 			Haptics.Rumble("*land");
