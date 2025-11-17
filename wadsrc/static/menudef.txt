@@ -362,6 +362,7 @@ OptionMenu "OptionsMenu" protected
 	StaticText " "
 	Submenu "$OPTMNU_PLAYER",			"NewPlayerMenu"
 	Submenu "$OPTMNU_GAMEPLAY",			"GameplayOptions"
+	OptionalSubmenu "$OPTMNU_ADDONS",	"AddOnOptions"
 	Submenu "$OPTMNU_COMPATIBILITY",	"CompatibilityOptions"
 	Submenu "$OPTMNU_AUTOMAP",			"AutomapOptions"
 	Submenu "$OPTMNU_HUD",				"HUDOptions"
@@ -1774,6 +1775,14 @@ OptionMenu GameplayOptions protected
 	Option "$GMPLYMNU_NOCOUNTENDMONSTER",		"sv_nocountendmonst", "NoYes"
 	Option "$GMPLYMNU_ALWAYSSPAWNMULTI",		"sv_alwaysspawnmulti", "YesNo"
 	Class "GameplayMenu"
+}
+
+// This is solely meant to be added to by mods. Ideally they should use their own
+// submenus within this.
+OptionMenu AddOnOptions protected
+{
+	Position -35
+	Title 	"$ADDONMNU_TITLE"
 }
 
 OptionMenu DeathmatchOptions protected

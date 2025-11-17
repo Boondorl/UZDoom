@@ -181,6 +181,15 @@ class OptionMenuItemSubmenu : OptionMenuItem
 	}
 }
 
+class OptionMenuItemOptionalSubmenu : OptionMenuItemSubmenu
+{
+	override bool Visible()
+	{
+		let desc = OptionMenuDescriptor(MenuDescriptor.GetDescriptor(mAction));
+		return desc && desc.mItems.Size() > 0 && Super.Visible();
+	}
+}
+
 //=============================================================================
 //
 // opens a submenu, command is a submenu name
