@@ -42,7 +42,8 @@ enum LightFlag
 	LF_DONTLIGHTACTORS = 32,
 	LF_SPOT = 64,
 	LF_DONTLIGHTOTHERS = 128,
-	LF_DONTLIGHTMAP = 256
+	LF_DONTLIGHTMAP = 256,
+	LF_INTERPOLATED = 512,
 };
 
 typedef TFlags<LightFlag> LightFlags;
@@ -202,6 +203,11 @@ struct FDynamicLight
 		return Pos + Level->Displacements.getOffset(Sector->PortalGroup, portalgroup);
 	}
 
+	inline DVector3 GetPos(int portalgroup, double ticFrac) const
+	{
+		return PosRelative(portalgroup) + Vel * (1.0 - ticFrac);
+	}
+
 	bool ShouldLightActor(AActor *check)
 	{
 		return visibletoplayer && IsActive() && 
@@ -226,6 +232,7 @@ struct FDynamicLight
 	double GetLightDefIntensity() const { return lightDefIntensity; }
 	int GetTimer() const { return target->IsClientSide() ? Level->LocalTimer : Level->LocalWorldTimer; }
 
+	bool IsInterpolated() const { return ((*pLightFlags) & LF_INTERPOLATED); }
 	bool IsSubtractive() const { return !!((*pLightFlags) & LF_SUBTRACTIVE); }
 	bool IsAdditive() const { return !!((*pLightFlags) & LF_ADDITIVE); }
 	bool IsSpot() const { return !!((*pLightFlags) & LF_SPOT); }
@@ -256,7 +263,7 @@ private:
 
 public:
 	FCycler m_cycler;
-	DVector3 Pos;
+	DVector3 Pos, Vel;
 	DVector3 m_off;
 
 	// This date can either come from the owning actor or from a light definition
