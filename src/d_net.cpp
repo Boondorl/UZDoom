@@ -2166,6 +2166,7 @@ void TryRunTics()
 		}
 	}
 
+	const int worldTimer = primaryLevel->LocalWorldTimer;
 	// If there are no tics to run, check for possible stall conditions and new
 	// commands to predict.
 	if (runTics <= 0)
@@ -2188,13 +2189,15 @@ void TryRunTics()
 			LagState = LAG_PREDICTING;
 			P_UnPredictPlayer();
 			P_PredictPlayer(&players[consoleplayer]);
-			S_UpdateSounds(players[consoleplayer].camera);	// Update sounds only after predicting the client's newest position.
 		}
 
 		// If we actually did have some tics available, make sure the UI
 		// still has a chance to run.
 		for (int i = 0; i < totalTics; ++i)
 			P_RunClientSideLogic();
+
+		if (totalTics > 0)
+			S_UpdateSounds(players[consoleplayer].camera, primaryLevel->LocalWorldTimer - min<int>(primaryLevel->LocalWorldTimer, worldTimer));
 
 		return;
 	}
@@ -2231,13 +2234,15 @@ void TryRunTics()
 		}
 	}
 	P_PredictPlayer(&players[consoleplayer]);
-	// TODO: Make this client-sided as well.
-	S_UpdateSounds(players[consoleplayer].camera);	// Update sounds only after predicting the client's newest position.
 
 	// These should use the actual tics since they're not actually tied to the gameplay logic.
 	// Make sure it always comes after so the HUD has the correct game state when updating.
 	for (int i = 0; i < totalTics; ++i)
 		P_RunClientSideLogic();
+
+	// Since the level could get reset mid-tick, make sure the smaller of the two values is used
+	// since it should only go up otherwise.
+	S_UpdateSounds(players[consoleplayer].camera, primaryLevel->LocalWorldTimer - min<int>(primaryLevel->LocalWorldTimer, worldTimer));
 }
 
 void Net_NewClientTic()

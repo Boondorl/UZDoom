@@ -1005,7 +1005,7 @@ static void ChangeSpy (int changespy)
 	}
 
 	players[consoleplayer].camera = players[pnum].mo;
-	S_UpdateSounds(players[consoleplayer].camera);
+	S_UpdateSounds(players[consoleplayer].camera, 0);
 	StatusBar->AttachToPlayer (&players[pnum]);
 	if (demoplayback || multiplayer)
 	{

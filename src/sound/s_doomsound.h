@@ -10,7 +10,7 @@ void S_InitData();
 void S_Start();
 void S_Shutdown();
 
-void S_UpdateSounds(AActor* listenactor);
+void S_UpdateSounds(AActor* listenactor, int tics);
 
 void S_PrecacheLevel(FLevelLocals* l);
 

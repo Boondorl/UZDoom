@@ -706,28 +706,25 @@ CUSTOM_CVAR (Int, dmflags2, 0, CVAR_SERVERINFO | CVAR_NOINITCALL)
 	if ((self & DF2_NO_AUTOMAP) && automapactive)
 		AM_Stop ();
 
+	// Revert our view to our own eyes if spying someone else.
+	if ((self & DF2_DISALLOW_SPYING) && players[consoleplayer].camera != players[consoleplayer].mo)
+	{
+		// The player isn't looking through its own eyes, so make it.
+		players[consoleplayer].camera = players[consoleplayer].mo;
+
+		S_UpdateSounds(players[consoleplayer].camera, 0);
+		StatusBar->AttachToPlayer(&players[consoleplayer]);
+
+		if (demoplayback || multiplayer)
+			StatusBar->ShowPlayerName();
+	}
+
 	for (unsigned int i = 0; i < MAXPLAYERS; i++)
 	{
 		player_t *p = &players[i];
 
 		if (!playeringame[i])
 			continue;
-
-		// Revert our view to our own eyes if spying someone else.
-		if (self & DF2_DISALLOW_SPYING)
-		{
-			// The player isn't looking through its own eyes, so make it.
-			if (p->camera != p->mo)
-			{
-				p->camera = p->mo;
-
-				S_UpdateSounds (p->camera);
-				StatusBar->AttachToPlayer (p);
-
-				if (demoplayback || multiplayer)
-					StatusBar->ShowPlayerName ();
-			}
-		}
 
 		// Come out of chasecam mode if we're not allowed to use chasecam.
 		if (!(dmflags2 & DF2_CHASECAM) && CheckCheatmode(false))

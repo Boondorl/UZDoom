@@ -832,17 +832,19 @@ static void S_SetListener(AActor *listenactor)
 // Updates music & sounds
 //==========================================================================
 
-void S_UpdateSounds (AActor *listenactor)
+void S_UpdateSounds (AActor *listenactor, int tics)
 {
-	// should never happen
 	S_SetListener(listenactor);
-	
-	for (auto Level : AllLevels())
+
+	for (int i = 0; i < tics; ++i)
 	{
-		SN_UpdateActiveSequences(Level);
+		for (auto Level : AllLevels())
+		{
+			SN_UpdateActiveSequences(Level);
+		}
 	}
 
-	soundEngine->UpdateSounds(primaryLevel->time);
+	soundEngine->UpdateSounds(primaryLevel->LocalWorldTimer);
 }
 
 //==========================================================================
@@ -944,7 +946,7 @@ void S_SerializeSounds(FSerializer &arc)
 		// playing before the wipe, and depending on the synchronization
 		// between the main thread and the mixer thread at the time, the
 		// sounds might be heard briefly before pausing for the wipe.
-		soundEngine->SetRestartTime(primaryLevel->time + 2);
+		soundEngine->SetRestartTime(primaryLevel->LocalWorldTimer + 2);
 	}
 	GSnd->Sync(false);
 	GSnd->UpdateSounds();
