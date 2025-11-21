@@ -1272,6 +1272,8 @@ FSerializer &Serialize(FSerializer &arc, const char *key, DObject *&value, DObje
 	if (retcode) *retcode = true;
 	if (arc.isWriting())
 	{
+		if (value != nullptr)
+			auto c = value->GetClass()->TypeName.GetChars();
 		if (value != nullptr && !(value->ObjectFlags & (OF_EuthanizeMe | OF_Transient)))
 		{
 			int ndx;
