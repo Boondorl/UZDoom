@@ -934,9 +934,11 @@ OptionValue Fuzziness
 
 OptionValue VanillaTrans
 {
-	0.0, "$OPTVAL_VTFZDOOM"
-	1.0, "$OPTVAL_VTFVANILLA"
-	2.0, "$OPTVAL_AUTO"
+	-1, "$OPTVAL_AUTO"
+	0, "$OPTVAL_VTFZDOOM"
+	1, "$OPTVAL_VTFVANILLA"
+	2, "$OPTVAL_VTAZDOOM"
+	3, "$OPTVAL_VTAVANILLA"
 }
 
 OptionMenu "VideoOptions" protected
