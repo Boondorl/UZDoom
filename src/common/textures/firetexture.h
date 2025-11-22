@@ -10,6 +10,7 @@ class FireTexture : public FTexture
 
 public:
 	FireTexture();
+	void Reset();
 	void SetPalette(TArray<PalEntry>& colors);
 	void Update();
 	virtual FBitmap GetBgraBitmap(const PalEntry* remap, int* trans) override;

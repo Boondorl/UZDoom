@@ -44,6 +44,14 @@
 static constexpr int32_t FIRESKY_W = 64;
 static constexpr int32_t FIRESKY_H = 128;
 
+void FireTexture::Reset()
+{
+	Image.Clear();
+	Image.AppendFill(0, Width * Height);
+	for (size_t i = 0u; i < Width; ++i)
+		Image[(Height - 1) * Width + i] = (uint8_t)(Palette.Size() - 1);
+}
+
 FireTexture::FireTexture()
 {
 	SetSize(FIRESKY_W, FIRESKY_H);

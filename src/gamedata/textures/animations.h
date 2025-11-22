@@ -137,6 +137,7 @@ public:
 
 	bool InitStandaloneAnimation(FStandaloneAnimation &animInfo, FTextureID tex, uint32_t curTic);
 	FTextureID UpdateStandaloneAnimation(FStandaloneAnimation &animInfo, double curTic);
+	void ResetTimers();
 };
 
 extern FTextureAnimator TexAnim;
