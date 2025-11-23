@@ -5102,6 +5102,7 @@ static void EnsureModelData(AActor * mobj)
 		
 		ptr->flags = (mobj->hasmodel ? MODELDATA_HADMODEL : 0);
 		ptr->modelDef = nullptr;
+		ptr->ObjectFlags |= (mobj->ObjectFlags & (OF_ClientSide | OF_Transient));
 		
 		mobj->modelData = ptr;
 		mobj->hasmodel = true;
