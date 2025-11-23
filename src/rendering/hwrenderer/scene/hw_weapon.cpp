@@ -165,13 +165,15 @@ static bool isBright(DPSprite *psp)
 static WeaponPosition2D GetWeaponPosition2D(player_t *player, double ticFrac)
 {
 	WeaponPosition2D w;
+	w.weapon = player->FindPSprite(PSP_WEAPON);
+
 	BobType = PSPB_2D;
-	FVector2 interp = PlayerBob[player - players].Interpolate2D(Net_ModifyFrac(ticFrac));
+	FVector2 interp = PlayerBob[player - players].Interpolate2D(Net_ModifyFrac(ticFrac), ShouldUseFixedWeaponBob(w.weapon));
 	w.bobx = interp.X;
 	w.boby = interp.Y;
 
 	// Interpolate the main weapon layer once so as to be able to add it to other layers.
-	if ((w.weapon = player->FindPSprite(PSP_WEAPON)) != nullptr)
+	if (w.weapon != nullptr)
 	{
 		if (w.weapon->firstTic)
 		{

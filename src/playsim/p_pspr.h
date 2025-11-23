@@ -128,13 +128,23 @@ struct FPlayerBob
 	};
 
 	FWeaponBobInfo BobInfo = {}, PrevBobInfo = {};
+	bool bWasFixed = false;
+	FVector2 FixedBob = {};
 
-	void SetBob2D(int tic, FVector2 bob)
+	void SetBob2D(int tic, FVector2 bob, bool fixed)
 	{
 		BobInfo.Tic2D = tic;
 		BobInfo.Bob2D = bob;
 		if (PrevBobInfo.Tic2D < 0 || BobInfo.Tic2D - PrevBobInfo.Tic2D != 1)
 			PrevBobInfo = BobInfo;
+		if (fixed)
+		{
+			if (bWasFixed)
+				PrevBobInfo = BobInfo;
+
+			FixedBob = bob;
+			bWasFixed = false;
+		}
 	}
 
 	void SetBob3D(int tic, const FVector3& trans, const FVector3& rot)
@@ -149,21 +159,34 @@ struct FPlayerBob
 	void UpdateInterpolation(bool sprite)
 	{
 		if (sprite)
+		{
 			BobInfo.Clear3D();
+		}
 		else
+		{
+			bWasFixed = false;
+			FixedBob = {};
 			BobInfo.Clear2D();
+		}
 
 		PrevBobInfo = BobInfo;
 	}
 
 	void ResetInterpolation()
 	{
+		FixedBob = {};
+		bWasFixed = false;
 		BobInfo.Clear();
 		PrevBobInfo.Clear();
 	}
 
-	FVector2 Interpolate2D(double ticFrac) const
+	FVector2 Interpolate2D(double ticFrac, bool fixed)
 	{
+		if (fixed)
+		{
+			bWasFixed = true;
+			return FixedBob;
+		}
 		return PrevBobInfo.Bob2D * (1.0 - ticFrac) + BobInfo.Bob2D * ticFrac;
 	}
 
@@ -233,6 +256,8 @@ public:	// must be public to be able to generate the field export tables. Grrr..
 	friend class player_t;
 	friend void CopyPlayer(player_t *dst, player_t *src, const char *name);
 };
+
+bool ShouldUseFixedWeaponBob(const DPSprite *psp);
 
 void P_NewPspriteTick();
 void P_CalcSwing (player_t *player);

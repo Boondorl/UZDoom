@@ -46,6 +46,7 @@
 #include "g_levellocals.h"
 #include "vm.h"
 #include "sbar.h"
+#include "types.h"
 
 
 // MACROS ------------------------------------------------------------------
@@ -653,6 +654,21 @@ void P_BringUpWeapon (player_t *player)
 EPSPBobType BobType = PSPB_None;
 FPlayerBob PlayerBob[MAXPLAYERS] = {};
 
+CVAR(Bool, fixedweaponbob, false, CVAR_ARCHIVE)
+
+bool ShouldUseFixedWeaponBob(const DPSprite* psp)
+{
+	if (!fixedweaponbob || psp == nullptr || psp->Caller == nullptr ||
+		(psp->Owner->WeaponState & WF_WEAPONBOBBING) ||
+		!psp->Caller->IsKindOf(NAME_Weapon) || psp->Caller->GetClass()->VMType->mDefFileNo != 0)
+	{
+		// Make sure only vanilla weapons have this applied to them.
+		return false;
+	}
+
+	return true;
+}
+
 void P_BobWeapon(player_t* player)
 {
 	auto& bob = PlayerBob[player - players];
@@ -674,7 +690,7 @@ void P_BobWeapon(player_t* player)
 			inv = nextinv;
 		}
 
-		bob.SetBob2D(player->BobTimer, FVector2(result));
+		bob.SetBob2D(player->BobTimer, FVector2(result), (player->WeaponState & WF_WEAPONBOBBING));
 		return;
 	}
 	bob.ResetInterpolation();
