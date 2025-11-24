@@ -321,6 +321,7 @@ void player_t::CopyFrom(player_t &p, bool copyPSP)
 	fixedcolormap = p.fixedcolormap;
 	fixedlightlevel = p.fixedlightlevel;
 	FullbrightMode = p.FullbrightMode;
+	bForceFullbright = p.bForceFullbright;
 	morphTics = p.morphTics;
 	MorphedPlayerClass = p.MorphedPlayerClass;
 	MorphStyle = p.MorphStyle;
@@ -786,16 +787,17 @@ DEFINE_ACTION_FUNCTION_NATIVE(_PlayerInfo, GetFullbrightMode, GetFullbrightMode)
 	ACTION_RETURN_INT(self->GetFullbrightMode());
 }
 
-static void SetFullbrightMode(player_t* self, int mode)
+static void SetFullbrightMode(player_t* self, int mode, bool force)
 {
-	self->SetFullbrightMode(static_cast<EFullbrightMode>(mode));
+	self->SetFullbrightMode(static_cast<EFullbrightMode>(mode), force);
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(_PlayerInfo, SetFullbrightMode, SetFullbrightMode)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(player_t);
 	PARAM_INT(mode);
-	self->SetFullbrightMode(static_cast<EFullbrightMode>(mode));
+	PARAM_BOOL(force);
+	self->SetFullbrightMode(static_cast<EFullbrightMode>(mode), force);
 	return 0;
 }
 
@@ -1673,6 +1675,7 @@ void P_UnPredictPlayer ()
 		int inventorytics = player->inventorytics;
 		const bool settings_controller = player->settings_controller;
 		EFullbrightMode fbmode = player->FullbrightMode;
+		bool forcefb = player->bForceFullbright;
 		FArray attached = *(FArray*)&act->AttachedLights;
 		FArray userLights = *(FArray*)&act->UserLights;
 
@@ -1683,6 +1686,7 @@ void P_UnPredictPlayer ()
 		// could cause it to change during prediction.
 		player->camera = savedcamera;
 		player->FullbrightMode = fbmode;
+		player->bForceFullbright = forcefb;
 
 		// Unlink from all lists
 		act->UnlinkFromWorld(nullptr);
@@ -1811,6 +1815,7 @@ void player_t::Serialize(FSerializer &arc)
 		("fixedcolormap", fixedcolormap)
 		("fixedlightlevel", fixedlightlevel)
 		("fullbrightmode", fbmode)
+		("bforcefullbright", bForceFullbright)
 		("morphTics", morphTics)
 		("morphedplayerclass", MorphedPlayerClass)
 		("morphstyle", MorphStyle)
