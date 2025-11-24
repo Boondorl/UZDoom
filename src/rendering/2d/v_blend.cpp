@@ -303,28 +303,26 @@ FVector4 V_CalcBlend(sector_t* viewsector, PalEntry* modulateColor)
 	else if (player && player->fixedlightlevel != -1 && player->fixedcolormap == NOFIXEDCOLORMAP)
 	{
 		// Draw fixedlightlevel effects as a 2D overlay. The hardware renderer just processes such a scene fullbright without any lighting.
-		auto torchtype = PClass::FindActor(NAME_PowerTorch);
-		auto litetype = PClass::FindActor(NAME_PowerLightAmp);
 		PalEntry color = 0xffffffff;
-		for (AActor* in = player->mo->Inventory; in; in = in->Inventory)
+		EFullbrightMode fbmode = player->GetFullbrightMode();
+		if (fbmode != FBMODE_NONE)
 		{
-			// Need special handling for light amplifiers 
-			if (in->IsKindOf(torchtype))
+			if (fbmode == FBMODE_TORCH)
 			{
-				// The software renderer already bakes the torch flickering into its output, so this must be omitted here.
+				// The software renderer already bakes the torch flickering into its output, so this must be omitted
+				// here.
 				float r = vid_rendermode < 4 ? 1.f : (0.8f + (7 - player->fixedlightlevel) / 70.0f);
-				if (r > 1.0f) r = 1.0f;
+				if (r > 1.0f)
+					r = 1.0f;
 				int rr = (int)(r * 255);
-				int b = rr;
-				if (gl_enhanced_nightvision) b = b * 3 / 4;
+				int b  = rr;
+				if (gl_enhanced_nightvision)
+					b = b * 3 / 4;
 				color = PalEntry(255, rr, rr, b);
 			}
-			else if (in->IsKindOf(litetype))
+			else if (fbmode == FBMODE_NIGHTVISION)
 			{
-				if (gl_enhanced_nightvision)
-				{
-					color = PalEntry(255, 104, 255, 104);
-				}
+				color = PalEntry(255, 104, 255, 104);
 			}
 		}
 		if (modulateColor)
