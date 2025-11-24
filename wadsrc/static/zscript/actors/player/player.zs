@@ -2999,7 +2999,7 @@ struct PlayerInfo native play	// self is what internally is known as player_t
 	native void SendPitchLimits();
 	native clearscope bool HasWeaponsInSlot(int slot) const;
 
-	native clearscope void SetFullbrightMode(EFullbrightMode mode);
+	native clearscope void SetFullbrightMode(EFullbrightMode mode, bool force = false);
 	native ui EFullbrightMode GetFullbrightMode() const;
 
 	native clearscope int GetAverageLatency() const;

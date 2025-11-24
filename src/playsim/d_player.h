@@ -393,6 +393,7 @@ public:
 	short		fixedcolormap = 0;			// can be set to REDCOLORMAP, etc.
 	short		fixedlightlevel = 0;
 	EFullbrightMode FullbrightMode = FBMODE_NONE;	// Allow manually specifying the fullbright mode.
+	bool		bForceFullbright = false;
 	int			morphTics = 0;				// player is a chicken/pig if > 0
 	PClassActor *MorphedPlayerClass = nullptr;		// [MH] (for SBARINFO) class # for this player instance when morphed
 	int			MorphStyle = 0;				// which effects to apply for this player instance when morphed
@@ -477,9 +478,10 @@ public:
 		return mode;
 	}
 
-	void SetFullbrightMode(EFullbrightMode mode)
+	void SetFullbrightMode(EFullbrightMode mode, bool force)
 	{
 		FullbrightMode = mode;
+		bForceFullbright = force;
 	}
 	
 	int GetSpawnClass();

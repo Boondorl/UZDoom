@@ -321,7 +321,7 @@ int HWDrawInfo::SetFullbrightFlags(player_t *player)
 			FullbrightFlags = Fullbright;
 			if (gl_enhanced_nv_stealth > 2) FullbrightFlags |= StealthVision;
 		}
-		else if (cplayer->fixedlightlevel != -1)
+		else if (cplayer->fixedlightlevel != -1 || cplayer->bForceFullbright)
 		{
 			EFullbrightMode fbmode = cplayer->GetFullbrightMode();
 			if (fbmode != FBMODE_NONE)
