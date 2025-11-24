@@ -2874,6 +2874,15 @@ enum EPlayerGender
 	GENDER_OTHER
 }
 
+enum EFullbrightMode
+{
+	FBMODE_NONE,
+	FBMODE_DEFAULT,		// Use player preference for fullbright vs night vision.
+	FBMODE_FULLBRIGHT,
+	FBMODE_NIGHTVISION,
+	FBMODE_TORCH,
+}
+
 struct PlayerInfo native play	// self is what internally is known as player_t
 {
 	// technically engine constants but the only part of the playsim using them is the player.
@@ -3000,6 +3009,9 @@ struct PlayerInfo native play	// self is what internally is known as player_t
 	native clearscope bool GetClassicFlight() const;
 	native void SendPitchLimits();
 	native clearscope bool HasWeaponsInSlot(int slot) const;
+
+	native clearscope void SetFullbrightMode(EFullbrightMode mode);
+	native ui EFullbrightMode GetFullbrightMode() const;
 
 	native clearscope int GetAverageLatency() const;
 

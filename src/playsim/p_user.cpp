@@ -320,6 +320,7 @@ void player_t::CopyFrom(player_t &p, bool copyPSP)
 	extralight = p.extralight;
 	fixedcolormap = p.fixedcolormap;
 	fixedlightlevel = p.fixedlightlevel;
+	FullbrightMode = p.FullbrightMode;
 	morphTics = p.morphTics;
 	MorphedPlayerClass = p.MorphedPlayerClass;
 	MorphStyle = p.MorphStyle;
@@ -772,6 +773,30 @@ DEFINE_ACTION_FUNCTION_NATIVE(_PlayerInfo, GetNextPlayerNumber, player_t::GetNex
 	PARAM_BOOL(noBots);
 
 	ACTION_RETURN_INT(player_t::GetNextPlayerNumber(pNum, noBots));
+}
+
+static int GetFullbrightMode(player_t* self)
+{
+	return self->GetFullbrightMode();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_PlayerInfo, GetFullbrightMode, GetFullbrightMode)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(player_t);
+	ACTION_RETURN_INT(self->GetFullbrightMode());
+}
+
+static void SetFullbrightMode(player_t* self, int mode)
+{
+	self->SetFullbrightMode(static_cast<EFullbrightMode>(mode));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_PlayerInfo, SetFullbrightMode, SetFullbrightMode)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(player_t);
+	PARAM_INT(mode);
+	self->SetFullbrightMode(static_cast<EFullbrightMode>(mode));
+	return 0;
 }
 
 DEFINE_ACTION_FUNCTION(_PlayerInfo, GetUserName)
@@ -1647,6 +1672,7 @@ void P_UnPredictPlayer ()
 		auto InvSel = actInvSel;
 		int inventorytics = player->inventorytics;
 		const bool settings_controller = player->settings_controller;
+		EFullbrightMode fbmode = player->FullbrightMode;
 		FArray attached = *(FArray*)&act->AttachedLights;
 		FArray userLights = *(FArray*)&act->UserLights;
 
@@ -1656,6 +1682,7 @@ void P_UnPredictPlayer ()
 		// Restore the camera instead of using the backup's copy, because spynext/prev
 		// could cause it to change during prediction.
 		player->camera = savedcamera;
+		player->FullbrightMode = fbmode;
 
 		// Unlink from all lists
 		act->UnlinkFromWorld(nullptr);
@@ -1750,6 +1777,7 @@ void player_t::Serialize(FSerializer &arc)
 		WriteUserInfo(arc, userinfo);
 	}
 
+	int fbmode = FullbrightMode;
 	arc("desiredfov", DesiredFOV)
 		("fov", FOV)
 		("viewz", viewz)
@@ -1782,6 +1810,7 @@ void player_t::Serialize(FSerializer &arc)
 		("extralight", extralight)
 		("fixedcolormap", fixedcolormap)
 		("fixedlightlevel", fixedlightlevel)
+		("fullbrightmode", fbmode)
 		("morphTics", morphTics)
 		("morphedplayerclass", MorphedPlayerClass)
 		("morphstyle", MorphStyle)
@@ -1834,6 +1863,10 @@ void player_t::Serialize(FSerializer &arc)
 		// don't want +use to still be down after the game is loaded.
 		oldbuttons = ~0;
 		original_oldbuttons = ~0;
+	}
+	else
+	{
+		FullbrightMode = static_cast<EFullbrightMode>(fbmode);
 	}
 	if (skinname.IsNotEmpty())
 	{
