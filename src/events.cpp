@@ -550,6 +550,18 @@ bool EventManager::SendNetworkBuffer(const FName& cmd, const DNetworkBuffer* buf
 	return true;
 }
 
+bool EventManager::SendClientSideEvent(FString name, int arg1, int arg2, int arg3, bool manual)
+{
+	if (ShouldCallStatic(false) && !staticEventManager.SendClientSideEvent(name, arg1, arg2, arg3, manual))
+		return false;
+
+	if (gamestate != GS_LEVEL && gamestate != GS_TITLELEVEL)
+		return false;
+
+	QueuedEvents.Push({ consoleplayer, name, { arg1, arg2, arg3 }, manual });
+	return true;
+}
+
 bool EventManager::CheckHandler(DStaticEventHandler* handler)
 {
 	for (DStaticEventHandler* lhandler = FirstEventHandler; lhandler; lhandler = lhandler->next)
@@ -645,6 +657,7 @@ void EventManager::Shutdown()
 		handler->Destroy();
 	}
 	FirstEventHandler = LastEventHandler = nullptr;
+	QueuedEvents.Reset();
 }
 
 #define DEFINE_EVENT_LOOPER(name, play) void EventManager::name() \
@@ -995,6 +1008,20 @@ void EventManager::Console(int player, FString name, int arg1, int arg2, int arg
 		handler->ConsoleProcess(player, name, arg1, arg2, arg3, manual, ui);
 }
 
+void EventManager::ProcessClientSideEvents()
+{
+	if (ShouldCallStatic(false))
+		staticEventManager.ProcessClientSideEvents();
+
+	for (auto& ev : QueuedEvents)
+	{
+		for (DStaticEventHandler *handler = FirstEventHandler; handler; handler = handler->next)
+			handler->ClientSideProcess(ev);
+	}
+
+	QueuedEvents.Clear();
+}
+
 void EventManager::RenderOverlay(EHudState state)
 {
 	if (ShouldCallStatic(false)) staticEventManager.RenderOverlay(state);
@@ -1074,6 +1101,7 @@ void EventManager::NewGame()
 DEFINE_EVENT_LOOPER(RenderFrame, false)
 DEFINE_EVENT_LOOPER(WorldLightning, true)
 DEFINE_EVENT_LOOPER(WorldTick, true)
+DEFINE_EVENT_LOOPER(ClientSideTick, true)
 DEFINE_EVENT_LOOPER(UiTick, false)
 DEFINE_EVENT_LOOPER(PostUiTick, false)
 
@@ -1681,6 +1709,18 @@ DEFINE_ACTION_FUNCTION(DEventHandler, SendNetworkEvent)
 	ACTION_RETURN_BOOL(currentVMLevel->localEventManager->SendNetworkEvent(name, arg1, arg2, arg3, false));
 }
 
+DEFINE_ACTION_FUNCTION(DEventHandler, SendClientSideEvent)
+{
+	PARAM_PROLOGUE;
+	PARAM_STRING(name);
+	PARAM_INT(arg1);
+	PARAM_INT(arg2);
+	PARAM_INT(arg3);
+	//
+
+	ACTION_RETURN_BOOL(currentVMLevel->localEventManager->SendClientSideEvent(name, arg1, arg2, arg3, false));
+}
+
 DEFINE_ACTION_FUNCTION(DEventHandler, SendInterfaceEvent)
 {
 	PARAM_PROLOGUE;
@@ -2084,6 +2124,18 @@ void DStaticEventHandler::WorldTick()
 	}
 }
 
+void DStaticEventHandler::ClientSideTick()
+{
+	IFVIRTUAL(DStaticEventHandler, ClientSideTick)
+	{
+		// don't create excessive DObjects if not going to be processed anyway
+		if (isEmpty(func))
+			return;
+		VMValue params[1] = {(DStaticEventHandler *)this};
+		VMCall(func, params, 1, nullptr, 0);
+	}
+}
+
 FRenderEvent EventManager::SetupRenderEvent()
 {
 	FRenderEvent e;
@@ -2353,6 +2405,19 @@ void DStaticEventHandler::ConsoleProcess(int player, FString name, int arg1, int
 	}
 }
 
+void DStaticEventHandler::ClientSideProcess(FConsoleEvent& ev)
+{
+	IFVIRTUAL(DStaticEventHandler, ClientSideProcess)
+	{
+		// don't create excessive DObjects if not going to be processed anyway
+		if (isEmpty(func))
+			return;
+
+		VMValue params[2] = {(DStaticEventHandler *)this, &ev};
+		VMCall(func, params, 2, nullptr, 0);
+	}
+}
+
 void DStaticEventHandler::CheckReplacement(PClassActor *replacee, PClassActor **replacement, bool *final )
 {
 	IFVIRTUAL(DStaticEventHandler, CheckReplacement)
@@ -2439,6 +2504,32 @@ CCMD(event)
 			arg[i] = atoi(argv[2 + i]);
 		// call locally
 		primaryLevel->localEventManager->Console(-1, argv[1], arg[0], arg[1], arg[2], true, false);
+	}
+}
+
+CCMD(clientsideevent)
+{
+	if (gamestate != GS_LEVEL /* && gamestate != GS_TITLELEVEL*/) // not sure if this should work in title level, but
+	                                                              // probably not, because this is for actual playing
+	{
+		DPrintf(DMSG_SPAMMY, "clientsideevent cannot be used outside of a map.\n");
+		return;
+	}
+
+	int argc = argv.argc();
+
+	if (argc < 2 || argc > 5)
+	{
+		Printf("Usage: clientsideevent <name> [arg1] [arg2] [arg3]\n");
+	}
+	else
+	{
+		int arg[3] = {0, 0, 0};
+		int argn   = min<int>(argc - 2, countof(arg));
+		for (int i = 0; i < argn; i++)
+			arg[i] = atoi(argv[2 + i]);
+		// queue up the events
+		primaryLevel->localEventManager->SendClientSideEvent(argv[1], arg[0], arg[1], arg[2], true);
 	}
 }
 

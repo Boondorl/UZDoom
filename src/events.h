@@ -250,6 +250,18 @@ public:
 //
 // ==============================================
 
+struct FConsoleEvent
+{
+	// player that activated this event. note that it's always -1 for non-playsim events (i.e. these not called with
+	// netevent)
+	int Player;
+	//
+	FString Name;
+	int     Args[3];
+	//
+	bool IsManual;
+};
+
 class DStaticEventHandler : public DObject // make it a part of normal GC process
 {
 	DECLARE_CLASS(DStaticEventHandler, DObject);
@@ -322,6 +334,7 @@ public:
 	int WorldLineDamaged(line_t* line, AActor* source, int damage, FName damagetype, int side, DVector3 position, bool isradius);
 	void WorldLightning();
 	void WorldTick();
+	void ClientSideTick();
 
 	//
 	void RenderFrame();
@@ -345,6 +358,7 @@ public:
 	// 
 	void ConsoleProcess(int player, FString name, int arg1, int arg2, int arg3, bool manual, bool ui);
 	void NetCommandProcess(FNetworkCommand& cmd);
+	void ClientSideProcess(FConsoleEvent& cmd);
 
 	//
 	void CheckReplacement(PClassActor* replacee, PClassActor** replacement, bool* final);
@@ -422,17 +436,6 @@ struct FPlayerEvent
 	bool IsReturn;
 };
 
-struct FConsoleEvent 
-{
-	// player that activated this event. note that it's always -1 for non-playsim events (i.e. these not called with netevent)
-	int Player;
-	//
-	FString Name;
-	int Args[3];
-	//
-	bool IsManual;
-};
-
 struct FReplaceEvent
 {
 	PClassActor* Replacee;
@@ -452,6 +455,7 @@ struct EventManager
 	FLevelLocals *Level = nullptr;
 	DStaticEventHandler* FirstEventHandler = nullptr;
 	DStaticEventHandler* LastEventHandler = nullptr;
+	TArray<FConsoleEvent> QueuedEvents = {};
 
 	EventManager() = default;
 	EventManager(FLevelLocals *l) { Level = l; }
@@ -511,6 +515,8 @@ struct EventManager
 	void WorldLightning();
 	// this executes on every tick, before everything, only when in valid level and not paused
 	void WorldTick();
+	// This executes every local tick after the server is ran but before the UI.
+	void ClientSideTick();
 	// this executes on every tick on UI side, always
 	void UiTick();
 	// this executes on every tick on UI side, always AND immediately after everything else
@@ -554,6 +560,10 @@ struct EventManager
 	bool SendNetworkCommand(const FName& cmd, VMVa_List& args);
 	// Send a pre-built command buffer over.
 	bool SendNetworkBuffer(const FName& cmd, const DNetworkBuffer* buffer);
+	// Send a client-side event to be processed next local world tick.
+	bool SendClientSideEvent(FString name, int arg1, int arg2, int arg3, bool manual);
+	// Loop through the events and send off a signal.
+	void ProcessClientSideEvents();
 
 	// check if there is anything that should receive GUI events
 	bool CheckUiProcessors();
