@@ -175,6 +175,7 @@ class StaticEventHandler : Object native play version("2.4")
     virtual void WorldLineDamaged(WorldEvent e) {}
     virtual void WorldLightning(WorldEvent e) {} // for the sake of completeness.
     virtual void WorldTick() {}
+    version("4.15.1") virtual void ClientSideTick() {}
 
     //
     //virtual ui void RenderFrame(RenderEvent e) {}
@@ -200,6 +201,7 @@ class StaticEventHandler : Object native play version("2.4")
     virtual ui void InterfaceProcess(ConsoleEvent e) {}
     virtual void NetworkProcess(ConsoleEvent e) {}
     version("4.12") virtual void NetworkCommandProcess(NetworkCommand cmd) {}
+    version("4.15.1") virtual void ClientSideProcess(ConsoleEvent e) {}
     
     //
     virtual void CheckReplacement(ReplaceEvent e) {}
@@ -225,5 +227,6 @@ class EventHandler : StaticEventHandler native version("2.4")
     clearscope static native void SendNetworkEvent(String name, int arg1 = 0, int arg2 = 0, int arg3 = 0);
     version("4.12") clearscope static native vararg bool SendNetworkCommand(Name cmd, ...);
     version("4.12") clearscope static native bool SendNetworkBuffer(Name cmd, NetworkBuffer buffer);
+    version("4.15.1") clearscope static native bool SendClientSideEvent(String name, int arg1 = 0, int arg2 = 0, int arg3 = 0);
     clearscope static native void SendInterfaceEvent(int playerNum, string name, int arg1 = 0, int arg2 = 0, int arg3 = 0);
 }

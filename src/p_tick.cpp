@@ -63,6 +63,12 @@ void P_RunClientSideLogic()
 	C_Ticker();
 	M_Ticker();
 
+	// These are like net events but are designed to run instantly on the next tick rather
+	// than waiting for the server to verify the action. Useful for managing client-sided
+	// logic.
+	primaryLevel->localEventManager->ProcessClientSideEvents();
+	primaryLevel->localEventManager->ClientSideTick();
+
 	// [ZZ] also tick the UI part of the events
 	primaryLevel->localEventManager->UiTick();
 
