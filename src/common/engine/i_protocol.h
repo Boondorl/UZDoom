@@ -53,50 +53,50 @@
 			bool ShouldExecute(int player) const override;	\
 		DEFINE_NETPACKET_BASE(parentCls)
 
-#define DEFINE_NETPACKET(cls, parentCls, id, argCount)		\
-		public:												\
-			static constexpr uint8_t Type = id;				\
-			static cls GetDefault() { return {}; }			\
-			bool DoExecute(int player) override;			\
-		private:											\
-			cls() : parentCls(id, argCount) {}				\
+#define DEFINE_NETPACKET(cls, parentCls, id)		\
+		public:										\
+			static constexpr uint8_t Type = id;		\
+			static cls GetDefault() { return {}; }	\
+			bool DoExecute(int player) override;	\
+		private:									\
+			cls() : parentCls(id) {}				\
 			using Super = parentCls
 			
 
-#define DEFINE_NETPACKET_CONDITIONAL(cls, parentCls, id, argCount)	\
-		public:														\
-			bool ShouldExecute(int player) const override;			\
-		DEFINE_NETPACKET(cls, parentCls, id, argCount)
+#define DEFINE_NETPACKET_CONDITIONAL(cls, parentCls, id)	\
+		public:												\
+			bool ShouldExecute(int player) const override;	\
+		DEFINE_NETPACKET(cls, parentCls, id)
 
 // Easy setup macros for base packet types.
-#define DEFINE_NETPACKET_EMPTY(cls,	id)		class cls : public EmptyPacket	{ DEFINE_NETPACKET(cls, EmptyPacket,	id, 0);	}
-#define DEFINE_NETPACKET_INT8(cls,	id)		class cls : public Int8Packet	{ DEFINE_NETPACKET(cls, Int8Packet,		id, 1);	public: cls(int8_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_UINT8(cls, id)		class cls : public UInt8Packet	{ DEFINE_NETPACKET(cls, UInt8Packet,	id, 1);	public: cls(uint8_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_BOOL(cls, id)		class cls : public BoolPacket	{ DEFINE_NETPACKET(cls, BoolPacket,		id, 1);	public: cls(bool value)				: cls() { Value = value; } }
-#define DEFINE_NETPACKET_INT16(cls, id)		class cls : public Int16Packet	{ DEFINE_NETPACKET(cls, Int16Packet,	id, 1);	public: cls(int16_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_UINT16(cls, id)	class cls : public UInt16Packet	{ DEFINE_NETPACKET(cls, UInt16Packet,	id, 1);	public: cls(uint16_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_INT32(cls, id)		class cls : public Int32Packet	{ DEFINE_NETPACKET(cls, Int32Packet,	id, 1);	public: cls(int32_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_UINT32(cls, id)	class cls : public UInt32Packet { DEFINE_NETPACKET(cls, UInt32Packet,	id, 1);	public: cls(uint32_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_INT64(cls, id)		class cls : public Int64Packet	{ DEFINE_NETPACKET(cls, Int64Packet,	id, 1);	public: cls(int64_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_UINT64(cls, id)	class cls : public UInt64Packet { DEFINE_NETPACKET(cls, UInt64Packet,	id, 1);	public: cls(uint64_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_FLOAT(cls, id)		class cls : public FloatPacket	{ DEFINE_NETPACKET(cls, FloatPacket,	id, 1);	public: cls(float value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_DOUBLE(cls, id)	class cls : public DoublePacket { DEFINE_NETPACKET(cls, DoublePacket,	id, 1);	public: cls(double value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_STRING(cls, id)	class cls : public StringPacket { DEFINE_NETPACKET(cls, StringPacket,	id, 1);	public: cls(const FString& value)	: cls() { Value = value; } }
+#define DEFINE_NETPACKET_EMPTY(cls,	id)		class cls : public EmptyPacket	{ DEFINE_NETPACKET(cls, EmptyPacket,	id);																   }
+#define DEFINE_NETPACKET_INT8(cls,	id)		class cls : public Int8Packet	{ DEFINE_NETPACKET(cls, Int8Packet,		id);	public: cls(int8_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_UINT8(cls, id)		class cls : public UInt8Packet	{ DEFINE_NETPACKET(cls, UInt8Packet,	id);	public: cls(uint8_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_BOOL(cls, id)		class cls : public BoolPacket	{ DEFINE_NETPACKET(cls, BoolPacket,		id);	public: cls(bool value)				: cls() { Value = value; } }
+#define DEFINE_NETPACKET_INT16(cls, id)		class cls : public Int16Packet	{ DEFINE_NETPACKET(cls, Int16Packet,	id);	public: cls(int16_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_UINT16(cls, id)	class cls : public UInt16Packet	{ DEFINE_NETPACKET(cls, UInt16Packet,	id);	public: cls(uint16_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_INT32(cls, id)		class cls : public Int32Packet	{ DEFINE_NETPACKET(cls, Int32Packet,	id);	public: cls(int32_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_UINT32(cls, id)	class cls : public UInt32Packet { DEFINE_NETPACKET(cls, UInt32Packet,	id);	public: cls(uint32_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_INT64(cls, id)		class cls : public Int64Packet	{ DEFINE_NETPACKET(cls, Int64Packet,	id);	public: cls(int64_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_UINT64(cls, id)	class cls : public UInt64Packet { DEFINE_NETPACKET(cls, UInt64Packet,	id);	public: cls(uint64_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_FLOAT(cls, id)		class cls : public FloatPacket	{ DEFINE_NETPACKET(cls, FloatPacket,	id);	public: cls(float value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_DOUBLE(cls, id)	class cls : public DoublePacket { DEFINE_NETPACKET(cls, DoublePacket,	id);	public: cls(double value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_STRING(cls, id)	class cls : public StringPacket { DEFINE_NETPACKET(cls, StringPacket,	id);	public: cls(const FString& value)	: cls() { Value = value; } }
 
 // Conditional variants.
-#define DEFINE_NETPACKET_EMPTY_CONDITIONAL(cls,	id)		class cls : public EmptyPacket	{ DEFINE_NETPACKET_CONDITIONAL(cls, EmptyPacket,	id, 0);	}
-#define DEFINE_NETPACKET_INT8_CONDITIONAL(cls,	id)		class cls : public Int8Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, Int8Packet,		id, 1);	public: cls(int8_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_UINT8_CONDITIONAL(cls, id)		class cls : public UInt8Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, UInt8Packet,	id, 1);	public: cls(uint8_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_BOOL_CONDITIONAL(cls, id)		class cls : public BoolPacket	{ DEFINE_NETPACKET_CONDITIONAL(cls, BoolPacket,		id, 1);	public: cls(bool value)				: cls() { Value = value; } }
-#define DEFINE_NETPACKET_INT16_CONDITIONAL(cls, id)		class cls : public Int16Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, Int16Packet,	id, 1);	public: cls(int16_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_UINT16_CONDITIONAL(cls, id)	class cls : public UInt16Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, UInt16Packet,	id, 1);	public: cls(uint16_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_INT32_CONDITIONAL(cls, id)		class cls : public Int32Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, Int32Packet,	id, 1);	public: cls(int32_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_UINT32_CONDITIONAL(cls, id)	class cls : public UInt32Packet { DEFINE_NETPACKET_CONDITIONAL(cls, UInt32Packet,	id, 1);	public: cls(uint32_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_INT64_CONDITIONAL(cls, id)		class cls : public Int64Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, Int64Packet,	id, 1);	public: cls(int64_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_UINT64_CONDITIONAL(cls, id)	class cls : public UInt64Packet { DEFINE_NETPACKET_CONDITIONAL(cls, UInt64Packet,	id, 1);	public: cls(uint64_t value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_FLOAT_CONDITIONAL(cls, id)		class cls : public FloatPacket	{ DEFINE_NETPACKET_CONDITIONAL(cls, FloatPacket,	id, 1);	public: cls(float value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_DOUBLE_CONDITIONAL(cls, id)	class cls : public DoublePacket { DEFINE_NETPACKET_CONDITIONAL(cls, DoublePacket,	id, 1);	public: cls(double value)			: cls() { Value = value; } }
-#define DEFINE_NETPACKET_STRING_CONDITIONAL(cls, id)	class cls : public StringPacket { DEFINE_NETPACKET_CONDITIONAL(cls, StringPacket,	id, 1);	public: cls(const FString& value)	: cls() { Value = value; } }
+#define DEFINE_NETPACKET_EMPTY_CONDITIONAL(cls,	id)		class cls : public EmptyPacket	{ DEFINE_NETPACKET_CONDITIONAL(cls, EmptyPacket,	id);																   }
+#define DEFINE_NETPACKET_INT8_CONDITIONAL(cls,	id)		class cls : public Int8Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, Int8Packet,		id);	public: cls(int8_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_UINT8_CONDITIONAL(cls, id)		class cls : public UInt8Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, UInt8Packet,	id);	public: cls(uint8_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_BOOL_CONDITIONAL(cls, id)		class cls : public BoolPacket	{ DEFINE_NETPACKET_CONDITIONAL(cls, BoolPacket,		id);	public: cls(bool value)				: cls() { Value = value; } }
+#define DEFINE_NETPACKET_INT16_CONDITIONAL(cls, id)		class cls : public Int16Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, Int16Packet,	id);	public: cls(int16_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_UINT16_CONDITIONAL(cls, id)	class cls : public UInt16Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, UInt16Packet,	id);	public: cls(uint16_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_INT32_CONDITIONAL(cls, id)		class cls : public Int32Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, Int32Packet,	id);	public: cls(int32_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_UINT32_CONDITIONAL(cls, id)	class cls : public UInt32Packet { DEFINE_NETPACKET_CONDITIONAL(cls, UInt32Packet,	id);	public: cls(uint32_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_INT64_CONDITIONAL(cls, id)		class cls : public Int64Packet	{ DEFINE_NETPACKET_CONDITIONAL(cls, Int64Packet,	id);	public: cls(int64_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_UINT64_CONDITIONAL(cls, id)	class cls : public UInt64Packet { DEFINE_NETPACKET_CONDITIONAL(cls, UInt64Packet,	id);	public: cls(uint64_t value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_FLOAT_CONDITIONAL(cls, id)		class cls : public FloatPacket	{ DEFINE_NETPACKET_CONDITIONAL(cls, FloatPacket,	id);	public: cls(float value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_DOUBLE_CONDITIONAL(cls, id)	class cls : public DoublePacket { DEFINE_NETPACKET_CONDITIONAL(cls, DoublePacket,	id);	public: cls(double value)			: cls() { Value = value; } }
+#define DEFINE_NETPACKET_STRING_CONDITIONAL(cls, id)	class cls : public StringPacket { DEFINE_NETPACKET_CONDITIONAL(cls, StringPacket,	id);	public: cls(const FString& value)	: cls() { Value = value; } }
 
 #define NETPACKET_EXECUTE(cls)			\
 		bool cls::DoExecute(int player)
@@ -104,20 +104,20 @@
 #define NETPACKET_CONDITION(cls)					\
 		bool cls::ShouldExecute(int player) const
 
-#define NETPACKET_SERIALIZE()																																\
-		protected:																																			\
-			bool Serialize(WriteStream& stream, size_t& argCount)			override { return SerializeInternal<WriteStream>(stream, argCount);			}	\
-			bool Serialize(DynamicWriteStream& stream, size_t& argCount)	override { return SerializeInternal<DynamicWriteStream>(stream, argCount);	}	\
-			bool Serialize(ReadStream& stream, size_t& argCount)			override { return SerializeInternal<ReadStream>(stream, argCount);			}	\
-			bool Serialize(MeasureStream& stream, size_t& argCount)			override { return SerializeInternal<MeasureStream>(stream, argCount);		}	\
-			template<typename Stream>																														\
-			bool SerializeInternal(Stream& stream, size_t& argCount)
+#define NETPACKET_SERIALIZE()																									\
+		protected:																												\
+			bool Serialize(WriteStream& stream)			override { return SerializeInternal<WriteStream>(stream);			}	\
+			bool Serialize(DynamicWriteStream& stream)	override { return SerializeInternal<DynamicWriteStream>(stream);	}	\
+			bool Serialize(ReadStream& stream)			override { return SerializeInternal<ReadStream>(stream);			}	\
+			bool Serialize(MeasureStream& stream)		override { return SerializeInternal<MeasureStream>(stream);			}	\
+			template<typename Stream>																							\
+			bool SerializeInternal(Stream& stream)
 
 #define IF_WRITING()		if constexpr(Stream::IsWriting)
 #define IF_READING()		if constexpr(Stream::IsReading)
-#define SUPER_SERIALIZE()	if (!Super::Serialize(stream, argCount))	return false
-#define SUPER_CONDITION()	if (!Super::ShouldExecute(player))			return false
-#define SUPER_EXECUTE()		if (!Super::DoExecute(player))				return false
+#define SUPER_SERIALIZE()	if (!Super::Serialize(stream))		return false
+#define SUPER_CONDITION()	if (!Super::ShouldExecute(player))	return false
+#define SUPER_EXECUTE()		if (!Super::DoExecute(player))		return false
 
 #define SERIALIZE_INT8(value)						\
 		do											\
@@ -127,7 +127,6 @@
 				i8Value = (int8_t)value;			\
 			if (!stream.SerializeInt8(i8Value))		\
 				return false;						\
-			++argCount;								\
 			IF_READING()							\
 				value = i8Value;					\
 		} while (0)
@@ -140,7 +139,6 @@
 				u8Value = (uint8_t)value;			\
 			if (!stream.SerializeUInt8(u8Value))	\
 				return false;						\
-			++argCount;								\
 			IF_READING()							\
 				value = u8Value;					\
 		} while (0)
@@ -153,7 +151,6 @@
 				bValue = (bool)value;			\
 			if (!stream.SerializeBool(bValue))	\
 				return false;					\
-			++argCount;							\
 			IF_READING()						\
 				value = bValue;					\
 		} while (0)
@@ -166,7 +163,6 @@
 				i16Value = (int16_t)value;			\
 			if (!stream.SerializeInt16(i16Value))	\
 				return false;						\
-			++argCount;								\
 			IF_READING()							\
 				value = i16Value;					\
 		} while (0)
@@ -179,7 +175,6 @@
 				u16Value = (uint16_t)value;			\
 			if (!stream.SerializeUInt16(u16Value))	\
 				return false;						\
-			++argCount;								\
 			IF_READING()							\
 				value = u16Value;					\
 		} while (0)
@@ -192,7 +187,6 @@
 				i32Value = (int32_t)value;			\
 			if (!stream.SerializeInt32(i32Value))	\
 				return false;						\
-			++argCount;								\
 			IF_READING()							\
 				value = i32Value;					\
 		} while (0)
@@ -205,7 +199,6 @@
 				u32Value = (uint32_t)value;			\
 			if (!stream.SerializeUInt32(u32Value))	\
 				return false;						\
-			++argCount;								\
 			IF_READING()							\
 				value = u32Value;					\
 		} while (0)
@@ -218,7 +211,6 @@
 				i64Value = (int64_t)value;			\
 			if (!stream.SerializeInt64(i64Value))	\
 				return false;						\
-			++argCount;								\
 			IF_READING()							\
 				value = i64Value;					\
 		} while (0)
@@ -231,7 +223,6 @@
 				u64Value = (uint64_t)value;			\
 			if (!stream.SerializeUInt64(u64Value))	\
 				return false;						\
-			++argCount;								\
 			IF_READING()							\
 				value = u64Value;					\
 		} while (0)
@@ -244,7 +235,6 @@
 				fValue = (float)value;			\
 			if (!stream.SerializeFloat(fValue))	\
 				return false;					\
-			++argCount;							\
 			IF_READING()						\
 				value = fValue;					\
 		} while (0)
@@ -257,7 +247,6 @@
 				dValue = (double)value;				\
 			if (!stream.SerializeDouble(dValue))	\
 				return false;						\
-			++argCount;								\
 			IF_READING()							\
 				value = dValue;						\
 		} while (0)
@@ -270,7 +259,6 @@
 				sValue = value;						\
 			if (!stream.SerializeString(sValue))	\
 				return false;						\
-			++argCount;								\
 			IF_READING()							\
 				value = sValue;						\
 		} while (0)
@@ -286,7 +274,6 @@
 				nValue = value.GetChars();			\
 			if (!stream.SerializeString(nValue))	\
 				return false;						\
-			++argCount;								\
 			IF_READING()							\
 				value = nValue;						\
 		} while (0)
@@ -299,7 +286,6 @@
 				tValue = (type)value;					\
 			if (!stream.SerializeType<type>(tValue))	\
 				return false;							\
-			++argCount;									\
 			IF_READING()								\
 				value = tValue;							\
 		} while (0)
@@ -314,7 +300,6 @@
 				rValue = value;											\
 			if (!stream.SerializeSmallArray<type>(rValue, len, exact))	\
 				return false;											\
-			++argCount;													\
 			IF_READING()												\
 				value = rValue;											\
 		} while (0)
@@ -327,7 +312,6 @@
 				rValue = value;										\
 			if (!stream.SerializeArray<type>(rValue, len, exact))	\
 				return false;										\
-			++argCount;												\
 			IF_READING()											\
 				value = rValue;										\
 		} while (0)
@@ -343,16 +327,15 @@
 class NetPacket
 {
 protected:
-	virtual bool Serialize(WriteStream& stream, size_t& argCount) = 0;
-	virtual bool Serialize(DynamicWriteStream& stream, size_t& argCount) = 0;
-	virtual bool Serialize(ReadStream& stream, size_t& argCount) = 0;
-	virtual bool Serialize(MeasureStream& stream, size_t& argCount) = 0;
+	virtual bool Serialize(WriteStream& stream) = 0;
+	virtual bool Serialize(DynamicWriteStream& stream) = 0;
+	virtual bool Serialize(ReadStream& stream) = 0;
+	virtual bool Serialize(MeasureStream& stream) = 0;
 public:
 	static constexpr uint8_t Type = 0u;
 	const uint8_t NetCommand = 0u;
-	const uint8_t ArgCount = 0u;
 
-	NetPacket(uint8_t netCommand, uint8_t argCount) : NetCommand(netCommand), ArgCount(argCount) {}
+	NetPacket(uint8_t netCommand) : NetCommand(netCommand) {}
 	virtual ~NetPacket() = default;
 	virtual bool DoExecute(int player) = 0;
 	virtual bool ShouldExecute(int player) const { return true; }

@@ -79,7 +79,7 @@ enum
 // These should never actually get executed. If they do, throw an error.
 class EmptyUserCommandPacket : public EmptyPacket
 {
-	DEFINE_NETPACKET(EmptyUserCommandPacket, EmptyPacket, DEM_EMPTYUSERCMD, 0);
+	DEFINE_NETPACKET(EmptyUserCommandPacket, EmptyPacket, DEM_EMPTYUSERCMD);
 public:
 	EmptyUserCommandPacket(usercmd_t& cmd, const usercmd_t* basis) : EmptyUserCommandPacket()
 	{
@@ -97,28 +97,28 @@ NETPACKET_EXECUTE(EmptyUserCommandPacket)
 
 class UserCommandPacket : public NetPacket
 {
-	DEFINE_NETPACKET(UserCommandPacket, NetPacket, DEM_USERCMD, 1);
+	DEFINE_NETPACKET(UserCommandPacket, NetPacket, DEM_USERCMD);
 	static constexpr size_t CommandSize = 17u; // Normally can't be bigger than this, so error out if it was.
 	static constexpr usercmd_t Blank = {};
 	usercmd_t* _cmd = nullptr;
 	const usercmd_t* _basis = nullptr;
 	// This requires some special handling, so split the reading and writing operations entirely.
-	bool Serialize(MeasureStream& stream, size_t& argCount)	override
+	bool Serialize(MeasureStream& stream) override
 	{
 		TArrayView<const uint8_t> temp;
 		SERIALIZE_SMALL_ARRAY_EXPECTING(temp, CommandSize, false);
 		return true;
 	}
-	bool Serialize(WriteStream& stream, size_t& argCount) override
+	bool Serialize(WriteStream& stream) override
 	{
-		return SerializeWrite<WriteStream>(stream, argCount);
+		return SerializeWrite<WriteStream>(stream);
 	}
-	bool Serialize(DynamicWriteStream& stream, size_t& argCount) override
+	bool Serialize(DynamicWriteStream& stream) override
 	{
-		return SerializeWrite<DynamicWriteStream>(stream, argCount);
+		return SerializeWrite<DynamicWriteStream>(stream);
 	}
 	template<typename Stream>
-	bool SerializeWrite(Stream& stream, size_t& argCount)
+	bool SerializeWrite(Stream& stream)
 	{
 		if (_basis == nullptr)
 			_basis = &Blank;
@@ -189,7 +189,7 @@ class UserCommandPacket : public NetPacket
 		SERIALIZE_SMALL_ARRAY_EXPECTING(w.GetView(), CommandSize, false);
 		return true;
 	}
-	bool Serialize(ReadStream& stream, size_t& argCount)
+	bool Serialize(ReadStream& stream) override
 	{
 		TArrayView<const uint8_t> data;
 		SERIALIZE_SMALL_ARRAY_EXPECTING(data, CommandSize, false);

@@ -43,12 +43,7 @@ bool NetPacket::Read(ReadStream& stream)
 	if (!stream.SerializeUInt8(type) || type != NetCommand)
 		return false;
 
-	uint8_t argC = 0u;
-	if (!stream.SerializeUInt8(argC) || argC != ArgCount)
-		return false;
-
-	size_t parsedArgs = 0u;
-	if (!Serialize(stream, parsedArgs) || parsedArgs != ArgCount)
+	if (!Serialize(stream))
 		return false;
 
 	return true;
@@ -62,11 +57,8 @@ bool NetPacket::Write(WriteStream& stream)
 
 	if (!stream.SerializeUInt8(NetCommand))
 		return false;
-	if (!stream.SerializeUInt8(ArgCount))
-		return false;
 
-	size_t parsedArgs = 0u;
-	if (!Serialize(stream, parsedArgs) || parsedArgs != ArgCount)
+	if (!Serialize(stream))
 		return false;
 
 	return true;
@@ -79,11 +71,8 @@ bool NetPacket::Write(DynamicWriteStream& stream)
 
 	if (!stream.SerializeUInt8(NetCommand))
 		return false;
-	if (!stream.SerializeUInt8(ArgCount))
-		return false;
 
-	size_t parsedArgs = 0u;
-	if (!Serialize(stream, parsedArgs) || parsedArgs != ArgCount)
+	if (!Serialize(stream))
 		return false;
 
 	return true;
@@ -94,11 +83,8 @@ bool NetPacket::Skip(ReadStream& stream)
 	MeasureStream m = { stream.GetRemainingData() };
 	if (!m.SerializeUInt8(NetCommand))
 		return false;
-	if (!m.SerializeUInt8(ArgCount))
-		return false;
 
-	size_t parsedArgs = 0u;
-	if (!Serialize(m, parsedArgs) || parsedArgs != ArgCount)
+	if (!Serialize(m))
 		return false;
 
 	return stream.SkipBytes(m.GetSkippedBytes());

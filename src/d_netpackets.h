@@ -142,7 +142,7 @@ DEFINE_NETPACKET_STRING(KillClassPacket, DEM_KILLCLASSCHEAT);
 
 class WarpPacket : public NetPacket
 {
-	DEFINE_NETPACKET(WarpPacket, NetPacket, DEM_WARPCHEAT, 3);
+	DEFINE_NETPACKET(WarpPacket, NetPacket, DEM_WARPCHEAT);
 	int16_t _x = 0, _y = 0, _z = 0;
 	NETPACKET_SERIALIZE()
 	{
@@ -189,7 +189,7 @@ protected:
 
 class ScriptCallPacket : public SpecialArgsPacket
 {
-	DEFINE_NETPACKET_CONDITIONAL(ScriptCallPacket, SpecialArgsPacket, DEM_SCRIPTCALL, 3);
+	DEFINE_NETPACKET_CONDITIONAL(ScriptCallPacket, SpecialArgsPacket, DEM_SCRIPTCALL);
 	int32_t _scriptNum = 0;
 	NETPACKET_SERIALIZE()
 	{
@@ -210,7 +210,7 @@ public:
 
 class SayPacket : public NetPacket
 {
-	DEFINE_NETPACKET_CONDITIONAL(SayPacket, NetPacket, DEM_SAY, 2);
+	DEFINE_NETPACKET_CONDITIONAL(SayPacket, NetPacket, DEM_SAY);
 	uint8_t _flags = 0u;
 	FString _message = {};
 	static constexpr uint8_t MSG_TEAM = 1u;
@@ -231,7 +231,7 @@ public:
 
 class RunSpecialPacket : public SpecialArgsPacket
 {
-	DEFINE_NETPACKET_CONDITIONAL(RunSpecialPacket, SpecialArgsPacket, DEM_SPECIALCALL, 2);
+	DEFINE_NETPACKET_CONDITIONAL(RunSpecialPacket, SpecialArgsPacket, DEM_SPECIALCALL);
 	int16_t _special = 0;
 	NETPACKET_SERIALIZE()
 	{
@@ -253,7 +253,7 @@ public:
 
 class NetEventPacket : public NetPacket
 {
-	DEFINE_NETPACKET(NetEventPacket, NetPacket, DEM_NETEVENT, 3);
+	DEFINE_NETPACKET(NetEventPacket, NetPacket, DEM_NETEVENT);
 	bool _bManual = true;
 	FString _event = {};
 	int32_t _args[3] = {};
@@ -291,7 +291,7 @@ public:
 
 class NetCommandPacket : public NetPacket
 {
-	DEFINE_NETPACKET(NetCommandPacket, NetPacket, DEM_ZSC_CMD, 2);
+	DEFINE_NETPACKET(NetCommandPacket, NetPacket, DEM_ZSC_CMD);
 	FName _command = NAME_None;
 	TArray<const uint8_t> _buffer = {}; // Make sure the command is completely sandboxed.
 	NETPACKET_SERIALIZE()
@@ -328,7 +328,7 @@ protected:
 
 class GiveCheatPacket : public CheatPacket
 {
-	DEFINE_NETPACKET(GiveCheatPacket, CheatPacket, DEM_GIVECHEAT, 2);
+	DEFINE_NETPACKET(GiveCheatPacket, CheatPacket, DEM_GIVECHEAT);
 public:
 	GiveCheatPacket(const FString& itemCls, int amount) : GiveCheatPacket()
 	{
@@ -339,7 +339,7 @@ public:
 
 class TakeCheatPacket : public CheatPacket
 {
-	DEFINE_NETPACKET(TakeCheatPacket, CheatPacket, DEM_TAKECHEAT, 2);
+	DEFINE_NETPACKET(TakeCheatPacket, CheatPacket, DEM_TAKECHEAT);
 public:
 	TakeCheatPacket(const FString& itemCls, int amount) : TakeCheatPacket()
 	{
@@ -350,7 +350,7 @@ public:
 
 class SetCheatPacket : public CheatPacket
 {
-	DEFINE_NETPACKET(SetCheatPacket, CheatPacket, DEM_SETINV, 3);
+	DEFINE_NETPACKET(SetCheatPacket, CheatPacket, DEM_SETINV);
 	bool _bPastMax = false;
 	NETPACKET_SERIALIZE()
 	{
