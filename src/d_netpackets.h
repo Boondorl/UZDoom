@@ -56,36 +56,31 @@ enum EDemoCommand : uint8_t
 	xx(SCRIPTCALL, ScriptCallPacket),
 	DEM_INVUSEALL,		// 18 
 	DEM_INVUSE,			// 19 Int32: ID of item
-	DEM_PAUSE,			// 20 
+	xx(PAUSE, PausePacket),			// 20 
 	DEM_SAVEGAME,		// 21 String: filename, String: description
-	DEM_SUMMON,			// 26 String: thing to fabricate
-	DEM_FOV,			// 27 Float: new FOV for all players
-	DEM_MYFOV,			// 28 Float: new FOV for this player
+	xx(SUMMON, SummonPacket),			// 26 String: thing to fabricate
+	xx(SUMMON2, Summon2Packet),		// 52 String: thing to fabricate, Int16: angle offset, Int16: tid, Int8: special, 5xInt32: args
+	xx(FOV, FOVPacket),               // 27 Float: new FOV for all players
+	xx(MYFOV, MyFOVPacket),			// 28 Float: new FOV for this player
 	DEM_CHANGEMAP2,		// 29 Int8: position in new map, String: map name
 	DEM_RUNSCRIPT,		// 32 Int16: Script#, Int8: # of args; each arg is an Int32
 	DEM_SINFCHANGEDXOR,	// 33 Like DEM_SINFCHANGED, but data is a byte indicating how to set a bit
 	DEM_INVDROP,		// 34 Int32: ID of item Int32: amount
 	DEM_WARPCHEAT,		// 35 Int16: x position, Int16: y position, Int16: z position
 	DEM_CENTERVIEW,		// 36 
-	DEM_SUMMONFRIEND,	// 37 String: thing to fabricate
 	DEM_SPRAY,			// 38 String: decal name
 	DEM_CROUCH,			// 39 
 	DEM_RUNSCRIPT2,		// 40 Same as DEM_RUNSCRIPT, but always executes
 	DEM_CHECKAUTOSAVE,	// 41 
 	DEM_DOAUTOSAVE,		// 42 
 	DEM_MORPHEX,		// 43 String: the class to morph to
-	DEM_SUMMONFOE,		// 44 String: thing to fabricate
 	xx(TAKECHEAT, TakeCheatPacket),		// 47 String: item class, Int32: quantity
 	DEM_ADDCONTROLLER,	// 48 Int8: player
 	DEM_DELCONTROLLER,	// 49 Int8: player
 	DEM_KILLCLASSCHEAT,	// 50 String: class to kill
-	DEM_SUMMON2,		// 52 String: thing to fabricate, Int16: angle offset, Int16: tid, Int8: special, 5xInt32: args
-	DEM_SUMMONFRIEND2,	// 53 String: thing to fabricate, Int16: angle offset, Int16: tid, Int8: special, 5xInt32: args
-	DEM_SUMMONFOE2,		// 54 String: thing to fabricate, Int16: angle offset, Int16: tid, Int8: special, 5xInt32: args
 	DEM_ADDSLOTDEFAULT,	// 55 Int8: slot
 	DEM_ADDSLOT,		// 56 Int8: slot
 	DEM_SETSLOT,		// 57 Int8: slot, Int8: weapons
-	DEM_SUMMONMBF,		// 58 String: thing to fabricate
 	DEM_CONVREPLY,		// 59 Int16: dialogue node, Int8: reply number
 	DEM_CONVCLOSE,		// 60
 	DEM_CONVNULL,		// 61
@@ -134,6 +129,9 @@ DEFINE_NETPACKET_UINT8_CONDITIONAL(GenericCheatPacket, DEM_GENERICCHEAT);
 
 DEFINE_NETPACKET_INT16(ChangeSkillPacket, DEM_CHANGESKILL);
 
+DEFINE_NETPACKET_FLOAT(FOVPacket, DEM_FOV);
+DEFINE_NETPACKET_FLOAT(MyFOVPacket, DEM_MYFOV);
+
 DEFINE_NETPACKET_STRING(ChangeMusicPacket, DEM_MUSICCHANGE);
 DEFINE_NETPACKET_STRING(MDKPacket, DEM_MDK);
 DEFINE_NETPACKET_STRING(RemovePacket, DEM_REMOVE);
@@ -160,29 +158,18 @@ public:
 	}
 };
 
-// For packets that expect up to 5 argumens for specials to be passed.
+// For packets that expect up to 5 arguments for specials to be passed.
 class SpecialArgsPacket : NetPacket
 {
 	DEFINE_NETPACKET_BASE(NetPacket);
 protected:
+	size_t  ArgCount = 5u;
 	int32_t Args[5] = {};
 	NETPACKET_SERIALIZE()
 	{
-		size_t len = std::size(Args);
-		IF_WRITING()
-		{
-			int i = len - 1;
-			for (; i >= 0; --i)
-			{
-				if (Args[i])
-					break;
-			}
-			len = (size_t)(i + 1);
-		}
-		TArrayView<const int32_t> data = { Args, len }
-		SERIALIZE_SMALL_ARRAY_EXPECTING(data, std::size(Args), false);
-		IF_READING()
-			memcpy(Args, data.Data(), data.Size());
+		const size_t argC = min<size_t>(ArgCount, std::size(Args));
+		for (size_t i = 0u; i < argC; ++i)
+			SERIALIZE_INT32(Args[i]);
 		return true;
 	}
 };
@@ -200,6 +187,7 @@ class ScriptCallPacket : public SpecialArgsPacket
 public:
 	ScriptCallPacket(int scriptNum, int arg0, int arg1, int arg2, int arg3) : ScriptCallPacket()
 	{
+		ArgCount = 4u;
 		_scriptNum = scriptNum;
 		Args[0] = arg0;
 		Args[1] = arg1;
@@ -261,21 +249,8 @@ class NetEventPacket : public NetPacket
 	{
 		SERIALIZE_BOOL(_bManual);
 		SERIALIZE_STRING(_event);
-		size_t len = std::size(args);
-		IF_WRITING()
-		{
-			int i = len - 1;
-			for (; i >= 0; --i)
-			{
-				if (_args[i])
-					break;
-			}
-			len = (size_t)(i + 1);
-		}
-		TArrayView<const int32_t> data = { _args, len };
-		SERIALIZE_ARRAY_EXPECTING(int32_t, data, std::size(_args), false);
-		IF_READING()
-			memcpy(_args, data.Data(), data.Size());
+		for (size_t i = 0u; i < std::size(_args); ++i)
+			SERIALIZE_INT32(_args[i]);
 		return true;
 	}
 public:
@@ -364,6 +339,72 @@ public:
 		ItemCls = itemCls;
 		Amount = amount;
 		_bPastMax = bPastMax;
+	}
+};
+
+enum EFriendlyType : uint8_t
+{
+	FT_NEUTRAL,
+	FT_FOE,
+	FT_FRIEND,
+	FT_MBF,
+};
+
+class SummonBasePacket : public NetPacket
+{
+	DEFINE_NETPACKET_BASE_CONDITIONAL(NetPacket);
+protected:
+	FString Cls = {};
+	uint8_t FriendlyType = FT_NEUTRAL;
+	NETPACKET_SERIALIZE()
+	{
+		SERIALIZE_STRING(Cls);
+		SERIALIZE_UINT8(FriendlyType);
+		return true;
+	}
+};
+
+class SummonPacket : public SummonBasePacket
+{
+	DEFINE_NETPACKET(SummonPacket, SummonBasePacket, DEM_SUMMON);
+public:
+	SummonPacket(const FString& cls, EFriendlyType friendly) : SummonPacket()
+	{
+		Cls = cls;
+		FriendlyType = friendly;
+	}
+};
+
+class Summon2Packet : public SummonBasePacket
+{
+	DEFINE_NETPACKET(Summon2Packet, SummonBasePacket, DEM_SUMMON2);
+	uint32_t _angle   = 0u;
+	int16_t _tid     = 0;
+	uint8_t _special = 0u;
+	int32_t _args[5] = {};
+	NETPACKET_SERIALIZE()
+	{
+		SUPER_SERIALIZE();
+		SERIALIZE_UINT32(_angle);
+		SERIALIZE_INT16(_tid);
+		SERIALIZE_UINT8(_special);
+		for (size_t i = 0u; i < std::size(_args); ++i)
+			SERIALIZE_INT32(_args[i]);
+		return true;
+	}
+public:
+	Summon2Packet(const FString &cls, EFriendlyType friendly, double angle, int16_t tid, uint8_t special, int arg0, int arg1, int arg2, int arg3, int arg4) : Summon2Packet()
+	{
+		Cls = cls;
+		FriendlyType = friendly;
+		_angle = DAngle::fromDeg(angle).BAMs();
+		_tid = tid;
+		_special = special;
+		_args[0] = arg0;
+		_args[1] = arg1;
+		_args[2] = arg2;
+		_args[3] = arg3;
+		_args[4] = arg4;
 	}
 };
 

@@ -2294,97 +2294,6 @@ void Net_ReadCommands(int player, ReadStream& stream)
 		}
 		break;
 
-		case DEM_SUMMON:
-		case DEM_SUMMONFRIEND:
-		case DEM_SUMMONFOE:
-		case DEM_SUMMONMBF:
-		case DEM_SUMMON2:
-		case DEM_SUMMONFRIEND2:
-		case DEM_SUMMONFOE2:
-		{
-			int angle = 0;
-			int16_t tid = 0;
-			uint8_t special = 0;
-			int args[5];
-
-			s = ReadString(stream);
-			if (cmd >= DEM_SUMMON2 && cmd <= DEM_SUMMONFOE2)
-			{
-				angle = ReadInt16(stream);
-				tid = ReadInt16(stream);
-				special = ReadInt8(stream);
-				for (i = 0; i < 5; i++) args[i] = ReadInt32(stream);
-			}
-
-			AActor* source = players[player].mo;
-			if (source != NULL)
-			{
-				PClassActor* typeinfo = PClass::FindActor(s);
-				if (typeinfo != NULL)
-				{
-					if (GetDefaultByType(typeinfo)->flags & MF_MISSILE)
-					{
-						P_SpawnPlayerMissile(source, 0, 0, 0, typeinfo, source->Angles.Yaw);
-					}
-					else
-					{
-						const AActor* def = GetDefaultByType(typeinfo);
-						DVector3 spawnpos = source->Vec3Angle(def->radius * 2 + source->radius, source->Angles.Yaw, 8.);
-
-						AActor* spawned = Spawn(primaryLevel, typeinfo, spawnpos, ALLOW_REPLACE);
-						if (spawned != NULL)
-						{
-							spawned->SpawnFlags |= MTF_CONSOLETHING;
-							if (cmd == DEM_SUMMONFRIEND || cmd == DEM_SUMMONFRIEND2 || cmd == DEM_SUMMONMBF)
-							{
-								if (spawned->CountsAsKill())
-								{
-									primaryLevel->total_monsters--;
-								}
-								spawned->FriendPlayer = player + 1;
-								spawned->flags |= MF_FRIENDLY;
-								spawned->LastHeard = players[player].mo;
-								spawned->health = spawned->SpawnHealth();
-								if (cmd == DEM_SUMMONMBF)
-									spawned->flags3 |= MF3_NOBLOCKMONST;
-							}
-							else if (cmd == DEM_SUMMONFOE || cmd == DEM_SUMMONFOE2)
-							{
-								spawned->FriendPlayer = 0;
-								spawned->flags &= ~MF_FRIENDLY;
-								spawned->health = spawned->SpawnHealth();
-							}
-
-							if (cmd >= DEM_SUMMON2 && cmd <= DEM_SUMMONFOE2)
-							{
-								spawned->Angles.Yaw = source->Angles.Yaw - DAngle::fromDeg(angle);
-								spawned->special = special;
-								for (i = 0; i < 5; i++) {
-									spawned->args[i] = args[i];
-								}
-								if (tid) spawned->SetTID(tid);
-							}
-						}
-					}
-				}
-				else
-				{ // not an actor, must be a visualthinker
-					PClass* typeinfo = PClass::FindClass(s);
-					if (typeinfo && typeinfo->IsDescendantOf("VisualThinker"))
-					{
-						DVector3 spawnpos = source->Vec3Angle(source->radius * 4, source->Angles.Yaw, 8.);
-						auto vt = DVisualThinker::NewVisualThinker(source->Level, typeinfo, false);
-						if (vt)
-						{
-							vt->PT.Pos = spawnpos;
-							vt->UpdateSector();
-						}
-					}
-				}
-			}
-		}
-		break;
-
 		case DEM_SPRAY:
 			s = ReadString(stream);
 			SprayDecal(players[player].mo, s.GetChars());
@@ -2393,22 +2302,6 @@ void Net_ReadCommands(int player, ReadStream& stream)
 		case DEM_MDK:
 			s = ReadString(stream);
 			cht_DoMDK(&players[player], s);
-			break;
-
-		case DEM_PAUSE:
-			if (gamestate == GS_LEVEL)
-			{
-				if (paused)
-				{
-					paused = 0;
-					S_ResumeSound(false);
-				}
-				else
-				{
-					paused = player + 1;
-					S_PauseSound(false, false);
-				}
-			}
 			break;
 
 		case DEM_SAVEGAME:
@@ -2438,25 +2331,6 @@ void Net_ReadCommands(int player, ReadStream& stream)
 
 		case DEM_DOAUTOSAVE:
 			gameaction = ga_autosave;
-			break;
-
-		case DEM_FOV:
-		{
-			float newfov = ReadFloat(stream);
-			if (newfov != players[player].DesiredFOV)
-			{
-				Printf("FOV%s set to %g\n",
-					player == Net_Arbitrator ? " for everyone" : "",
-					newfov);
-			}
-
-			for (auto client : NetworkClients)
-				players[client].DesiredFOV = newfov;
-		}
-		break;
-
-		case DEM_MYFOV:
-			players[player].DesiredFOV = ReadFloat(stream);
 			break;
 
 		case DEM_RUNSCRIPT:

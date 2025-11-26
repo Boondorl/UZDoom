@@ -490,8 +490,6 @@ protected:
 	}
 };
 
-extern TMap<uint8_t, std::unique_ptr<NetPacket>(*)()> NetPacketFactory;
-
 std::unique_ptr<NetPacket> CreatePacket(uint8_t type);
 void ReadPacket(NetPacket& packet, ReadStream& stream, int pNum = -1);
 void WritePacket(NetPacket& packet, WriteStream& stream);

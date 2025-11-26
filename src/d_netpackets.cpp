@@ -31,6 +31,8 @@
 #include "gstrings.h"
 #include "p_lnspec.h"
 
+extern TMap<uint8_t, std::unique_ptr<NetPacket>(*)()> NetPacketFactory;
+
 void InitializeDoomPackets()
 {
 	REGISTER_NETPACKET(SayPacket);
@@ -109,7 +111,7 @@ NETPACKET_EXECUTE(RevertCameraPacket)
 
 NETPACKET_EXECUTE(UseAllPacket)
 {
-	if (gamestate == GS_LEVEL && !paused
+	if (gamestate == GS_LEVEL && !WorldPaused(false)
 		&& players[player].playerstate != PST_DEAD)
 	{
 		AActor* item = players[player].mo->Inventory;
@@ -117,7 +119,7 @@ NETPACKET_EXECUTE(UseAllPacket)
 		{
 			AActor* next = item->Inventory;
 			IFVIRTUALPTRNAME(item, NAME_Inventory, UseAll)
-				VMCallVoid<AActor*, AActor*>(func, item, players[player].mo);
+				CallVM<void>(func, item, players[player].mo);
 			item = next;
 		}
 	}
@@ -237,5 +239,136 @@ NETPACKET_EXECUTE(RunSpecialPacket)
 {
 	if (!CheckCheatmode(player == consoleplayer, false))
 		P_ExecuteSpecial(players[player].mo->Level, _special, nullptr, players[player].mo, false, Args[0], Args[1], Args[2], Args[3], Args[4]);
+	return true;
+}
+
+NETPACKET_EXECUTE(FOVPacket)
+{
+	if (Value != players[player].DesiredFOV)
+		Printf("FOV%s set to %g\n", player == Net_Arbitrator ? " for everyone" : "", Value);
+
+	player_t *p = nullptr;
+	while ((p = player_t::GetNextPlayer(p)) != nullptr)
+		p->DesiredFOV = Value;
+
+	return true;
+}
+
+NETPACKET_EXECUTE(MyFOVPacket)
+{
+	players[player].DesiredFOV = Value;
+	return true;
+}
+
+NETPACKET_EXECUTE(PausePacket)
+{
+	if (gamestate != GS_LEVEL)
+		return true;
+
+	if (paused)
+	{
+		paused = 0;
+		S_ResumeSound(false);
+	}
+	else
+	{
+		paused = player + 1;
+		S_PauseSound(false, false);
+	}
+	return true;
+}
+
+NETPACKET_CONDITION(SummonBasePacket)
+{
+	if (CheckCheatmode())
+		return false;
+	if (players[player].mo == nullptr)
+		return false;
+	const PClassActor *aType = PClass::FindActor(Cls);
+	if (aType == nullptr)
+	{
+		const PClass *vType = PClass::FindClass(Cls);
+		if (vType == nullptr || !vType->IsDescendantOf(NAME_VisualThinker))
+		{
+			Printf("No Actor or VisualThinker of type %s found\n", Cls.GetChars());
+			return false;
+		}
+	}
+	return true;
+}
+
+static void SummonClass(int player, const FString& cls, EFriendlyType friendly, bool specialSummon = false, DAngle angle = nullAngle, int tid = 0, int special = 0, int *args = nullptr)
+{
+	AActor *source = players[player].mo;
+	PClassActor *aInfo = PClass::FindActor(cls);
+	if (aInfo != nullptr)
+	{
+		if (GetDefaultByType(aInfo)->flags & MF_MISSILE)
+		{
+			P_SpawnPlayerMissile(source, 0, 0, 0, aInfo, source->Angles.Yaw);
+		}
+		else
+		{
+			DVector3 spawnPos = source->Vec3Angle(GetDefaultByType(aInfo)->radius * 2.0 + source->radius, source->Angles.Yaw, 8.0);
+			AActor *spawned = Spawn(primaryLevel, aInfo, spawnPos, ALLOW_REPLACE);
+			if (spawned != nullptr)
+			{
+				spawned->SpawnFlags |= MTF_CONSOLETHING;
+				if (friendly == FT_FRIEND || friendly == FT_MBF)
+				{
+					spawned->ClearCounters();
+					spawned->FriendPlayer = player + 1;
+					spawned->flags |= MF_FRIENDLY;
+					spawned->LastHeard = players[player].mo;
+					spawned->health = spawned->SpawnHealth();
+					if (friendly == FT_MBF)
+						spawned->flags3 |= MF3_NOBLOCKMONST;
+				}
+				else if (friendly == FT_FOE)
+				{
+					spawned->FriendPlayer = 0;
+					spawned->flags &= ~MF_FRIENDLY;
+					spawned->health = spawned->SpawnHealth();
+				}
+
+				if (specialSummon)
+				{
+					spawned->Angles.Yaw = source->Angles.Yaw - angle;
+					spawned->special = special;
+					if (tid)
+						spawned->SetTID(tid);
+					if (args != nullptr)
+					{
+						for (size_t i = 0u; i < std::size(spawned->args); ++i)
+							spawned->args[i] = args[i];
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		PClass *vType = PClass::FindClass(cls);
+		if (vType != nullptr && vType->IsDescendantOf("VisualThinker"))
+		{
+			auto vt = DVisualThinker::NewVisualThinker(source->Level, vType, false);
+			if (vt != nullptr)
+			{
+				vt->PT.Pos = source->Vec3Angle(source->radius * 4.0, source->Angles.Yaw, 8.0);
+				vt->UpdateSector();
+			}
+		}
+	}
+}
+
+NETPACKET_EXECUTE(SummonPacket)
+{
+	SummonClass(player, Cls, static_cast<EFriendlyType>(FriendlyType));
+	return true;
+}
+
+NETPACKET_EXECUTE(Summon2Packet)
+{
+	SummonClass(player, Cls, static_cast<EFriendlyType>(FriendlyType), true, DAngle::fromBam(_angle), _tid, _special, _args);
 	return true;
 }

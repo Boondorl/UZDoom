@@ -190,46 +190,54 @@ static const char *KeyConfCommands[] =
 
 // CODE --------------------------------------------------------------------
 
-bool C_IsValidInt(const char* arg, int& value, int base)
+bool C_IsValidInt(const char* arg, int& value, bool showError, int base)
 {
 	char* end_read;
 	value = std::strtol(arg, &end_read, base);
 	ptrdiff_t chars_read = end_read - arg;
-	return chars_read == (ptrdiff_t)strlen(arg);
+	bool valid = chars_read == (ptrdiff_t)strlen(arg);
+	if (!valid && showError)
+		Printf(TEXTCOLOR_YELLOW "Expected integer, got %s\n", arg);
+	return valid;
 }
 
-bool C_IsValidFloat(const char* arg, double& value)
+bool C_IsValidFloat(const char* arg, double& value, bool showError)
 {
 	char* end_read;
 	value = std::strtod(arg, &end_read);
 	ptrdiff_t chars_read = end_read - arg;
-	return chars_read == (ptrdiff_t)strlen(arg);
+	bool valid = chars_read == (ptrdiff_t)strlen(arg);
+	if (!valid && showError)
+		Printf(TEXTCOLOR_YELLOW "Expected float, got %s\n", arg);
+	return valid;
 }
 
-bool C_IsValidBool(const char* arg, bool& value)
+bool C_IsValidBool(const char* arg, bool& value, bool showError)
 {
-	if (!stricmp(arg, "true"))
+	if (stricmp(arg, "true") == 0)
 	{
 		value = true;
 		return true;
 	}
-	if (!stricmp(arg, "false"))
+	if (stricmp(arg, "false") == 0)
 	{
 		value = false;
 		return true;
 	}
 	int i;
-	if (C_IsValidInt(arg, i))
+	if (C_IsValidInt(arg, i, false))
 	{
 		value = !!i;
 		return true;
 	}
 	double d;
-	if (C_IsValidFloat(arg, d))
+	if (C_IsValidFloat(arg, d, false))
 	{
 		value = d != 0.0;
 		return true;
 	}
+	if (showError)
+		Printf(TEXTCOLOR_YELLOW "Expected boolean, got %s\n", arg);
 	value = false;
 	return false;
 }

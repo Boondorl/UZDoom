@@ -824,57 +824,59 @@ int DmgFactors::Apply(FName type, int damage)
 }
 
 
-static void SummonActor (int command, int command2, FCommandLine argv)
+static void SummonActor(EFriendlyType friendlyType, FCommandLine& argv)
 {
-	if (CheckCheatmode ())
-		return;
-
-	if (argv.argc() > 1)
+	const int argC = argv.argc();
+	if (argC > 1)
 	{
-		PClass *type = PClass::FindActor(argv[1]);
-		if (type == nullptr)
+		if (argC > 2)
 		{
-			type = PClass::FindClass(argv[1]);
-			if(!type || !type->IsDescendantOf("VisualThinker"))
-			{
-				Printf ("Unknown actor or visual thinker '%s'\n", argv[1]);
+			double ang;
+			if (!C_IsValidFloat(argv[2], ang))
 				return;
+			int tid = 0;
+			if (argC > 3 && !C_IsValidInt(argv[3], tid))
+				return;
+			int special = 0;
+			if (argC > 4 && !C_IsValidInt(argv[4], special))
+				return;
+			int args[5] = {};
+			for (size_t i = 0u; i < std::size(args); ++i)
+			{
+				if (argC > i + 5 && !C_IsValidInt(argv[i + 5u], args[i]))
+					return;
 			}
+			Net_WritePacket(Summon2Packet(argv[1], friendlyType, ang, tid, special, args[0], args[1], args[2], args[3], args[4]));
 		}
-		Net_WriteInt8 (argv.argc() > 2 ? command2 : command);
-		Net_WriteString (type->TypeName.GetChars());
-
-		if (argv.argc () > 2)
+		else
 		{
-			Net_WriteInt16 (atoi (argv[2])); // angle
-			Net_WriteInt16 ((argv.argc() > 3) ? atoi(argv[3]) : 0); // TID
-			Net_WriteInt8 ((argv.argc() > 4) ? atoi(argv[4]) : 0); // special
-			for (int i = 5; i < 10; i++)
-			{ // args[5]
-				Net_WriteInt32((i < argv.argc()) ? atoi(argv[i]) : 0);
-			}
+			Net_WritePacket(SummonPacket(argv[1], friendlyType));
 		}
+	}
+	else
+	{
+		Printf("Usage: summon Actor/VisualThinker [angle] [tid] [special] [arg1] [arg2] [arg3] [arg4] [arg5]\n");
 	}
 }
 
-CCMD (summon)
+CCMD(summon)
 {
-	SummonActor (DEM_SUMMON, DEM_SUMMON2, argv);
+	SummonActor(FT_NEUTRAL, argv);
 }
 
-CCMD (summonfriend)
+CCMD(summonfriend)
 {
-	SummonActor (DEM_SUMMONFRIEND, DEM_SUMMONFRIEND2, argv);
+	SummonActor(FT_FRIEND, argv);
 }
 
-CCMD (summonmbf)
+CCMD(summonmbf)
 {
-	SummonActor (DEM_SUMMONMBF, DEM_SUMMONFRIEND2, argv);
+	SummonActor(FT_MBF, argv);
 }
 
-CCMD (summonfoe)
+CCMD(summonfoe)
 {
-	SummonActor (DEM_SUMMONFOE, DEM_SUMMONFOE2, argv);
+	SummonActor(FT_FOE, argv);
 }
 
 

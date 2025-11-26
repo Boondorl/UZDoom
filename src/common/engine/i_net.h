@@ -43,6 +43,7 @@ enum ENetFlags : uint8_t
 
 typedef TFlags<ENetFlags, uint8_t> NetFlags;
 DEFINE_TFLAGS_OPERATORS(NetFlags)
+
 struct FClientStack : public TArray<int>
 {
 	inline bool InGame(int i) const { return Find(i) < Size(); }
