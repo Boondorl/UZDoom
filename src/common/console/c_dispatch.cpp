@@ -190,6 +190,11 @@ static const char *KeyConfCommands[] =
 
 // CODE --------------------------------------------------------------------
 
+bool C_IsValue(const char* cmd, const char* value)
+{
+	return stricmp(cmd, value) == 0;
+}
+
 bool C_IsValidInt(const char* arg, int& value, bool showError, int base)
 {
 	char* end_read;

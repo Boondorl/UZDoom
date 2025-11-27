@@ -74,6 +74,7 @@ void C_ClearDelayedCommands();
 
 // Process a single console command. Does not handle wait.
 void C_DoCommand (const char *cmd, int keynum=0);
+bool C_IsValue(const char* cmd, const char* value);
 bool C_IsValidInt(const char* arg, int& value, bool showError = true, int base = 10);
 bool C_IsValidFloat(const char* arg, double& value, bool showError = true);
 bool C_IsValidBool(const char* arg, bool& value, bool showError = true);

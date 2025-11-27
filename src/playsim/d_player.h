@@ -319,6 +319,21 @@ public:
 	void SendPitchLimits() const;
 	void SetSubtitle(int num, FSoundID soundid);
 
+	int CPrintf(const char *format, ...) const
+	{
+		if (this - players != consoleplayer)
+			return 0;
+
+		va_list argptr;
+		int     count;
+
+		va_start(argptr, format);
+		count = VPrintf(PRINT_HIGH, format, argptr);
+		va_end(argptr);
+
+		return count;
+	}
+
 	AActor *mo = nullptr;
 	uint8_t		playerstate = 0;
 	usercmd_t	cmd = {};

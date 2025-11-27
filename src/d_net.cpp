@@ -2252,20 +2252,11 @@ void Net_ReadCommands(int player, ReadStream& stream)
 			break;
 
 		case DEM_SUICIDE:
-			cht_Suicide(&players[player]);
+			
 			break;
 
 		case DEM_ADDBOT:
 			primaryLevel->BotInfo.TryAddBot(primaryLevel, stream, player);
-			break;
-
-		case DEM_KILLBOTS:
-			primaryLevel->BotInfo.RemoveAllBots(primaryLevel, true);
-			Printf("Removed all bots\n");
-			break;
-
-		case DEM_CENTERVIEW:
-			players[player].centering = true;
 			break;
 
 		case DEM_INVUSE:
@@ -2405,28 +2396,6 @@ void Net_ReadCommands(int player, ReadStream& stream)
 				Printf("You can no longer control game settings\n");
 			else if (consoleplayer == Net_Arbitrator)
 				Printf("%s [%d] is no longer a settings controller\n", players[playernum].userinfo.GetName(), playernum);
-		}
-		break;
-
-		case DEM_KILLCLASSCHEAT:
-		{
-			s = ReadString(stream);
-			int killcount = 0;
-			PClassActor* cls = PClass::FindActor(s);
-
-			if (cls != nullptr)
-			{
-				killcount = primaryLevel->Massacre(false, cls->TypeName);
-				PClassActor* cls_rep = cls->GetReplacement(primaryLevel);
-				if (cls != cls_rep)
-					killcount += primaryLevel->Massacre(false, cls_rep->TypeName);
-
-				Printf("Killed %d monsters of type %s.\n", killcount, s.GetChars());
-			}
-			else
-			{
-				Printf("%s is not an actor class.\n", s.GetChars());
-			}
 		}
 		break;
 

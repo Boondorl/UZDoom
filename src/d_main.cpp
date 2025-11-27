@@ -623,34 +623,24 @@ void D_Render(std::function<void()> action, bool interpolate)
 //
 //==========================================================================
 
-CUSTOM_CVAR (Int, dmflags, 0, CVAR_SERVERINFO | CVAR_NOINITCALL)
+CUSTOM_CVAR(Int, dmflags, 0, CVAR_SERVERINFO | CVAR_NOINITCALL)
 {
 	// In case DF_NO_FREELOOK was changed, reinitialize the sky
 	// map. (If no freelook, then no need to stretch the sky.)
-	R_InitSkyMap ();
+	R_InitSkyMap();
 
 	if (self & DF_NO_FREELOOK)
 	{
 		// Boon TODO: Just write the center button across all players...
-		Net_WriteInt8 (DEM_CENTERVIEW);
+		Net_WritePacket(CenterViewPacket::GetDefault());
 	}
-	// If nofov is set, force everybody to the arbitrator's FOV.
-	if ((self & DF_NO_FOV) && consoleplayer == Net_Arbitrator)
-	{
-		float fov;
-
-		Net_WriteInt8 (DEM_FOV);
-
-		// If the game is started with DF_NO_FOV set, the arbitrator's
-		// DesiredFOV will not be set when this callback is run, so
-		// be sure not to transmit a 0 FOV.
-		fov = players[consoleplayer].DesiredFOV;
-		if (fov == 0)
-		{
-			fov = 90;
-		}
-		Net_WriteFloat (fov);
-	}
+	// If the game is started with DF_NO_FOV set, the arbitrator's
+	// DesiredFOV will not be set when this callback is run, so
+	// be sure not to transmit a 0 FOV.
+	float fov = players[consoleplayer].DesiredFOV;
+	if (fov == 0.0f)
+		fov = 90.0f;
+	Net_WritePacket(FOVPacket(fov));
 }
 
 CVAR (Flag, sv_nohealth,		dmflags, DF_NO_HEALTH);

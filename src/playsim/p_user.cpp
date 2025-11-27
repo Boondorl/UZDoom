@@ -486,25 +486,7 @@ void player_t::SetFOV(float fov)
 {
 	player_t *p = &players[consoleplayer];
 	if (p != nullptr && p->mo != nullptr)
-	{
-		if (dmflags & DF_NO_FOV)
-		{
-			if (consoleplayer == Net_Arbitrator)
-			{
-				Net_WriteInt8(DEM_MYFOV);
-			}
-			else
-			{
-				Printf("A setting controller has disabled FOV changes.\n");
-				return;
-			}
-		}
-		else
-		{
-			Net_WriteInt8(DEM_MYFOV);
-		}
-		Net_WriteFloat(clamp<float>(fov, 5.f, 179.f));
-	}
+		Net_WritePacket(MyFOVPacket(clamp<float>(fov, 5.0f, 179.0f)));
 }
 
 DEFINE_ACTION_FUNCTION(_PlayerInfo, SetFOV)

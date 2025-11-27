@@ -52,6 +52,19 @@ EDemoCommand GetPacketType(const ReadStream& stream)
 //
 //==========================================================================
 
+NETPACKET_EXECUTE(RemoveBotsPacket)
+{
+	primaryLevel->BotInfo.RemoveAllBots(primaryLevel, true);
+	Printf("Removed all bots\n");
+	return true;
+}
+
+NETPACKET_EXECUTE(CenterViewPacket)
+{
+	players[player].centering = true;
+	return true;
+}
+
 static bool ValidClass(const FString& cls, FName type = NAME_Actor)
 {
 	auto clss = PClass::FindActor(cls);
@@ -66,12 +79,40 @@ NETPACKET_EXECUTE(WarpPacket)
 
 NETPACKET_CONDITION(GenericCheatPacket)
 {
-	return CheckCheatmode(player == consoleplayer);
+	return !CheckCheatmode(player == consoleplayer);
 }
 
 NETPACKET_EXECUTE(GenericCheatPacket)
 {
 	cht_DoCheat(&players[player], Value);
+	return true;
+}
+
+NETPACKET_CONDITION(KillClassPacket)
+{
+	if (CheckCheatmode(player == consoleplayer))
+		return false;
+	if (PClass::FindActor(Value) == nullptr)
+	{
+		players[player].CPrintf("%s is not an Actor class.\n", Value.GetChars());
+		return false;
+	}
+	return true;
+}
+
+NETPACKET_EXECUTE(KillClassPacket)
+{
+	PClassActor* cls = PClass::FindActor(Value);
+	if (cls != nullptr)
+	{
+		auto level = players[player].mo->Level;
+		int killCount = level->Massacre(false, cls->TypeName);
+		PClassActor* clsRep = cls->GetReplacement(level);
+		if (cls != clsRep)
+			killCount += level->Massacre(false, clsRep->TypeName);
+
+		Printf("Killed %d monsters of type %s.\n", killCount, Value.GetChars());
+	}
 	return true;
 }
 
@@ -242,6 +283,11 @@ NETPACKET_EXECUTE(RunSpecialPacket)
 	return true;
 }
 
+NETPACKET_CONDITION(FOVPacket)
+{
+	return (dmflags & DF_NO_FOV) && player == Net_Arbitrator;
+}
+
 NETPACKET_EXECUTE(FOVPacket)
 {
 	if (Value != players[player].DesiredFOV)
@@ -251,6 +297,16 @@ NETPACKET_EXECUTE(FOVPacket)
 	while ((p = player_t::GetNextPlayer(p)) != nullptr)
 		p->DesiredFOV = Value;
 
+	return true;
+}
+
+NETPACKET_CONDITION(MyFOVPacket)
+{
+	if ((dmflags & DF_NO_FOV) && player != Net_Arbitrator)
+	{
+		players[player].CPrintf("A settings controller has disabled FOV changes.\n");
+		return false;
+	}
 	return true;
 }
 
@@ -370,5 +426,16 @@ NETPACKET_EXECUTE(SummonPacket)
 NETPACKET_EXECUTE(Summon2Packet)
 {
 	SummonClass(player, Cls, static_cast<EFriendlyType>(FriendlyType), true, DAngle::fromBam(_angle), _tid, _special, _args);
+	return true;
+}
+
+NETPACKET_CONDITION(SuicidePacket)
+{
+	return !(dmflags2 & DF2_NOSUICIDE);
+}
+
+NETPACKET_EXECUTE(SuicidePacket)
+{
+	cht_Suicide(&players[player]);
 	return true;
 }

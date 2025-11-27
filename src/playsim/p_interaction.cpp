@@ -1931,47 +1931,30 @@ DEFINE_ACTION_FUNCTION(_PlayerInfo, PoisonDamage)
 	return 0;
 }
 
-CCMD (kill)
+CCMD(kill)
 {
 	if (argv.argc() > 1)
 	{
-		if (CheckCheatmode ())
-			return;
-
-		if (!stricmp (argv[1], "monsters"))
+		if (C_IsValue(argv[1], "monsters"))
 		{
 			// Kill all the monsters
-			if (CheckCheatmode ())
-				return;
-
-			Net_WriteInt8 (DEM_GENERICCHEAT);
-			Net_WriteInt8 (CHT_MASSACRE);
+			Net_WritePacket(GenericCheatPacket(CHT_MASSACRE));
 		}
-		else if (!stricmp (argv[1], "baddies"))
+		else if (C_IsValue(argv[1], "baddies"))
 		{
 			// Kill all the unfriendly monsters
-			if (CheckCheatmode ())
-				return;
-
-			Net_WriteInt8 (DEM_GENERICCHEAT);
-			Net_WriteInt8 (CHT_MASSACRE2);
+			Net_WritePacket(GenericCheatPacket(CHT_MASSACRE2));
 		}
 		else
 		{
-			Net_WriteInt8 (DEM_KILLCLASSCHEAT);
-			Net_WriteString (argv[1]);
+			Net_WritePacket(KillClassPacket(argv[1]));
 		}
 	}
 	else
 	{
-		// If suiciding is disabled, then don't do it.
-		if (dmflags2 & DF2_NOSUICIDE)
-			return;
-
-		// Kill the player
-		Net_WriteInt8 (DEM_SUICIDE);
+		Net_WritePacket(SuicidePacket::GetDefault());
 	}
-	C_HideConsole ();
+	C_HideConsole();
 }
 
 CCMD(remove)
