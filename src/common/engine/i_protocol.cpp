@@ -111,12 +111,15 @@ std::unique_ptr<NetPacket> CreatePacket(uint8_t type)
 	return p;
 }
 
-void ReadPacket(NetPacket& packet, ReadStream& stream, int pNum)
+void ReadPacket(NetPacket& packet, ReadStream& stream)
 {
 	if (!packet.Read(stream))
 		I_Error("Failed to read net command %u", packet.NetCommand);
+}
 
-	if (pNum >= 0 && pNum < MaxClients && !packet.Execute(pNum))
+void ExecutePacket(NetPacket& packet, int pNum)
+{
+	if (!packet.Execute(pNum))
 		I_Error("Failed to execute net command %u", packet.NetCommand);
 }
 

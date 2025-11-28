@@ -484,9 +484,7 @@ int player_t::GetSpawnClass()
 // [Nash] Set FOV
 void player_t::SetFOV(float fov)
 {
-	player_t *p = &players[consoleplayer];
-	if (p != nullptr && p->mo != nullptr)
-		Net_WritePacket(MyFOVPacket(clamp<float>(fov, 5.0f, 179.0f)));
+	Net_WritePacket(MyFOVPacket(clamp<float>(fov, 5.0f, 179.0f)));
 }
 
 DEFINE_ACTION_FUNCTION(_PlayerInfo, SetFOV)

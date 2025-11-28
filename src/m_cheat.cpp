@@ -673,12 +673,7 @@ DEFINE_ACTION_FUNCTION(APlayerPawn, CheatSuicide)
 	return 0;
 }
 
-CCMD (mdk)
+CCMD(mdk)
 {
-	if (CheckCheatmode ())
-		return;
-
-	const char *name = argv.argc() > 1 ? argv[1] : "";
-	Net_WriteInt8 (DEM_MDK);
-	Net_WriteString(name);
+	Net_WritePacket(MDKPacket(argv.argc() > 1 ? argv[1] : ""));
 }

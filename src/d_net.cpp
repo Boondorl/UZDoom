@@ -2175,39 +2175,19 @@ void Net_WritePacket(NetPacket&& p)
 {
 	WritePacket(p, NetEvents.GetCurrentStream());
 }
-
-static int RemoveClass(FLevelLocals *Level, const PClass *cls)
+void Net_SkipPacket(EDemoCommand type, ReadStream& r)
 {
-	AActor *actor;
-	int removecount = 0;
-	bool player = false;
-	auto iterator = Level->GetThinkerIterator<AActor>(cls->TypeName);
-	while ((actor = iterator.Next()))
-	{
-		if (actor->IsA(cls))
-		{
-			// [MC]Do not remove LIVE players.
-			if (actor->player != nullptr)
-			{
-				player = true;
-				continue;
-			}
-			// [SP] Don't remove owned inventory objects.
-			if (!actor->IsMapActor())
-				continue;
-
-			removecount++; 
-			actor->ClearCounters();
-			actor->Destroy();
-		}
-	}
-
-	if (player)
-		Printf("Cannot remove live players!\n");
-
-	return removecount;
-
+	SkipPacket(*CreatePacket(type), r);
 }
+void Net_ExecutePacket(EDemoCommand type, ReadStream& r, int pNum)
+{
+	auto p = CreatePacket(type);
+	ReadPacket(*p, r);
+	// Only execute packets from players currently in the game.
+	if (pNum >= 0 && pNum < MaxClients && playeringame[pNum] && players[pNum].mo != nullptr)
+		ExecutePacket(*p, pNum);
+}
+
 // [RH] Execute a special "ticcmd". The type byte should
 //		have already been read, and the stream is positioned
 //		at the beginning of the command's actual data.
@@ -2216,7 +2196,7 @@ void Net_SkipCommands(ReadStream& stream)
 {
 	EDemoCommand cmd;
 	while ((cmd = GetPacketType(stream)) != DEM_USERCMD && cmd != DEM_EMPTYUSERCMD)
-		SkipPacket(*CreatePacket(cmd), stream);
+		Net_SkipPacket(cmd, stream);
 }
 
 void Net_ReadCommands(int player, ReadStream& stream)
@@ -2224,7 +2204,7 @@ void Net_ReadCommands(int player, ReadStream& stream)
 	EDemoCommand cmd;
 	while ((cmd = GetPacketType(stream)) != DEM_USERCMD && cmd != DEM_EMPTYUSERCMD)
 	{
-		ReadPacket(*CreatePacket(cmd), stream, player);
+		Net_ExecutePacket(cmd, stream, player);
 
 		// Boon TODO: Delete all of this (thank god)
 
@@ -2249,10 +2229,6 @@ void Net_ReadCommands(int player, ReadStream& stream)
 			// That was a long time ago. Maybe it works now?
 			primaryLevel->flags |= LEVEL_CHANGEMAPCHEAT;
 			primaryLevel->ChangeLevel(s, pos, 0);
-			break;
-
-		case DEM_SUICIDE:
-			
 			break;
 
 		case DEM_ADDBOT:
@@ -2288,11 +2264,6 @@ void Net_ReadCommands(int player, ReadStream& stream)
 		case DEM_SPRAY:
 			s = ReadString(stream);
 			SprayDecal(players[player].mo, s.GetChars());
-			break;
-
-		case DEM_MDK:
-			s = ReadString(stream);
-			cht_DoMDK(&players[player], s);
 			break;
 
 		case DEM_SAVEGAME:
@@ -2396,27 +2367,6 @@ void Net_ReadCommands(int player, ReadStream& stream)
 				Printf("You can no longer control game settings\n");
 			else if (consoleplayer == Net_Arbitrator)
 				Printf("%s [%d] is no longer a settings controller\n", players[playernum].userinfo.GetName(), playernum);
-		}
-		break;
-
-		case DEM_REMOVE:
-		{
-			s = ReadString(stream);
-			int removecount = 0;
-			PClassActor* cls = PClass::FindActor(s);
-			if (cls != nullptr && cls->IsDescendantOf(RUNTIME_CLASS(AActor)))
-			{
-				removecount = RemoveClass(primaryLevel, cls);
-				const PClass* cls_rep = cls->GetReplacement(primaryLevel);
-				if (cls != cls_rep)
-					removecount += RemoveClass(primaryLevel, cls_rep);
-
-				Printf("Removed %d actors of type %s.\n", removecount, s.GetChars());
-			}
-			else
-			{
-				Printf("%s is not an actor class.\n", s.GetChars());
-			}
 		}
 		break;
 

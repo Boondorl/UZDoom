@@ -52,6 +52,16 @@ EDemoCommand GetPacketType(const ReadStream& stream)
 //
 //==========================================================================
 
+NETPACKET_CONDITION(InvalidPacket)
+{
+	return false;
+}
+
+NETPACKET_EXECUTE(InvalidPacket)
+{
+	return false;
+}
+
 NETPACKET_EXECUTE(RemoveBotsPacket)
 {
 	primaryLevel->BotInfo.RemoveAllBots(primaryLevel, true);
@@ -79,7 +89,7 @@ NETPACKET_EXECUTE(WarpPacket)
 
 NETPACKET_CONDITION(GenericCheatPacket)
 {
-	return !CheckCheatmode(player == consoleplayer);
+	return !CheckCheatmode();
 }
 
 NETPACKET_EXECUTE(GenericCheatPacket)
@@ -90,7 +100,7 @@ NETPACKET_EXECUTE(GenericCheatPacket)
 
 NETPACKET_CONDITION(KillClassPacket)
 {
-	if (CheckCheatmode(player == consoleplayer))
+	if (CheckCheatmode())
 		return false;
 	if (PClass::FindActor(Value) == nullptr)
 	{
@@ -338,8 +348,6 @@ NETPACKET_CONDITION(SummonBasePacket)
 {
 	if (CheckCheatmode())
 		return false;
-	if (players[player].mo == nullptr)
-		return false;
 	const PClassActor *aType = PClass::FindActor(Cls);
 	if (aType == nullptr)
 	{
@@ -437,5 +445,75 @@ NETPACKET_CONDITION(SuicidePacket)
 NETPACKET_EXECUTE(SuicidePacket)
 {
 	cht_Suicide(&players[player]);
+	return true;
+}
+
+static int RemoveClass(FLevelLocals& level, const PClassActor& cls)
+{
+	int count = 0;
+	bool foundPlayer = false;
+	auto iterator = level.GetThinkerIterator<AActor>(cls.TypeName);
+	AActor* actor = nullptr;
+	while ((actor = iterator.Next()) != nullptr)
+	{
+		if (actor->IsA(&cls))
+		{
+			// [MC]Do not remove LIVE players.
+			if (actor->player != nullptr)
+			{
+				foundPlayer = true;
+				continue;
+			}
+			// [SP] Don't remove owned inventory objects.
+			if (!actor->IsMapActor())
+				continue;
+
+			++count; 
+			actor->ClearCounters();
+			actor->Destroy();
+		}
+	}
+
+	if (foundPlayer)
+		Printf("Cannot remove live players!\n");
+
+	return count;
+}
+
+NETPACKET_CONDITION(RemovePacket)
+{
+	if (CheckCheatmode())
+		return false;
+	const PClass* cls = PClass::FindActor(Value);
+	if (cls == nullptr || cls->IsDescendantOf(NAME_PlayerPawn))
+	{
+		players[player].CPrintf("%s is not a valid Actor class.\n", Value.GetChars());
+		return false;
+	}
+	return true;
+}
+
+NETPACKET_EXECUTE(RemovePacket)
+{
+	PClassActor* cls = PClass::FindActor(Value);
+	if (cls != nullptr)
+	{
+		int removeCount = RemoveClass(*players[player].mo->Level, *cls);
+		const PClassActor* clsRep = cls->GetReplacement(players[player].mo->Level);
+		if (cls != clsRep)
+			removeCount += RemoveClass(*players[player].mo->Level, *clsRep);
+
+		Printf("Removed %d Actors of type %s.\n", removeCount, Value.GetChars());
+	}
+}
+
+NETPACKET_CONDITION(MDKPacket)
+{
+	return !CheckCheatmode();
+}
+
+NETPACKET_EXECUTE(MDKPacket)
+{
+	cht_DoMDK(&players[player], Value);
 	return true;
 }

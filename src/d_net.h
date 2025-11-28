@@ -189,6 +189,8 @@ void Net_NewClientTic();
 void Net_Initialize();
 void Net_WritePacket(NetPacket& packet);
 void Net_WritePacket(NetPacket&& packet);
+void Net_SkipPacket(EDemoCommand type, ReadStream& r);
+void Net_ExecutePacket(EDemoCommand type, ReadStream& r, int pNum);
 EDemoCommand GetPacketType(ReadStream& stream);
 
 void Net_SkipCommands(ReadStream& stream);

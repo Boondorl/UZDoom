@@ -491,7 +491,8 @@ protected:
 };
 
 std::unique_ptr<NetPacket> CreatePacket(uint8_t type);
-void ReadPacket(NetPacket& packet, ReadStream& stream, int pNum = -1);
+void ReadPacket(NetPacket& packet, ReadStream& stream);
+void ExecutePacket(NetPacket& packet, int pNum);
 void WritePacket(NetPacket& packet, WriteStream& stream);
 void WritePacket(NetPacket& packet, DynamicWriteStream& stream);
 void SkipPacket(NetPacket& packet, ReadStream& stream);

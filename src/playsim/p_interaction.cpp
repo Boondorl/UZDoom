@@ -1961,17 +1961,11 @@ CCMD(remove)
 {
 	if (argv.argc() == 2)
 	{
-		if (CheckCheatmode())
-			return;
-
-		Net_WriteInt8(DEM_REMOVE);
-		Net_WriteString(argv[1]);
+		Net_WritePacket(RemovePacket(argv[1]));
 		C_HideConsole();
 	}
 	else
 	{
-		Printf("Usage: remove <actor class name>\n");
-		return;
+		Printf("Usage: remove <Actor>\n");
 	}
-	
 }

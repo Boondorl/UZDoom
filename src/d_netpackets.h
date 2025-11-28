@@ -40,24 +40,27 @@
 
 enum EDemoCommand : uint8_t
 {
-	xx(INVALID, void),
-	xx(USERCMD, void),		// UserCommandPacket
-	xx(EMPTYUSERCMD, void),	// EmptyUserCommandPacket
+	// Internal commands; these are not meant to be sent as standard net events.
+	xx(INVALID,			void),	// InvalidPacket
+	xx(USERCMD,			void),	// UserCommandPacket
+	xx(EMPTYUSERCMD,	void),	// EmptyUserCommandPacket
+	xx(UINFCHANGED,		void),	// UserInfoPacket
+	xx(SINFCHANGED,		void),	// ServerInfoPacket
+
+	// Standard commands.
 	xx(MUSICCHANGE, ChangeMusicPacket),
-	DEM_UINFCHANGED,	//  8 User info changed
-	DEM_SINFCHANGED,	//  9 Server/Host info changed
 	xx(GENERICCHEAT, GenericCheatPacket),	// 10 Int8: cheat
 	xx(GIVECHEAT, GiveCheatPacket),		// 11 String: item to give, Int32: quantity
 	xx(SAY, SayPacket),			// 12 Int8: who to talk to, String: message
 	xx(CHANGEMAP, ChangeMapPacket),		// 14 String: name of map
 	xx(SUICIDE, SuicidePacket),		// 15 
-	DEM_ADDBOT,			// 16 Int8: botshift, String: userinfo for bot, Type: botskill_t
+	xx(ADDBOT, AddBotPacket),			// 16 Int8: botshift, String: userinfo for bot, Type: botskill_t
 	xx(KILLBOTS, RemoveBotsPacket),		// 17 
 	xx(SCRIPTCALL, ScriptCallPacket),
-	DEM_INVUSEALL,		// 18 
-	DEM_INVUSE,			// 19 Int32: ID of item
+	xx(INVUSEALL, UseAllInventoryPacket),		// 18 
+	xx(INVUSE, UseInventoryPacket),			// 19 Int32: ID of item
 	xx(PAUSE, PausePacket),			// 20 
-	DEM_SAVEGAME,		// 21 String: filename, String: description
+	xx(SAVEGAME, SavePacket),		// 21 String: filename, String: description
 	xx(SUMMON, SummonPacket),			// 26 String: thing to fabricate
 	xx(SUMMON2, Summon2Packet),		// 52 String: thing to fabricate, Int16: angle offset, Int16: tid, Int8: special, 5xInt32: args
 	xx(FOV, FOVPacket),               // 27 Float: new FOV for all players
@@ -92,7 +95,7 @@ enum EDemoCommand : uint8_t
 	DEM_REMOVE,			// 68 String: class to remove
 	DEM_FINISHGAME,		// 69 
 	xx(NETEVENT, NetEventPacket),		// 70 String: event name, Int8: Arg count; each arg is an Int32, Int8: manual
-	DEM_MDK,			// 71 String: damage type
+	xx(MDK, MDKPacket),			// 71 String: damage type
 	xx(SETINV, SetCheatPacket),			// 72 String: item name, Int32: amount, Int8: allow beyond max
 	DEM_ENDSCREENJOB,	// 73 
 	DEM_ZSC_CMD,		// 74 String: command, Int16: Byte size of command
@@ -111,7 +114,6 @@ enum EDemoCommand : uint8_t
 //
 //==========================================================================
 
-DEFINE_NETPACKET_EMPTY_CONDITIONAL(EndScreenRunnerPacket, DEM_ENDSCREENJOB);
 DEFINE_NETPACKET_EMPTY(PlayerReadyPacket, DEM_READIED);
 DEFINE_NETPACKET_EMPTY(UseAllPacket, DEM_INVUSEALL);
 DEFINE_NETPACKET_EMPTY(RevertCameraPacket, DEM_REVERTCAMERA);
@@ -119,9 +121,11 @@ DEFINE_NETPACKET_EMPTY(FinishGamePacket, DEM_FINISHGAME);
 DEFINE_NETPACKET_EMPTY(ConversationClosePacket, DEM_CONVCLOSE);
 DEFINE_NETPACKET_EMPTY(ConversationNullPacket, DEM_CONVNULL);
 DEFINE_NETPACKET_EMPTY(PausePacket, DEM_PAUSE);
-DEFINE_NETPACKET_EMPTY_CONDITIONAL(SuicidePacket, DEM_SUICIDE);
 DEFINE_NETPACKET_EMPTY(RemoveBotsPacket, DEM_KILLBOTS);
 DEFINE_NETPACKET_EMPTY(CenterViewPacket, DEM_CENTERVIEW);
+DEFINE_NETPACKET_EMPTY_CONDITIONAL(InvalidPacket, DEM_INVALID);
+DEFINE_NETPACKET_EMPTY_CONDITIONAL(SuicidePacket, DEM_SUICIDE);
+DEFINE_NETPACKET_EMPTY_CONDITIONAL(EndScreenRunnerPacket, DEM_ENDSCREENJOB);
 
 DEFINE_NETPACKET_UINT8(KickPacket, DEM_KICK);
 DEFINE_NETPACKET_UINT8(AddControllerPacket, DEM_ADDCONTROLLER);
@@ -135,9 +139,10 @@ DEFINE_NETPACKET_FLOAT_CONDITIONAL(MyFOVPacket, DEM_MYFOV);
 
 DEFINE_NETPACKET_STRING(ChangeMusicPacket, DEM_MUSICCHANGE);
 DEFINE_NETPACKET_STRING(MDKPacket, DEM_MDK);
-DEFINE_NETPACKET_STRING(RemovePacket, DEM_REMOVE);
 DEFINE_NETPACKET_STRING(ChangeMapPacket, DEM_CHANGEMAP);
+DEFINE_NETPACKET_STRING_CONDITIONAL(MDKPacket, DEM_MDK);
 DEFINE_NETPACKET_STRING_CONDITIONAL(KillClassPacket, DEM_KILLCLASSCHEAT);
+DEFINE_NETPACKET_STRING_CONDITIONAL(RemovePacket, DEM_REMOVE);
 
 class WarpPacket : public NetPacket
 {
