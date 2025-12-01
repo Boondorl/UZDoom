@@ -35,6 +35,7 @@
 #include "doomtype.h"
 #include "vectors.h"
 #include "dobject.h"
+#include "actorptrselect.h"
 
 const double NO_VALUE = FLT_MAX;
 
@@ -147,7 +148,7 @@ void InitSpawnablesFromMapinfo();
 int P_Thing_CheckInputNum(player_t *p, int inputnum);
 int P_Thing_Warp(AActor *caller, AActor *reference, double xofs, double yofs, double zofs, DAngle angle, int flags, double heightoffset, double radiusoffset, DAngle pitch);
 struct FLevelLocals;
-int P_Thing_CheckProximity(FLevelLocals *Level, AActor *self, PClass *classname, double distance, int count, int flags, int ptr, bool counting = false);
+int P_Thing_CheckProximity(FLevelLocals *Level, AActor *self, PClass *classname, double distance, int count, int flags, int ptr, bool counting = false, EPTRClientSideState clientSide = CSPTR_IGNORE);
 
 enum
 {

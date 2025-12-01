@@ -51,6 +51,13 @@ enum AAPTR
 
 };
 
+enum EPTRClientSideState
+{
+	CSPTR_IGNORE = -1,
+	CSPTR_SERVER,
+	CSPTR_CLIENTSIDE,
+};
+
 /*
 	COPY_AAPTR
 
@@ -66,7 +73,7 @@ enum AAPTR
 
 struct FLevelLocals;
 AActor *COPY_AAPTR(AActor *origin, int selector);
-AActor *COPY_AAPTREX(FLevelLocals *Level, AActor *origin, int selector);
+AActor *COPY_AAPTREX(FLevelLocals *Level, AActor *origin, int selector, EPTRClientSideState clientSide);
 enum PTROP
 {
 	PTROP_UNSAFETARGET = 1,
