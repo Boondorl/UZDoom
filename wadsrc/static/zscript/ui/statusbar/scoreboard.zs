@@ -18,17 +18,17 @@ extend class BaseStatusBar
 		{
 			// Compare first by teams if teamplay.
 			if (teamplay)
-				diff = p1.GetTeam() - p2.GetTeam();
+				diff = p2.GetTeam() - p1.GetTeam();
 			if (!diff)
-				diff = p2.FragCount - p1.FragCount;
+				diff = p1.FragCount - p2.FragCount;
 		}
 		else
 		{
-			diff = p2.KillCount - p1.KillCount;
+			diff = p1.KillCount - p2.KillCount;
 		}
 
 		if (!diff)
-			diff = p1.GetUserName().CompareNoCase(p2.GetUserName());
+			diff = p2.GetUserName().CompareNoCase(p1.GetUserName());
 		if (!diff)
 			diff = playerB - playerA;
 
@@ -107,30 +107,6 @@ extend class BaseStatusBar
 		return maxWidth, maxHeight;
 	}
 
-	int, int GetScoreboardLogoDimensions()
-	{
-		int maxWidth, maxHeight;
-		PlayerInfo player;
-		while ((player = PlayerInfo.GetNextPlayer(player)))
-		{
-			int pTeam = player.GetTeam();
-			if (!Team.IsValid(pTeam) || Teams[pTeam].GetLogoName().IsEmpty())
-				continue;
-
-			TextureID icon = Teams[pTeam].GetLogo();
-			if (!icon.IsValid())
-				continue;
-			
-			let [width, height] = TexMan.GetSize(icon);
-			if (width > maxWidth)
-				maxWidth = width;
-			if (height > maxHeight)
-				maxHeight = height;
-		}
-
-		return maxWidth, maxHeight;
-	}
-
 	version("4.15.1") virtual void InitScoreboard()
 	{
 		ScoreboardFont = NewSmallFont;
@@ -172,8 +148,20 @@ extend class BaseStatusBar
 		if (!deathmatch || timelimit <= 0.0 || GameState != GS_LEVEL)
 			return;
 
-		String timer = SystemTime.Format("%X", Max(int(timelimit * GameTicRate * 60) - Level.MapTime, 0));
-		DrawScoreboardText(ScoreboardFont, Font.CR_GRAY, Screen.GetWidth() / 2, 5 * CleanYFac_1, timer, -0.5);
+		int timeLeft = Max(int(timelimit * 60 * GameTicRate) - Level.MapTime, 0);
+		int hours = timeLeft / (GameTicRate * 3600);
+		timeLeft -= hours * GameTicRate * 3600;
+		int minutes = timeLeft / (GameTicRate * 60);
+		timeleft -= minutes * GameTicRate * 60;
+		int seconds = timeLeft / GameTicRate;
+		
+		String timer;
+		if (timelimit >= 60.0)
+			timer = String.Format("%2d:%02d:%02d", hours, minutes, seconds);
+		else
+			timer = String.Format("%2d:%02d", minutes, seconds);
+
+		DrawScoreboardText(ScoreboardFont, Font.CR_WHITE, Screen.GetWidth() / 2, 5 * CleanYFac_1, timer, -0.5);
 	}
 	
 	version("4.15.1") virtual void DrawPlayerScores(Array<int> sortedPlayers)
@@ -192,12 +180,9 @@ extend class BaseStatusBar
 		let [iconWidth, iconHeight] = GetScoreboardIconDimensions();
 		iconWidth *= CleanXFac_1;
 		iconHeight *= CleanYFac_1;
-		let [logoWidth, logoHeight] = GetScoreboardLogoDimensions();
-		logoWidth *= CleanXFac_1;
-		logoHeight *= CleanYFac_1;
 		// Lock the scoreboard to 4:3 to make it more readable on widescreens.
 		int scoreboardWidth = int(Screen.GetHeight() * (4.0 / 3.0)) - 100 * CleanXFac_1;
-		int rowHeight = Max(Max(iconHeight, ScoreboardFont.GetHeight() * CleanYFac_1), logoHeight) + yPadding * 2;
+		int rowHeight = Max(iconHeight, ScoreboardFont.GetHeight() * CleanYFac_1) + yPadding * 2;
 		int rowCenter = rowHeight / 2;
 
 		String nameHeader = StringTable.Localize("$SCORE_NAME");
@@ -244,10 +229,10 @@ extend class BaseStatusBar
 			String text = String.Format("%2d ", pNum);
 			DrawScoreboardText(ScoreboardFont, Font.CR_WHITE, x + xPadding * 2 + colBoxSize, y, text, yOfs: -0.5);
 			int numWidth = ScoreboardFont.StringWidth(text) * CleanXFac_1;
-			text = player.GetUserName(16u);
+			text = player.GetUserName(32u);
 			DrawScoreboardText(ScoreboardFont, GetScoreboardTextColor(player), x + xPadding * 2 + colBoxSize + numWidth, y, text, yOfs: -0.5);
 			if (player.Mo.ScoreIcon.IsValid())
-				DrawScoreboardImage(player.Mo.ScoreIcon, x + scoreOfs - xPadding - iconWidth / 2, y);
+				DrawScoreboardImage(player.Mo.ScoreIcon, x - xPadding - iconWidth / 2, y);
 
 			text = String.Format("%d", deathmatch ? player.FragCount : player.KillCount);
 			DrawScoreboardText(ScoreboardFont, Font.CR_WHITE, x + latencyOfs - xPadding, y, text, -1.0, -0.5);
@@ -257,15 +242,7 @@ extend class BaseStatusBar
 
 			int pTeam = player.GetTeam();
 			if (isTeamplay && Team.IsValid(pTeam))
-			{
 				teamScores.Insert(pTeam, teamScores.Get(pTeam) + player.FragCount);
-				if (Teams[pTeam].GetLogoName().IsNotEmpty())
-				{
-					TextureID logo = Teams[pTeam].GetLogo();
-					if (logo.IsValid())
-						DrawScoreboardImage(logo, x - xPadding - logoWidth / 2, y);
-				}
-			}
 
 			y += rowHeight;
 		}
@@ -288,10 +265,29 @@ extend class BaseStatusBar
 			int countedTeams;
 			foreach (t, score : teamScores)
 			{
+				int xPos = x + xOfs + columnWidth * column;
+				
+				TextureID icon = Teams[t].GetLogo();
+				if (icon.IsValid())
+				{
+					// Try and fill the score vertically, otherwise filling it horizontally
+					// if it bleeds out the edges. The icon is allowed to go slightly into
+					// the margins to make it always somewhat visible behind the numbers.
+					let [w, h] = TexMan.GetSize(icon);
+					double iconScalar = double(largeRowHeight - yPadding) / h;
+					if (w * iconScalar > columnWidth - xPadding)
+						iconScalar = double(columnWidth - xPadding) / w;
+					Screen.DrawTexture(icon, true,
+										xPos + columnWidth / 2, y + largeRowHeight / 2,
+										DTA_CenterOffset, true, DTA_Alpha, 0.5,
+										DTA_ScaleX, iconScalar, DTA_ScaleY, iconScalar);
+				}
+
 				String text = String.Format("%4d", score);
 				Screen.DrawText(BigScoreboardFont, Teams[t].GetTextColor(),
-								x + xOfs + xPadding + columnWidth * column, y + yPadding, text,
+								xPos + xPadding, y + yPadding, text,
 								DTA_ScaleX, CleanXFac_1 * scalar, DTA_ScaleY, CleanYFac_1 * scalar);
+
 				++countedTeams;
 				if (++column >= maxColumns)
 				{

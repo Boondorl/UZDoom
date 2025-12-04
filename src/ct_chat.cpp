@@ -252,9 +252,10 @@ void CT_Drawer (void)
 		 bScoreboardToggled))
 	{
 		bool skipit = false;
-		if (gamestate == GS_CUTSCENE)
+		if (gamestate != GS_LEVEL)
 		{
-			// todo: check for summary screen
+			bScoreboardToggled = false;
+			skipit = true;
 		}
 		if (!skipit) HU_DrawScores (vp.TicFrac);
 	}
