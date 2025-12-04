@@ -2,6 +2,7 @@
 extend class BaseStatusBar
 {
 	const MAX_SCOREBOARD_ROWS = 10;
+	const MAX_TEAM_SCORE_ROWS = 2;
 	const SCOREBOARD_PADDING = 5;
 
 	Font ScoreboardFont;
@@ -203,18 +204,32 @@ extend class BaseStatusBar
 		Screen.DrawThickLine(x, y, x + scoreboardWidth, y, CleanXFac_1, borderCol);
 
 		int top = y - ScoreboardFont.GetHeight() * CleanYFac_1;
-		int bottom = y + rowHeight * sortedPlayers.Size();
+		int bottom = y + rowHeight * Min(sortedPlayers.Size(), MAX_SCOREBOARD_ROWS);
 		Screen.DrawThickLine(x + scoreOfs, top, x + scoreOfs, bottom, CleanYFac_1, borderCol);
 		Screen.DrawThickLine(x + latencyOfs, top, x + latencyOfs, bottom, CleanYFac_1, borderCol);
 
+		int curRow = 1;
 		int colBoxSize = 6 * CleanXFac_1;
 		y += rowCenter;
 		bool darkBackdrop;
 		bool isTeamplay = deathmatch && teamplay;
 		Map<int, int> teamScores;
+		// Only check this if the player actually exists in the list.
+		bool drewSelf = sortedPlayers.Find(ConsolePlayer) >= sortedPlayers.Size();
 		foreach (pNum : sortedPlayers)
 		{
 			PlayerInfo player = Players[pNum];
+			if (pNum == ConsolePlayer)
+				drewSelf = true;
+
+			int pTeam = player.GetTeam();
+			if (isTeamplay && Team.IsValid(pTeam))
+				teamScores.Insert(pTeam, teamScores.Get(pTeam) + player.FragCount);
+
+			if (!drewSelf && curRow >= MAX_SCOREBOARD_ROWS)
+				continue;
+			if (curRow > MAX_SCOREBOARD_ROWS)
+				continue;
 
 			Screen.Dim(darkBackdrop ? Color(64, 64, 64) : Color(128, 128, 128), 0.2, x, y - rowCenter, scoreboardWidth, rowHeight);
 			darkBackdrop = !darkBackdrop;
@@ -239,11 +254,8 @@ extend class BaseStatusBar
 			text = String.Format("%d", player.GetAverageLatency());
 			DrawScoreboardText(ScoreboardFont, Font.CR_WHITE, x + scoreboardWidth - xPadding, y, text, -1.0, -0.5);
 
-			int pTeam = player.GetTeam();
-			if (isTeamplay && Team.IsValid(pTeam))
-				teamScores.Insert(pTeam, teamScores.Get(pTeam) + player.FragCount);
-
 			y += rowHeight;
+			++curRow;
 		}
 
 		if (isTeamplay && BigScoreboardFont)
@@ -259,11 +271,20 @@ extend class BaseStatusBar
 			if (teamScores.CountUsed() < maxColumns)
 				xOfs = columnWidth * (maxColumns - teamScores.CountUsed()) / 2;
 
-			y = top - largeRowHeight * int(Ceil(double(teamScores.CountUsed()) / maxColumns));
+			y = top - largeRowHeight * Min(int(Ceil(double(teamScores.CountUsed()) / maxColumns)), MAX_TEAM_SCORE_ROWS);
+			curRow = 1;
 			uint column;
 			int countedTeams;
+			drewSelf = !teamScores.CheckKey(Players[ConsolePlayer].GetTeam());
 			foreach (t, score : teamScores)
 			{
+				++countedTeams;
+				if (t == Players[ConsolePlayer].GetTeam())
+					drewSelf = true;
+
+				if (!drewSelf && curRow >= MAX_TEAM_SCORE_ROWS && column + 1 >= maxColumns)
+					continue;
+
 				int xPos = x + xOfs + columnWidth * column;
 				
 				TextureID icon = Teams[t].GetLogo();
@@ -287,11 +308,13 @@ extend class BaseStatusBar
 								xPos + xPadding, y + yPadding, text,
 								DTA_ScaleX, CleanXFac_1 * scalar, DTA_ScaleY, CleanYFac_1 * scalar);
 
-				++countedTeams;
 				if (++column >= maxColumns)
 				{
 					y += largeRowHeight;
 					column = 0u;
+					if (++curRow > MAX_TEAM_SCORE_ROWS)
+						break;
+
 					uint remaining = teamScores.CountUsed() - countedTeams;
 					if (remaining < maxColumns)
 						xOfs = columnWidth * (maxColumns - remaining) / 2;
