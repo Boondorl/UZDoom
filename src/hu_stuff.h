@@ -42,8 +42,8 @@ void CT_Drawer (void);
 
 // [RH] Draw deathmatch scores
 
-void HU_DrawScores(int me, double ticFrac);
+void HU_DrawScores(double ticFrac);
 
-extern bool SB_ForceActive;
+extern bool bScoreboardToggled;
 
 #endif

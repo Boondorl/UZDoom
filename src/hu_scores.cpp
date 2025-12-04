@@ -132,7 +132,7 @@ void HU_SortPlayers
 }
 */
 
-bool SB_ForceActive = false;
+bool bScoreboardToggled = false;
 
 
 // PRIVATE DATA DEFINITIONS ------------------------------------------------
@@ -145,16 +145,13 @@ bool SB_ForceActive = false;
 //
 //==========================================================================
 
-void HU_DrawScores(int player, double ticFrac)
+void HU_DrawScores(double ticFrac)
 {
-	IFVIRTUALPTR(StatusBar, DBaseStatusBar, Scoreboard_DrawScores)
-	{
-		VMValue params[] = { (DObject*)StatusBar, player, ticFrac };
-		VMCall(func, params, countof(params), nullptr, 0);
-	}
+	IFVIRTUALPTR(StatusBar, DBaseStatusBar, DrawScoreboard)
+		CallVM<void>(func, StatusBar, ticFrac);
 }
 
-CCMD (togglescoreboard)
+CCMD(togglescoreboard)
 {
-	SB_ForceActive = !SB_ForceActive;
+	bScoreboardToggled = !bScoreboardToggled;
 }
