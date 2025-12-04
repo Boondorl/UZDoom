@@ -145,12 +145,10 @@ bool bScoreboardToggled = false;
 //
 //==========================================================================
 
-bool HU_DrawScores(double ticFrac)
+void HU_DrawScores(double ticFrac)
 {
 	IFVIRTUALPTR(StatusBar, DBaseStatusBar, DrawScoreboard)
-		return !!CallVM<int>(func, StatusBar, ticFrac);
-
-	return false;
+		CallVM<void>(func, StatusBar, ticFrac);
 }
 
 CCMD(togglescoreboard)

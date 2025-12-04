@@ -113,26 +113,26 @@ extend class BaseStatusBar
 		BigScoreboardFont = BigFont;
 	}
 
-    version("4.15.1") virtual bool DrawScoreboard(double ticFrac)
+    version("4.15.1") virtual void DrawScoreboard(double ticFrac)
     {
 		if (!ScoreboardFont)
-			return false;
+			return;
 
 	    if (deathmatch)
 	    {
 		    if (teamplay)
 		    {
 			    if(!sb_teamdeathmatch_enable)
-				    return false;
+				    return;
 		    }
 		    else if (!sb_deathmatch_enable)
 		    {
-			    return false;
+			    return;
 		    }
 	    }
 	    else if (!multiplayer || !sb_cooperative_enable)
 	    {
-		    return false;
+		    return;
 	    }
 
 		DrawRemainingTime();
@@ -140,7 +140,6 @@ extend class BaseStatusBar
         Array<int> sortedPlayers;
 		SortScoreboardPlayers(sortedPlayers, ComparePlayerPoints);
 		DrawPlayerScores(sortedPlayers);
-		return true;
     }
 
 	version("4.15.1") virtual void DrawRemainingTime()
@@ -161,7 +160,7 @@ extend class BaseStatusBar
 		else
 			timer = String.Format("%2d:%02d", minutes, seconds);
 
-		DrawScoreboardText(ScoreboardFont, Font.CR_WHITE, Screen.GetWidth() / 2, 5 * CleanYFac_1, timer, -0.5);
+		DrawScoreboardText(ScoreboardFont, Font.CR_WHITE, Screen.GetWidth() / 2, GetTopOfStatusBar() - 5 * CleanYFac_1, timer, -0.5, -1.0);
 	}
 	
 	version("4.15.1") virtual void DrawPlayerScores(Array<int> sortedPlayers)
