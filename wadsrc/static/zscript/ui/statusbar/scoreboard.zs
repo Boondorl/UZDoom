@@ -267,6 +267,7 @@ extend class BaseStatusBar
 			xPadding *= scalar;
 			yPadding *= scalar;
 
+			int baseOfs = (scoreboardWidth - columnWidth * maxColumns) / 2;
 			int xOfs;
 			if (teamScores.CountUsed() < maxColumns)
 				xOfs = columnWidth * (maxColumns - teamScores.CountUsed()) / 2;
@@ -285,7 +286,7 @@ extend class BaseStatusBar
 				if (!drewSelf && curRow >= MAX_TEAM_SCORE_ROWS && column + 1 >= maxColumns)
 					continue;
 
-				int xPos = x + xOfs + columnWidth * column;
+				int xPos = x + baseOfs + xOfs + columnWidth * column;
 				
 				TextureID icon = Teams[t].GetLogo();
 				if (icon.IsValid())
