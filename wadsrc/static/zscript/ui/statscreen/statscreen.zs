@@ -1005,40 +1005,49 @@ class StatusScreen : ScreenJob abstract version("2.5")
 	protected virtual void updateStats() {}
 	protected virtual void drawStats() {}
 
+	// TODO: Eventually this should only be here for backwards compatibility as the scoreboard
+	// has now been entirely rewritten and no longer uses this function.
 	static int, int, int GetPlayerWidths()
 	{
-		int maxNameWidth;
+		if (!StatusBar.ScoreboardFont)
+			return 0, 0, 0;
+
+		int maxNameWidth = StatusBar.ScoreboardFont.StringWidth("Name");
 		int maxScoreWidth;
 		int maxIconHeight;
 
-		StatusBar.Scoreboard_GetPlayerWidths(maxNameWidth, maxScoreWidth, maxIconHeight);
+		for (int i = 0; i < MAXPLAYERS; ++i)
+		{
+			if (!playeringame[i])
+				continue;
+
+			int width = StatusBar.ScoreboardFont.StringWidth(players[i].GetUserName(16u));
+			if (width > maxNameWidth)
+				maxNameWidth = width;
+
+			TextureID icon = players[i].mo.ScoreIcon;
+			if (icon.isValid())
+			{
+				width = int(screen.GetTextureWidth(icon) - screen.GetTextureLeftOffset(icon) + 2.5);
+				if (width > maxScoreWidth)
+					maxScoreWidth = width;
+
+				int height = int(screen.GetTextureHeight(icon) - screen.GetTextureTopOffset(icon) + 0.5);
+				if (height > maxIconHeight)
+					maxIconHeight = height;
+			}
+		}
 
 		return maxNameWidth, maxScoreWidth, maxIconHeight;
 	}
 
-	static Color GetRowColor(PlayerInfo player, bool highlight)
+	static int GetRowColor(PlayerInfo player, bool highlight)
 	{
-		return StatusBar.Scoreboard_GetRowColor(player, highlight);
+		return StatusBar.GetScoreboardTextColor(player);
 	}
 
 	static void GetSortedPlayers(in out Array<int> sorted, bool teamplay)
 	{
-		sorted.clear();
-		for(int i = 0; i < MAXPLAYERS; i++)
-		{
-			if(playeringame[i])
-			{
-				sorted.Push(i);
-			}
-		}
-
-		if(teamplay)
-		{
-			StatusBar.Scoreboard_SortPlayers(sorted, BaseStatusBar.Scoreboard_CompareByTeams);
-		}
-		else
-		{
-			StatusBar.Scoreboard_SortPlayers(sorted, BaseStatusBar.Scoreboard_CompareByPoints);
-		}
+		StatusBar.SortScoreboardPlayers(sorted, BaseStatusBar.ComparePlayerPoints);
 	}
 }

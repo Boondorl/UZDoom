@@ -248,15 +248,15 @@ void CT_Drawer (void)
 
 	if (players[consoleplayer].camera != NULL &&
 		(buttonMap.ButtonDown(Button_ShowScores) ||
-		 players[consoleplayer].camera->health <= 0 ||
-		 SB_ForceActive))
+		 players[consoleplayer].playerstate == PST_DEAD ||
+		 bScoreboardToggled))
 	{
 		bool skipit = false;
 		if (gamestate == GS_CUTSCENE)
 		{
 			// todo: check for summary screen
 		}
-		if (!skipit) HU_DrawScores (consoleplayer, vp.TicFrac);
+		if (!skipit) HU_DrawScores (vp.TicFrac);
 	}
 	if (chatmodeon)
 	{

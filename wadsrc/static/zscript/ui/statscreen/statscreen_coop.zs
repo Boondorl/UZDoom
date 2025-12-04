@@ -301,7 +301,7 @@ class CoopStatusScreen : StatusScreen
 			if (ScreenJobRunner.IsPlayerReady(i)) // Bots are automatically assumed ready, to prevent confusion
 				screen.DrawTexture(readyico, true, x - (readysize.Y * CleanXfac), y, DTA_CleanNoMove, true);
 
-			Color thiscolor = GetRowColor(player, i == consoleplayer);
+			int thiscolor = GetRowColor(player, i == consoleplayer);
 			if (player.mo.ScoreIcon.isValid())
 			{
 				screen.DrawTexture(player.mo.ScoreIcon, true, icon_x, y, DTA_CleanNoMove, true);
