@@ -108,7 +108,7 @@ void NetworkPage::SetValues(FStartupSelectionInfo& info) const
 	info.bSaveNetArgs = SaveParametersCheckbox->GetChecked();
 	const auto save = SaveFileEdit->GetText();
 	if (!save.empty())
-		info.AdditionalNetArgs.AppendFormat(" -loadgame %s", save.c_str());
+		info.AdditionalNetArgs.AppendFormat(" -loadgame \"%s\"", save.c_str());
 	info.DefaultNetSaveFile = save;
 }
 
