@@ -45,6 +45,8 @@ private:
 	TextLabel* ParametersLabel = nullptr;
 	LineEdit* ParametersEdit = nullptr;
 	CheckboxLabel* SaveParametersCheckbox = nullptr;
+	TextLabel* PlayerClassLabel = nullptr;
+	LineEdit* PlayerClassEdit = nullptr;
 };
 
 class HostSubPage : public Widget

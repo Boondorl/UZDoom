@@ -25,6 +25,8 @@ NetworkPage::NetworkPage(LauncherWindow* launcher, const FStartupSelectionInfo& 
 	SaveFileCheckbox = new CheckboxLabel(this);
 	SaveParametersCheckbox = new CheckboxLabel(this);
 	IWADsDropdown = new Dropdown(this);
+	PlayerClassLabel = new TextLabel(this);
+	PlayerClassEdit = new LineEdit(this);
 
 	SaveFileCheckbox->SetChecked(info.bSaveNetFile);
 	if (!info.DefaultNetSaveFile.IsEmpty())
@@ -109,6 +111,9 @@ void NetworkPage::SetValues(FStartupSelectionInfo& info) const
 	const auto save = SaveFileEdit->GetText();
 	if (!save.empty())
 		info.AdditionalNetArgs.AppendFormat(" -loadgame \"%s\"", save.c_str());
+	const auto pClass = PlayerClassEdit->GetText();
+	if (!pClass.empty())
+		info.AdditionalNetArgs.AppendFormat(" +playerclass \"%s\"", pClass.c_str());
 	info.DefaultNetSaveFile = save;
 }
 
@@ -146,9 +151,15 @@ void NetworkPage::OnGeometryChanged()
 	const double wSize = w * 0.5;
 
 	y -= EditHeight + 2.0;
-	SaveFileEdit->SetFrameGeometry(0.0, y, wSize, EditHeight);
+	const double top = y;
+	SaveFileEdit->SetFrameGeometry(0.0, y, wSize - 2.5, EditHeight);
 	y -= SaveFileLabel->GetPreferredHeight();
-	SaveFileLabel->SetFrameGeometry(0.0, y, wSize, SaveFileLabel->GetPreferredHeight());
+	SaveFileLabel->SetFrameGeometry(0.0, y, wSize - 2.5, SaveFileLabel->GetPreferredHeight());
+
+	y = top;
+	PlayerClassEdit->SetFrameGeometry(wSize + 2.5, y, wSize - 2.5, EditHeight);
+	y -= PlayerClassLabel->GetPreferredHeight();
+	PlayerClassLabel->SetFrameGeometry(wSize + 2.5, y, wSize - 2.5, PlayerClassLabel->GetPreferredHeight());
 
 	StartPages->SetFrameGeometry(0.0, pageTop, w, y - pageTop);
 }
@@ -159,6 +170,7 @@ void NetworkPage::UpdateLanguage()
 	SaveFileLabel->SetText(GStrings.GetString("PICKER_LOADSAVE"));
 	SaveFileCheckbox->SetText(GStrings.GetString("PICKER_REMSAVE"));
 	SaveParametersCheckbox->SetText(GStrings.GetString("PICKER_REMPARM"));
+	PlayerClassLabel->SetText(GStrings.GetString("PICKER_PLAYERCLASS"));
 
 	StartPages->SetTabText(HostPage, GStrings.GetString("PICKER_HOST"));
 	StartPages->SetTabText(JoinPage, GStrings.GetString("PICKER_JOIN"));
