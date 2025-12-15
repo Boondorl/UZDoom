@@ -214,6 +214,8 @@ extend class Object
 	native static void MarkSound(Sound snd);
 	native static uint BAM(double angle);
 	native static void SetMusicVolume(float vol);
+
+	version("4.15.1") native void SetNetworkOwner(PlayerInfo player);
 }
 
 class Thinker : Object native play

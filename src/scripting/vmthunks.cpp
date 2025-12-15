@@ -2755,6 +2755,65 @@ DEFINE_ACTION_FUNCTION(DObject, S_ChangeMusic)
 	ACTION_RETURN_BOOL(S_ChangeMusic(music.GetChars(), order, looping, force));
 }
 
+static void SetNetworkOwner(DObject* self, player_t* player)
+{
+	if (self->GetNetworkID() < NetworkEntityManager::NetIDStart)
+	{
+		Printf(TEXTCOLOR_RED "Players cannot assign their network owners\n");
+		return;
+	}
+
+	const uint32_t owner = self->GetNetworkOwner();
+	if (player == nullptr)
+		NetworkEntityManager::RemoveNetworkOwner(self);
+	else
+		NetworkEntityManager::SetNetworkOwner(player - players, self);
+
+	// Make sure any of its owned objects are transfered over as well if it's an Actor.
+	const uint32_t newOwner = self->GetNetworkOwner();
+	if (owner != newOwner && self->IsKindOf(NAME_Actor))
+	{
+		TArray<DObject*> ents = {};
+
+		auto actor = dyn_cast<AActor>(self);
+		if (actor->alternative != nullptr && actor->alternative->GetNetworkOwner() == owner)
+			ents.Push(actor->alternative);
+		if (actor->ViewPos != nullptr && actor->ViewPos->GetNetworkID() == owner)
+			ents.Push(actor->ViewPos);
+		if (!actor->IsKindOf(NAME_Inventory) || actor->PointerVar<AActor>(NAME_Owner) == nullptr)
+		{
+			for (AActor* inv = actor->Inventory; inv != nullptr; inv = inv->Inventory)
+			{
+				if (inv->GetNetworkOwner() == owner)
+					ents.Push(inv);
+			}
+		}
+		TMap<FName, TObjPtr<DBehavior*>>::Iterator it = { actor->Behaviors };
+		TMap<FName, TObjPtr<DBehavior*>>::Pair* pair = nullptr;
+		while (it.NextPair(pair))
+		{
+			DBehavior* b = it->Value;
+			if (b != nullptr && b->GetNetworkOwner() == owner)
+				ents.Push(b);
+		}
+
+		for (auto ent : ents)
+		{
+			if (newOwner == NetworkEntityManager::WorldNetID)
+				NetworkEntityManager::RemoveNetworkOwner(ent);
+			else
+				NetworkEntityManager::SetNetworkOwner(player - players, ent);
+		}
+	}
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DObject, SetNetworkOwner, SetNetworkOwner)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_POINTER(player, player_t);
+	SetNetworkOwner(self, player);
+	return 0;
+}
 
 DEFINE_ACTION_FUNCTION(_Screen, GetViewWindow)
 {

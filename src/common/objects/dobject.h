@@ -343,6 +343,7 @@ protected:
 private:
 	// This is intentionally left unserialized.
 	uint32_t _networkID;
+	uint32_t _networkOwner;
 
 public:
 	inline bool IsNetworked() const { return (ObjectFlags & OF_Networked); }
@@ -351,6 +352,8 @@ public:
 	inline bool IsPredicted() const { return (ObjectFlags & OF_Predicted); }
 	inline void SetPredicted(bool set) { if (set) ObjectFlags |= OF_Predicted; else ObjectFlags &= ~OF_Predicted; }
 	inline bool IsPredicting() const { return (ObjectFlags & OF_Predicting); }
+	inline uint32_t GetNetworkOwner() const { return _networkOwner; }
+	inline void SetNetworkOwner(const uint32_t id) { _networkOwner = id; }
 	void SetNetworkID(const uint32_t id);
 	void ClearNetworkID();
 	void RemoveFromNetwork();
@@ -464,6 +467,7 @@ inline T *&DObject::PointerVar(FName field)
 	return *(T**)ScriptVar(field, nullptr);	// pointer check is more tricky and for the handful of uses in the DECORATE parser not worth the hassle.
 }
 
+#include "i_net.h"
 
 class NetworkEntityManager final
 {
@@ -473,25 +477,41 @@ private:
 	inline static TArray<uint32_t> s_openNetIDs = {};
 	inline static TArray<DObject*> s_problemEntities = {};
 	inline static TArray<DObject*> s_predictedEntities = {};
+	inline static TMap<uint32_t, TArray<DObject*>> s_ownedEntities = {};
+
+	// Eventually when players in-game join, store their stuff in here in case a player
+	// actually exists in their saved slot, that way when deserializing them it doesn't
+	// overwrite an actual player's owned entities.
+	inline static TMap<uint32_t, TArray<DObject*>> s_tempOwnedEntities = {};
+	inline static TMap<unsigned, uint32_t> s_toTransfer = {};
 
 public:
 	NetworkEntityManager() = delete;
 	
 	static constexpr uint32_t WorldNetID = 0u;
 	static constexpr uint32_t ClientNetIDStart = 1u;
-	inline static uint32_t NetIDStart;// = MAXPLAYERS + 1u;
+	static constexpr uint32_t NetIDStart = ClientNetIDStart + MAXPLAYERS;
 
 	static void InitializeNetworkEntities();
-	static void SetClientNetworkEntity(DObject* mo, const unsigned int playNum);
-	static void AddNetworkEntity(DObject* const ent);
-	static void RemoveNetworkEntity(DObject* const ent);
-	static DObject* GetNetworkEntity(const uint32_t id);
+	static uint32_t GetClientID(unsigned playNum);
+	static unsigned GetPlayerNum(uint32_t id);
+	static void SetClientNetworkEntity(DObject* mo, unsigned playNum);
+	static void AddNetworkEntity(DObject* ent);
+	static void RemoveNetworkEntity(DObject* ent);
+	static DObject* GetNetworkEntity(uint32_t id);
 	static void AddPredictedEntity(DObject* ent);
 	static void VerifyPredictedEntities();
 	static void RemovePredictedEntity(DObject* ent);
 	static void EnablePrediction();
 	static void DisablePrediction();
 	static bool IsPredicting();
+	static void SetNetworkOwner(unsigned playNum, DObject* ent);
+	static void RemoveNetworkOwner(DObject* ent);
+	static TArrayView<DObject*> GetOwnedNetworkEntities(unsigned playNum);
+
+	static void SetTempOwner(uint32_t id, DObject* ent);
+	static void SetTempTransfer(unsigned playNum, uint32_t id);
+	static void TransferTempOwners();
 };
 
 // This is the only method aside from calling CreateNew that should be used for creating DObjects

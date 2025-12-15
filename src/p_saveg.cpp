@@ -649,7 +649,12 @@ void FLevelLocals::SerializePlayers(FSerializer &arc, bool skipload)
 				for (unsigned int i = 0u; i < MAXPLAYERS; ++i)
 				{
 					if (PlayerInGame(i) && Players[i]->mo != nullptr)
+					{
+						// The player will store their previous slot with all their original owned
+						// Objects, so make sure they get moved to the correct one.
+						NetworkEntityManager::SetTempTransfer(i, Players[i]->mo->GetNetworkOwner());
 						NetworkEntityManager::SetClientNetworkEntity(Players[i]->mo, i);
+					}
 				}
 			}
 		}
@@ -1052,6 +1057,8 @@ void FLevelLocals::Serialize(FSerializer &arc, bool hubload)
 		while (it.Next()) ImpactDecalCount++;
 
 		automap->UpdateShowAllLines();
+
+		NetworkEntityManager::TransferTempOwners();
 
 	}
 	// clean up the static data we allocated

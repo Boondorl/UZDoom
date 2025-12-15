@@ -28,7 +28,6 @@
 
 #include <stdint.h>
 #include "m_argv.h"
-#include "tarray.h"
 
 inline constexpr size_t MAXPLAYERS = 64u;
 

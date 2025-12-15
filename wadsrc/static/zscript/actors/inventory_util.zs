@@ -70,6 +70,7 @@ extend class Actor
 		// run sometime in the future, so by the time it runs, the inventory
 		// might not be in the same state as it was when DEM_INVUSE was sent.
 		Inv.InventoryID = InventoryID++;
+		Inv.SetNetworkOwner(player);
 	}
 
 	//============================================================================
@@ -146,6 +147,7 @@ extend class Actor
 			item.DetachFromOwner();
 			item.Owner = NULL;
 			item.Inv = NULL;
+			item.SetNetworkOwner(null);
 		}
 	}
 
@@ -785,6 +787,7 @@ extend class Actor
 		for (let item = Inv; item != null; item = item.Inv)
 		{
 			item.Owner = self;
+			item.SetNetworkOwner(player);
 		}
 	}
 

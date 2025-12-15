@@ -1772,6 +1772,19 @@ static void P_RollbackPlayers(FSerializer& arc)
 	arc.EndArray();
 }
 
+static void GetOwnedThinkerList(TMap<int, TArray<DThinker*>>& thinkers)
+{
+	thinkers.Clear();
+
+	auto view = NetworkEntityManager::GetOwnedNetworkEntities(consoleplayer);
+	for (auto obj : view)
+	{
+		auto thinker = dyn_cast<DThinker>(obj);
+		if (thinker != nullptr)
+			thinkers[thinker->GetStatNum()].Push(thinker);
+	}
+}
+
 void P_PredictClient()
 {
 	if (gamestate != GS_LEVEL)

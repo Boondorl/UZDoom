@@ -1914,6 +1914,8 @@ static void SetViewPos(AActor *self, double x, double y, double z, int flags)
 	{
 		auto vp = Create<DViewPosition>();
 		vp->ObjectFlags |= (self->ObjectFlags & OF_TransferrableFlags);
+		if (self->GetNetworkOwner() != NetworkEntityManager::WorldNetID)
+			NetworkEntityManager::SetNetworkOwner(NetworkEntityManager::GetPlayerNum(self->GetNetworkOwner()), vp);
 
 		self->ViewPos = vp;
 		GC::WriteBarrier(self, vp);

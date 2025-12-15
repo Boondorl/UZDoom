@@ -635,13 +635,22 @@ void DObject::Serialize(FSerializer &arc)
 	SerializeFlag("travelling", OF_Travelling);
 	SerializeFlag("transient", OF_Transient);	// This is needed for rollbacks.
 	SerializeFlag("norollback", OF_NoRollback);
+	if (!arc.IsRollback())
+		arc("networkowner", _networkOwner);
 		
 	ObjectFlags |= OF_SerialSuccess;
 
-	if (arc.isReading() && (ObjectFlags & OF_Networked) && !arc.IsRollback())
+	if (arc.isReading() && !arc.IsRollback())
 	{
-		ClearNetworkID();
-		EnableNetworking(true);
+		if (ObjectFlags & OF_Networked)
+		{
+			ClearNetworkID();
+			EnableNetworking(true);
+		}
+		// This will get fixed during level load since it's not guaranteed clients will actually occupy
+		// the same slot number. Once clients get their real slot, they'll transfer all their owned
+		// Objects.
+		NetworkEntityManager::SetTempOwner(_networkOwner, this);
 	}
 }
 
@@ -696,16 +705,26 @@ void *DObject::ScriptVar(FName field, PType *type)
 void NetworkEntityManager::InitializeNetworkEntities()
 {
 	if (!s_netEntities.Size())
-		s_netEntities.AppendFill(nullptr, NetIDStart); // Allocate the first 0-8 slots for the world and clients.
+		s_netEntities.AppendFill(nullptr, NetIDStart); // Allocate the first 0-MAXPLAYERS slots for the world and clients.
+}
+
+uint32_t NetworkEntityManager::GetClientID(unsigned playNum)
+{
+	return ClientNetIDStart + playNum;
+}
+
+unsigned NetworkEntityManager::GetPlayerNum(uint32_t id)
+{
+	return id - ClientNetIDStart;
 }
 
 // Clients need special handling since they always go in slots 1 - MAXPLAYERS.
-void NetworkEntityManager::SetClientNetworkEntity(DObject* mo, const unsigned int playNum)
+void NetworkEntityManager::SetClientNetworkEntity(DObject* mo, unsigned playNum)
 {
 	// If resurrecting, we need to swap the corpse's position with the new pawn's
 	// position so it's no longer considered the client's body.
-	const uint32_t id = ClientNetIDStart + playNum;
-	DObject* const oldBody = s_netEntities[id];
+	const uint32_t id = GetClientID(playNum);
+	DObject* oldBody = s_netEntities[id];
 	if (oldBody != nullptr)
 	{
 		if (oldBody == mo)
@@ -716,6 +735,7 @@ void NetworkEntityManager::SetClientNetworkEntity(DObject* mo, const unsigned in
 		s_netEntities[curID] = oldBody;
 		oldBody->ClearNetworkID();
 		oldBody->SetNetworkID(curID);
+		RemoveNetworkOwner(oldBody);
 
 		mo->ClearNetworkID();
 	}
@@ -726,9 +746,10 @@ void NetworkEntityManager::SetClientNetworkEntity(DObject* mo, const unsigned in
 
 	s_netEntities[id] = mo;
 	mo->SetNetworkID(id);
+	SetNetworkOwner(playNum, mo);
 }
 
-void NetworkEntityManager::AddNetworkEntity(DObject* const ent)
+void NetworkEntityManager::AddNetworkEntity(DObject* ent)
 {
 	if (IsPredicting() || ent->IsNetworked() || ent->IsClientSide() || ent->IsPredicted())
 		return;
@@ -750,7 +771,7 @@ void NetworkEntityManager::AddNetworkEntity(DObject* const ent)
 	ent->SetNetworkID(id);
 }
 
-void NetworkEntityManager::RemoveNetworkEntity(DObject* const ent)
+void NetworkEntityManager::RemoveNetworkEntity(DObject* ent)
 {
 	if (IsPredicting() || !ent->IsNetworked())
 		return;
@@ -760,13 +781,14 @@ void NetworkEntityManager::RemoveNetworkEntity(DObject* const ent)
 		return;
 
 	assert(s_netEntities[id] == ent);
+	RemoveNetworkOwner(ent);
 	if (id >= NetIDStart)
 		s_openNetIDs.Push(id);
 	s_netEntities[id] = nullptr;
 	ent->ClearNetworkID();
 }
 
-DObject* NetworkEntityManager::GetNetworkEntity(const uint32_t id)
+DObject* NetworkEntityManager::GetNetworkEntity(uint32_t id)
 {
 	if (id == WorldNetID || id >= s_netEntities.Size())
 		return nullptr;
@@ -838,6 +860,108 @@ void NetworkEntityManager::DisablePrediction()
 bool NetworkEntityManager::IsPredicting()
 {
 	return s_bClientPredicting;
+}
+
+void NetworkEntityManager::SetNetworkOwner(unsigned playNum, DObject* ent)
+{
+	// Objects can only belong to clients that are aware the object exists
+	// in the first place. Client-side objects should automatically be considered
+	// owned by their respective clients.
+	if (!ent->IsNetworked() || ent->GetNetworkID() == WorldNetID)
+		return;
+
+	const uint32_t id = GetClientID(playNum);
+	if (s_netEntities[id] == nullptr || ent->GetNetworkOwner() == id)
+		return;
+
+	RemoveNetworkOwner(ent);
+	ent->SetNetworkOwner(id);
+	s_ownedEntities[id].Push(ent);
+}
+
+void NetworkEntityManager::RemoveNetworkOwner(DObject* ent)
+{
+	const uint32_t owner = ent->GetNetworkOwner();
+	if (owner == WorldNetID)
+		return;
+
+	auto lut = s_ownedEntities.CheckKey(owner);
+	if (lut != nullptr)
+	{
+		if (ent->GetNetworkID() == owner)
+		{
+			for (auto owned : *lut)
+				owned->SetNetworkOwner(WorldNetID);
+			lut->Clear();
+		}
+		else
+		{
+			lut->Delete(lut->Find(ent));
+			ent->SetNetworkOwner(WorldNetID);
+		}
+	}
+}
+
+TArrayView<DObject*> NetworkEntityManager::GetOwnedNetworkEntities(unsigned playNum)
+{
+	auto ents = s_ownedEntities.CheckKey(GetClientID(playNum));
+	if (ents == nullptr)
+		return { nullptr, 0u };
+
+	return { ents->Data(), ents->Size() };
+}
+
+void NetworkEntityManager::SetTempOwner(uint32_t id, DObject* ent)
+{
+	if (id != WorldNetID)
+		s_tempOwnedEntities[id].Push(ent);
+}
+
+void NetworkEntityManager::SetTempTransfer(unsigned playNum, uint32_t id)
+{
+	s_toTransfer[playNum] = id;
+}
+
+void NetworkEntityManager::TransferTempOwners()
+{
+	TMap<unsigned, uint32_t>::Iterator it = { s_toTransfer };
+	TMap<unsigned, uint32_t>::Pair* pair = nullptr;
+	while (it.NextPair(pair))
+	{
+		const uint32_t id = GetClientID(it->Key);
+		auto& arr = s_ownedEntities[id];
+		arr.Append(s_tempOwnedEntities[it->Value]);
+		s_tempOwnedEntities.Remove(it->Value);
+
+		TMap<DObject*, bool> marked = {};
+		for (size_t i = 0u; i < arr.Size(); ++i)
+		{
+			auto ent = arr[i];
+			if (ent == nullptr || (ent->ObjectFlags & OF_EuthanizeMe) || marked.CheckKey(ent) != nullptr)
+			{
+				arr.Delete(i);
+			}
+			else
+			{
+				ent->SetNetworkOwner(id);
+				marked[ent] = true;
+			}
+		}
+	}
+
+	TMap<uint32_t, TArray<DObject*>>::Iterator remaining = { s_tempOwnedEntities };
+	TMap<uint32_t, TArray<DObject*>>::Pair* rPair = nullptr;
+	while (remaining.NextPair(rPair))
+	{
+		for (auto ent : rPair->Value)
+		{
+			if (ent != nullptr && !(ent->ObjectFlags & OF_EuthanizeMe))
+				ent->SetNetworkOwner(WorldNetID);
+		}
+	}
+
+	s_toTransfer.Clear();
+	s_tempOwnedEntities.Clear();
 }
 
 //==========================================================================

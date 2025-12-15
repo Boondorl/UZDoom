@@ -513,6 +513,8 @@ DBehavior* AActor::AddBehavior(PClass& type)
 
 		b->Owner = this;
 		b->ObjectFlags |= (ObjectFlags & OF_TransferrableFlags);
+		if (GetNetworkOwner() != NetworkEntityManager::WorldNetID)
+			NetworkEntityManager::SetNetworkOwner(NetworkEntityManager::GetPlayerNum(GetNetworkOwner()), b);
 
 		Behaviors[type.TypeName] = b;
 		Level->AddActorBehavior(*b);
@@ -6203,12 +6205,18 @@ int MorphPointerSubstitution(AActor* from, AActor* to)
 	{
 		to->flags &= ~MF_UNMORPHED;
 		to->alternative = from->alternative = nullptr;
+		if (to->player == nullptr)
+			NetworkEntityManager::RemoveNetworkOwner(from);
 	}
 	else
 	{
 		from->flags |= MF_UNMORPHED;
 		from->alternative = to;
 		to->alternative = from;
+		if (to->player != nullptr)
+			NetworkEntityManager::SetNetworkOwner(to->player - players, from);
+		else if (from->GetNetworkOwner() != NetworkEntityManager::WorldNetID)
+			NetworkEntityManager::SetNetworkOwner(NetworkEntityManager::GetPlayerNum(from->GetNetworkOwner()), to);
 	}
 
 	return true;
