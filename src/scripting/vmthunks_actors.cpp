@@ -1917,8 +1917,11 @@ static void SetViewPos(AActor *self, double x, double y, double z, int flags)
 {
 	if (!self->ViewPos)
 	{
-		self->ViewPos = Create<DViewPosition>();
-		self->ViewPos->ObjectFlags |= (self->ObjectFlags & (OF_ClientSide | OF_Transient));
+		auto vp = Create<DViewPosition>();
+		vp->ObjectFlags |= (self->ObjectFlags & (OF_ClientSide | OF_Transient));
+
+		self->ViewPos = vp;
+		GC::WriteBarrier(self, vp);
 	}
 
 	DVector3 pos = { x,y,z };
