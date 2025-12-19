@@ -307,6 +307,18 @@ struct userinfo_t : TMap<FName,FBaseCVar *>
 void ReadUserInfo(FSerializer &arc, userinfo_t &info, FString &skin);
 void WriteUserInfo(FSerializer &arc, userinfo_t &info);
 
+struct FSafePosition
+{
+	sector_t* Sector = nullptr;
+	DVector3 Pos = {};
+	double Height = 0.0, MaxStepHeight = 0.0;
+	bool bValidPos = false;
+
+	void Update(AActor& mobj, bool force = false);
+	bool IsSafe(int tid) const;
+	FSerializer& Serialize(FSerializer& arc, const char* name);
+};
+
 //
 // Extended player object info: player_t
 //
@@ -445,7 +457,7 @@ public:
 	DAngle ConversationNPCAngle = nullAngle;
 	bool ConversationFaceTalker = false;
 
-	DVector3 LastSafePos = {}; // Mark the last known safe location the player was standing.
+	FSafePosition LastSafePos = {}; // Mark the last known safe location the player was standing.
 
 	double GetDeltaViewHeight() const
 	{
