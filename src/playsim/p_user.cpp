@@ -1571,6 +1571,45 @@ DEFINE_ACTION_FUNCTION(APlayerPawn, CheckUse)
 	return 0;
 }
 
+void FSafePosition::Update(AActor& mobj, bool force)
+{
+	FSafePosition test;
+	test.Sector = mobj.Sector;
+	test.Pos = mobj.Pos();
+	test.Height = mobj.IsKindOf(NAME_PlayerPawn) ? mobj.FloatVar(NAME_FullHeight) : mobj.GetDefault()->Height;
+	test.MaxStepHeight = mobj.MaxStepHeight;
+	test.bValidPos = mobj.Sector != nullptr
+					&& ((!(mobj.flags2 & MF2_ONMOBJ) && mobj.Z() <= mobj.floorz && mobj.Z() - mobj.dropoffz <= mobj.MaxDropOffHeight) || mobj.waterlevel >= 3);
+
+	if (force || test.IsSafe(mobj.tid))
+		memcpy(this, &test, sizeof(FSafePosition));
+}
+
+bool FSafePosition::IsSafe(int tid) const
+{
+	// These need to be validated in real-time as the sector itself could've changed, leading to a valid
+	// position no longer being safe.
+	return bValidPos
+			&& NextHighestCeilingAt(Sector, Pos.X, Pos.Y, Pos.Z, Pos.Z + Height) - Pos.Z >= Height
+			&& !Sector->IsDangerous(Pos, Height, tid);
+}
+
+FSerializer& FSafePosition::Serialize(FSerializer& arc, const char* name)
+{
+	if (arc.BeginObject(name))
+	{
+		arc("sector", Sector)
+			("pos", Pos)
+			("height", Height)
+			("maxstepheight", MaxStepHeight)
+			("bvalidpos", bValidPos);
+
+		arc.EndObject();
+	}
+
+	return arc;
+}
+
 //----------------------------------------------------------------------------
 //
 // PROC P_PlayerThink
@@ -1603,12 +1642,8 @@ void P_PlayerThink (player_t *player)
 		player->SubtitleCounter--;
 	}
 
-	if (player->playerstate == PST_LIVE
-		&& player->mo->Z() <= player->mo->floorz
-		&& !player->mo->Sector->IsDangerous(player->mo->Pos(), player->mo->Height))
-	{
-		player->LastSafePos = player->mo->Pos();
-	}
+	if (player->playerstate == PST_LIVE)
+		player->LastSafePos.Update(*player->mo);
 
 	++player->BobTimer;
 
@@ -1981,8 +2016,10 @@ void player_t::Serialize(FSerializer &arc)
 		("musinfoactor", MUSINFOactor)
 		("musinfotics", MUSINFOtics)
 		("soundclass", SoundClass)
-		("angleoffsettargets", angleOffsetTargets)
-		("lastsafepos", LastSafePos);
+		("angleoffsettargets", angleOffsetTargets);
+		// Uses a slightly different name since the type was changed, otherwise it would
+		// error out on loading older saves.
+		LastSafePos.Serialize(arc, "safepos");
 
 	if (!arc.IsRollback())
 	{

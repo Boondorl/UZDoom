@@ -6276,9 +6276,10 @@ AActor *FLevelLocals::SpawnPlayer (FPlayerStart *mthing, int playernum, int flag
 		&& p->mo != nullptr && p->playerstate == PST_REBORN
 		&& gameaction != ga_worlddone
 		&& !(p->mo->Sector->Flags & SECF_NORESPAWN)
-		&& p->LastDamageType != NAME_Suicide)
+		&& p->LastDamageType != NAME_Suicide
+		&& p->LastSafePos.IsSafe(p->mo->tid))
 	{
-		spawn = p->LastSafePos;
+		spawn = p->LastSafePos.Pos;
 		SpawnAngle = p->mo->Angles.Yaw;
 	}
 	else
