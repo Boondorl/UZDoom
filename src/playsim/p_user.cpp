@@ -120,10 +120,196 @@ static TArray<FRandom> PredictionRNG;
 static player_t PredictionPlayerBackup;
 static AActor *PredictionActor;
 static TArray<uint8_t> PredictionActorBackupArray;
-static TArray<AActor *> PredictionSectorListBackup;
 
-static TArray<sector_t *> PredictionTouchingSectorsBackup;
-static TArray<msecnode_t *> PredictionTouchingSectors_sprev_Backup;
+// Iterate through the Actor's own link nodes, storing their index within the
+// list. This isn't guaranteed to give correct results, but that means someone
+// messed with the world in a way will desync things eventually regardless.
+struct FPredictionPhysicsLink
+{
+	// Track found link sources to make sure any additional ones are released. We don't want to
+	// accidentally fix linking bugs when doing the relink from unpredicting.
+	TMap<const sector_t*, bool> ValidSectors = {};
+	TArray<int> TouchingSectorsPos = {};
+	TMap<int, bool> ValidBlockNodes = {};
+	TArray<int> BlockmapPos = {};
+	int ThingPos = -1;
+	bool bInSector = false;
+
+	void Backup(const AActor& mo)
+	{
+		ValidSectors.Clear();
+		TouchingSectorsPos.Clear();
+		for (auto node = mo.touching_sectorlist; node != nullptr; node = node->m_tnext)
+		{
+			int index = 0;
+			for (auto sNode = node->m_sector->touching_thinglist; sNode != nullptr; sNode = sNode->m_snext)
+			{
+				if (sNode->m_thing == &mo)
+					break;
+				++index;
+			}
+			TouchingSectorsPos.Push(index - 1);
+			ValidSectors[node->m_sector] = true;
+		}
+
+		ThingPos = -1;
+		bInSector = false;
+		if (mo.Sector != nullptr)
+		{
+			int index = 0;
+			for (auto act = mo.Sector->thinglist; act != nullptr; act = act->snext)
+			{
+				if (act == &mo)
+				{
+					bInSector = true;
+					break;
+				}
+				++index;
+			}
+			if (bInSector)
+				ThingPos = index - 1;
+		}
+
+		ValidBlockNodes.Clear();
+		BlockmapPos.Clear();
+		for (auto node = mo.BlockNode; node != nullptr; node = node->NextBlock)
+		{
+			int index = 0;
+			for (auto bNode = mo.Level->blockmap.blocklinks[node->BlockIndex]; bNode != nullptr; bNode = bNode->NextActor)
+			{
+				if (bNode->Me == &mo)
+					break;
+				++index;
+			}
+			BlockmapPos.Push(index - 1);
+			ValidBlockNodes[node->BlockIndex] = true;
+		}
+	}
+
+	void Restore(AActor& mo)
+	{
+		size_t count = 0u;
+		for (auto node = mo.touching_sectorlist; node != nullptr;)
+		{
+			if (ValidSectors.CheckKey(node->m_sector) == nullptr)
+			{
+				// This doesn't get updated in the unlinking for some reason, so we have to fix it
+				// manually...
+				auto next = node->m_tnext;
+				if (node == mo.touching_sectorlist)
+					mo.touching_sectorlist = next;
+				P_DelSecnode(node, &sector_t::touching_thinglist);
+				node = next;
+				continue;
+			}
+
+			if (count >= TouchingSectorsPos.Size())
+			{
+				// We still need to check for invalid sector nodes, so keep going.
+				node = node->m_tnext;
+				continue;
+			}
+
+			// Only the sector list needs to be relinked as the order of the thing list is
+			// deterministically rebuilt by its nature.
+			if (node->m_sprev == nullptr)
+				node->m_sector->touching_thinglist = node->m_snext;
+			else
+				node->m_sprev->m_snext = node->m_snext;
+			if (node->m_snext != nullptr)
+				node->m_snext->m_sprev = node->m_sprev;
+
+			int i = 0;
+			msecnode_t* prev = nullptr, * next = nullptr;
+			for (next = node->m_sector->touching_thinglist; next != nullptr; prev = next, next = next->m_snext)
+			{
+				if (i > TouchingSectorsPos[count])
+					break;
+				++i;
+			}
+			node->m_sprev = prev;
+			node->m_snext = next;
+			if (prev != nullptr)
+				prev->m_snext = node;
+			if (next != nullptr)
+				next->m_sprev = node;
+			if (prev == nullptr)
+				node->m_sector->touching_thinglist = node;
+
+			++count;
+			node = node->m_tnext;
+		}
+
+		if (bInSector && mo.Sector != nullptr)
+		{
+			*mo.sprev = mo.snext;
+			if (mo.snext != nullptr)
+				mo.snext->sprev = mo.sprev;
+
+			int i = 0;
+			AActor** next = nullptr;
+			for (next = &mo.Sector->thinglist; *next != nullptr; next = &(*next)->snext)
+			{
+				if (i > ThingPos)
+					break;
+				++i;
+			}
+
+			mo.snext = *next;
+			if (*next != nullptr)
+				(*next)->sprev = &mo.snext;
+			mo.sprev = next;
+			*mo.sprev = &mo;
+		}
+
+		count = 0u;
+		for (auto node = mo.BlockNode; node != nullptr;)
+		{
+			if (ValidBlockNodes.CheckKey(node->BlockIndex) == nullptr)
+			{
+				auto next = node->NextBlock;
+				if (node == mo.BlockNode)
+					mo.BlockNode = next;
+				if (node->NextActor != nullptr)
+					node->NextActor->PrevActor = node->PrevActor;
+				*(node->PrevActor) = node->NextActor;
+				node->Release();
+				node = next;
+				continue;
+			}
+
+			if (count >= BlockmapPos.Size())
+			{
+				// We still need to check for invalid blockmap nodes, so keep going.
+				node = node->NextBlock;
+				continue;
+			}
+
+			// Same as sector linking above.
+			*node->PrevActor = node->NextActor;
+			if (node->NextActor != nullptr)
+				node->NextActor->PrevActor = node->PrevActor;
+
+			int i = 0;
+			FBlockNode** next = nullptr;
+			for (next = &mo.Level->blockmap.blocklinks[node->BlockIndex]; *next != nullptr; next = &(*next)->NextActor)
+			{
+				if (i > BlockmapPos[count])
+					break;
+				++i;
+			}
+
+			node->NextActor = *next;
+			if (*next != nullptr)
+				(*next)->PrevActor = &node->NextActor;
+			node->PrevActor = next;
+			*node->PrevActor = node;
+
+			++count;
+			node = node->NextBlock;
+		}
+	}
+} static PredictionPhysicsLinking = {};
 
 struct
 {
@@ -1387,90 +1573,6 @@ void P_LerpCalculate(AActor* pmo, const DVector3& from, DVector3 &result, float 
 	result = pmo->Vec3Offset(-diff.X, -diff.Y, -diff.Z);
 }
 
-template<class nodetype, class linktype>
-void BackupNodeList(AActor *act, nodetype *head, nodetype *linktype::*otherlist, TArray<nodetype*, nodetype*> &prevbackup, TArray<linktype *, linktype *> &otherbackup)
-{
-	// The ordering of the touching_sectorlist needs to remain unchanged
-	// Also store a copy of all previous sector_thinglist nodes
-	prevbackup.Clear();
-	otherbackup.Clear();
-
-	for (auto mnode = head; mnode != nullptr; mnode = mnode->m_tnext)
-	{
-		otherbackup.Push(mnode->m_sector);
-
-		for (auto snode = mnode->m_sector->*otherlist; snode; snode = snode->m_snext)
-		{
-			if (snode->m_thing == act)
-			{
-				prevbackup.Push(snode->m_sprev);
-				break;
-			}
-		}
-	}
-}
-
-template<class nodetype, class linktype>
-nodetype *RestoreNodeList(AActor *act, nodetype *linktype::*otherlist, TArray<nodetype*, nodetype*> &prevbackup, TArray<linktype *, linktype *> &otherbackup)
-{
-	nodetype* head = NULL;
-	for (auto i = otherbackup.Size(); i-- > 0;)
-	{
-		head = P_AddSecnode(otherbackup[i], act, head, otherbackup[i]->*otherlist);
-	}
-	//act->touching_sectorlist = ctx.sector_list;	// Attach to thing
-	//ctx.sector_list = NULL;		// clear for next time
-
-	// In the old code this block never executed because of the commented-out NULL assignment above. Needs to be checked
-	nodetype* node = head;
-	while (node)
-	{
-		if (node->m_thing == NULL)
-		{
-			if (node == head)
-				head = node->m_tnext;
-			node = P_DelSecnode(node, otherlist);
-		}
-		else
-		{
-			node = node->m_tnext;
-		}
-	}
-
-	nodetype *snode;
-
-	// Restore sector thinglist order
-	for (auto i = otherbackup.Size(); i-- > 0;)
-	{
-		// If we were already the head node, then nothing needs to change
-		if (prevbackup[i] == NULL)
-			continue;
-
-		for (snode = otherbackup[i]->*otherlist; snode; snode = snode->m_snext)
-		{
-			if (snode->m_thing == act)
-			{
-				if (snode->m_sprev)
-					snode->m_sprev->m_snext = snode->m_snext;
-				else
-					snode->m_sector->*otherlist = snode->m_snext;
-				if (snode->m_snext)
-					snode->m_snext->m_sprev = snode->m_sprev;
-
-				snode->m_sprev = prevbackup[i];
-
-				// At the moment, we don't exist in the list anymore, but we do know what our previous node is, so we set its current m_snext->m_sprev to us.
-				if (snode->m_sprev->m_snext)
-					snode->m_sprev->m_snext->m_sprev = snode;
-				snode->m_snext = snode->m_sprev->m_snext;
-				snode->m_sprev->m_snext = snode;
-				break;
-			}
-		}
-	}
-	return head;
-}
-
 void P_PredictPlayer (player_t *player)
 {
 	if (demoplayback || gamestate != GS_LEVEL ||
@@ -1505,39 +1607,11 @@ void P_PredictPlayer (player_t *player)
 		PredictionViewPosBackup.Flags = act->ViewPos->Flags;
 	}
 
+	PredictionPhysicsLinking.Backup(*act);
+
 	act->flags &= ~MF_PICKUP;
 	act->flags2 &= ~MF2_PUSHWALL;
 	player->cheats |= CF_PREDICTING;
-
-	BackupNodeList(act, act->touching_sectorlist, &sector_t::touching_thinglist, PredictionTouchingSectors_sprev_Backup, PredictionTouchingSectorsBackup);
-
-	// Keep an ordered list off all actors in the linked sector.
-	PredictionSectorListBackup.Clear();
-	if (!(act->flags & MF_NOSECTOR))
-	{
-		AActor *link = act->Sector->thinglist;
-		
-		while (link != NULL)
-		{
-			PredictionSectorListBackup.Push(link);
-			link = link->snext;
-		}
-	}
-
-	// Blockmap ordering also needs to stay the same, so unlink the block nodes
-	// without releasing them. (They will be used again in P_UnpredictPlayer).
-	FBlockNode *block = act->BlockNode;
-
-	while (block != NULL)
-	{
-		if (block->NextActor != NULL)
-		{
-			block->NextActor->PrevActor = block->PrevActor;
-		}
-		*(block->PrevActor) = block->NextActor;
-		block = block->NextBlock;
-	}
-	act->BlockNode = NULL;
 
 	int maxtic = ClientTic;
 	if (gametic == maxtic || player->playerstate != PST_LIVE)
@@ -1659,15 +1733,15 @@ void P_UnPredictPlayer ()
 		player->FullbrightMode = fbmode;
 		player->bForceFullbright = forcefb;
 
-		// Unlink from all lists
+		// Unlink from all lists since this data isn't valid for server ticks.
 		act->UnlinkFromWorld(nullptr);
 		memcpy(&act->snext, PredictionActorBackupArray.Data(), PredictionActorBackupArray.Size() - ((uint8_t *)&act->snext - (uint8_t *)act));
-		// Clear stale pointers. The blockmap node is kept since it's the one that will be relinked back into the blockmap. Given
-		// it was removed from the list without being freed before predicting it's still valid.
+		// Clear stale pointers.
 		act->touching_lineportallist = nullptr;
 		act->touching_rendersectors = act->touching_sectorlist = act->touching_sectorportallist = nullptr;
 		act->sprev = (AActor**)(size_t)0xBeefCafe;
 		act->snext = nullptr;
+		act->BlockNode = nullptr;
 
 		if (act->ViewPos != nullptr)
 		{
@@ -1675,51 +1749,13 @@ void P_UnPredictPlayer ()
 			act->ViewPos->Flags = PredictionViewPosBackup.Flags;
 		}
 
-		// The blockmap ordering needs to remain unchanged, too.
-		// Restore sector links and refrences.
-		// [ED850] This is somewhat of a duplicate of LinkToWorld(), but we need to keep every thing the same,
-		// otherwise we end up fixing bugs in blockmap logic (i.e undefined behaviour with polyobject collisions),
-		// which we really don't want to do here.
-		if (!(act->flags & MF_NOSECTOR))
-		{
-			sector_t *sec = act->Sector;
-			AActor *me, *next;
-			AActor **link;// , **prev;
+		// TODO: This might cause issues with emulating undefined behavior regarding things like polyobject collisions? Will need to be
+		// investigated further in case it breaks determinism.
+		// Make sure it recreates its nodes at its original position, the backup will then handle relinking
+		// those nodes in the correct order.
+		act->LinkToWorld(nullptr);
+		PredictionPhysicsLinking.Restore(*act);
 
-			// The thinglist is just a pointer chain. We are restoring the exact same things, so we can NULL the head safely
-			sec->thinglist = NULL;
-
-			for (i = PredictionSectorListBackup.Size(); i-- > 0;)
-			{
-				me = PredictionSectorListBackup[i];
-				link = &sec->thinglist;
-				next = *link;
-				if ((me->snext = next))
-					next->sprev = &me->snext;
-				me->sprev = link;
-				*link = me;
-			}
-
-			// Only the touching list actually needs to be restored to avoid impacting gameplay. The rest is just clientside fluff that can
-			// be handled by relinking.
-			act->touching_sectorlist = RestoreNodeList(act, &sector_t::touching_thinglist, PredictionTouchingSectors_sprev_Backup, PredictionTouchingSectorsBackup);
-			if (act->renderradius >= 0.0)
-				act->touching_rendersectors = P_CreateSecNodeList(act, act->RenderRadius(), nullptr, &sector_t::touching_renderthings);
-		}
-
-		// Now fix the pointers in the blocknode chain
-		FBlockNode *block = act->BlockNode;
-		while (block != NULL)
-		{
-			*(block->PrevActor) = block;
-			if (block->NextActor != NULL)
-			{
-				block->NextActor->PrevActor = &block->NextActor;
-			}
-			block = block->NextBlock;
-		}
-
-		act->UpdateRenderSectorList();
 		act->renderflags &= ~RF_NOINTERPOLATEVIEW;
 		act->flags8 &= ~MF8_RECREATELIGHTS;
 		memcpy(&act->AttachedLights, &attached, sizeof(FArray));
