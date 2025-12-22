@@ -447,6 +447,9 @@ public:
 
 	FMugShot mugshot;
 
+	FFont* ScoreboardFont;
+	FFont* BigScoreboardFont;
+
 private:
 	bool RepositionCoords (int &x, int &y, int xo, int yo, const int w, const int h) const;
 	void DrawMessages (int layer, int bottom);

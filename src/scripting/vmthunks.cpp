@@ -3106,6 +3106,8 @@ DEFINE_FIELD(DBaseStatusBar, CPlayer);
 DEFINE_FIELD(DBaseStatusBar, ShowLog);
 DEFINE_FIELD(DBaseStatusBar, artiflashTick);
 DEFINE_FIELD(DBaseStatusBar, itemflashFade);
+DEFINE_FIELD(DBaseStatusBar, ScoreboardFont);
+DEFINE_FIELD(DBaseStatusBar, BigScoreboardFont);
 
 
 DEFINE_GLOBAL(StatusBar);

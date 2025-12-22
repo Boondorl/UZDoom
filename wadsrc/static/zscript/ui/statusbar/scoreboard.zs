@@ -5,8 +5,8 @@ extend class BaseStatusBar
 	const MAX_TEAM_SCORE_ROWS = 2;
 	const SCOREBOARD_PADDING = 5;
 
-	Font ScoreboardFont;
-	Font BigScoreboardFont;
+	native Font ScoreboardFont;
+	native Font BigScoreboardFont;
 
 	native static bool IsScoreboardOpen();
 
