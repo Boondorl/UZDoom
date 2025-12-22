@@ -116,12 +116,12 @@ extend class BaseStatusBar
 		BigScoreboardFont = BigFont;
 	}
 
-    version("4.15.1") virtual void DrawScoreboard(double ticFrac)
+    version("4.15.1") virtual bool DrawScoreboard(double ticFrac)
     {
 		if (!ScoreboardFont || GameState != GS_LEVEL || !CPlayer
 			|| (CPlayer.PlayerState != PST_DEAD && !IsScoreboardOpen()))
 		{
-			return;
+			return false;
 		}
 
 	    if (deathmatch)
@@ -129,16 +129,16 @@ extend class BaseStatusBar
 		    if (teamplay)
 		    {
 			    if(!sb_teamdeathmatch_enable)
-				    return;
+				    return false;
 		    }
 		    else if (!sb_deathmatch_enable)
 		    {
-			    return;
+			    return false;
 		    }
 	    }
 	    else if (!multiplayer || !sb_cooperative_enable)
 	    {
-		    return;
+		    return false;
 	    }
 
 		DrawRemainingTime(ticFrac);
@@ -146,6 +146,7 @@ extend class BaseStatusBar
         Array<int> sortedPlayers;
 		SortScoreboardPlayers(sortedPlayers, ComparePlayerPoints);
 		DrawPlayerScores(sortedPlayers, ticFrac);
+		return true;
     }
 
 	version("4.15.1") virtual void DrawRemainingTime(double ticFrac)

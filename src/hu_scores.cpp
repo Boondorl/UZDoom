@@ -147,10 +147,16 @@ bool bScoreboardToggled = false;
 
 void HU_DrawScores(double ticFrac)
 {
+	bool res = false;
 	if (StatusBar != nullptr)
 	{
 		IFVIRTUALPTR(StatusBar, DBaseStatusBar, DrawScoreboard)
-			CallVM<void>(func, StatusBar, ticFrac);
+			res = CallVM<int>(func, StatusBar, ticFrac);
+	}
+
+	if (!res)
+	{
+		bScoreboardToggled = false;
 	}
 }
 
