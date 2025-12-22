@@ -147,8 +147,11 @@ bool bScoreboardToggled = false;
 
 void HU_DrawScores(double ticFrac)
 {
-	IFVIRTUALPTR(StatusBar, DBaseStatusBar, DrawScoreboard)
-		CallVM<void>(func, StatusBar, ticFrac);
+	if (StatusBar != nullptr)
+	{
+		IFVIRTUALPTR(StatusBar, DBaseStatusBar, DrawScoreboard)
+			CallVM<void>(func, StatusBar, ticFrac);
+	}
 }
 
 CCMD(togglescoreboard)

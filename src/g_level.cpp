@@ -1413,6 +1413,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 		laststartpos = position;
 
 	Init();
+	bScoreboardToggled = false;
 	StatusBar->DetachAllMessages ();
 
 	// Force 'teamplay' to 'true' if need be.

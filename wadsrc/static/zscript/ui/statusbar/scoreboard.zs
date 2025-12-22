@@ -8,6 +8,8 @@ extend class BaseStatusBar
 	Font ScoreboardFont;
 	Font BigScoreboardFont;
 
+	native static bool IsScoreboardOpen();
+
     static clearscope int ComparePlayerPoints(int playerA, int playerB)
     {
 	    // Compare first by frags, then by name.
@@ -116,8 +118,11 @@ extend class BaseStatusBar
 
     version("4.15.1") virtual void DrawScoreboard(double ticFrac)
     {
-		if (!ScoreboardFont)
+		if (!ScoreboardFont || GameState != GS_LEVEL || !CPlayer
+			|| (CPlayer.PlayerState != PST_DEAD && !IsScoreboardOpen()))
+		{
 			return;
+		}
 
 	    if (deathmatch)
 	    {
@@ -136,14 +141,14 @@ extend class BaseStatusBar
 		    return;
 	    }
 
-		DrawRemainingTime();
+		DrawRemainingTime(ticFrac);
         
         Array<int> sortedPlayers;
 		SortScoreboardPlayers(sortedPlayers, ComparePlayerPoints);
-		DrawPlayerScores(sortedPlayers);
+		DrawPlayerScores(sortedPlayers, ticFrac);
     }
 
-	version("4.15.1") virtual void DrawRemainingTime()
+	version("4.15.1") virtual void DrawRemainingTime(double ticFrac)
 	{
 		if (!deathmatch || timelimit <= 0.0 || GameState != GS_LEVEL)
 			return;
@@ -164,7 +169,7 @@ extend class BaseStatusBar
 		DrawScoreboardText(ScoreboardFont, Font.CR_WHITE, Screen.GetWidth() / 2, GetTopOfStatusBar() - 5 * CleanYFac_1, timer, -0.5, -1.0);
 	}
 	
-	version("4.15.1") virtual void DrawPlayerScores(Array<int> sortedPlayers)
+	version("4.15.1") virtual void DrawPlayerScores(Array<int> sortedPlayers, double ticFrac)
 	{
 		int col = sb_cooperative_headingcolor;
 		if (deathmatch)
@@ -181,7 +186,7 @@ extend class BaseStatusBar
 		iconWidth *= CleanXFac_1;
 		iconHeight *= CleanYFac_1;
 		// Lock the scoreboard to 4:3 to make it more readable on widescreens.
-		int scoreboardWidth = int(Screen.GetHeight() * (4.0 / 3.0)) - 100 * CleanXFac_1;
+		int scoreboardWidth = int(Screen.GetHeight() * (4.0 / 3.0)) - 150 * CleanXFac_1;
 		int rowHeight = Max(iconHeight, ScoreboardFont.GetHeight() * CleanYFac_1) + yPadding * 2;
 		int rowCenter = rowHeight / 2;
 
@@ -251,7 +256,7 @@ extend class BaseStatusBar
 			text = String.Format("%d", deathmatch ? player.FragCount : player.KillCount);
 			DrawScoreboardText(ScoreboardFont, Font.CR_WHITE, x + latencyOfs - xPadding, y, text, -1.0, -0.5);
 
-			text = String.Format("%d", player.GetAverageLatency());
+			text = String.Format("%dms", player.GetAverageLatency());
 			DrawScoreboardText(ScoreboardFont, Font.CR_WHITE, x + scoreboardWidth - xPadding, y, text, -1.0, -0.5);
 
 			y += rowHeight;

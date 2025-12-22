@@ -240,25 +240,25 @@ void CT_PasteChat(const char *clip)
 //
 //===========================================================================
 
+static int IsScoreboardOpen()
+{
+	return buttonMap.ButtonDown(Button_ShowScores) || bScoreboardToggled;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, IsScoreboardOpen, IsScoreboardOpen)
+{
+	PARAM_PROLOGUE;
+	ACTION_RETURN_BOOL(IsScoreboardOpen());
+}
+
 void CT_Drawer (void)
 {
 	auto &vp = r_viewpoint;
 	auto drawer = twod;
 	FFont *displayfont = NewConsoleFont;
 
-	if (players[consoleplayer].camera != NULL &&
-		(buttonMap.ButtonDown(Button_ShowScores) ||
-		 players[consoleplayer].playerstate == PST_DEAD ||
-		 bScoreboardToggled))
-	{
-		bool skipit = false;
-		if (gamestate != GS_LEVEL)
-		{
-			bScoreboardToggled = false;
-			skipit = true;
-		}
-		if (!skipit) HU_DrawScores (vp.TicFrac);
-	}
+	HU_DrawScores(vp.TicFrac);
+
 	if (chatmodeon)
 	{
 		// [MK] allow the status bar to take over chat prompt drawing
