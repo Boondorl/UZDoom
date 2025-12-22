@@ -740,7 +740,7 @@ DEFINE_ACTION_FUNCTION(_PlayerInfo, Resurrect)
 
 player_t* player_t::GetNextPlayer(player_t* p, bool noBots)
 {
-	int pNum = player_t::GetNextPlayerNumber(p == nullptr ? -1 : p - players);
+	int pNum = player_t::GetNextPlayerNumber(p == nullptr ? -1 : p - players, noBots);
 	return pNum != -1 ? &players[pNum] : nullptr;
 }
 
@@ -756,13 +756,13 @@ DEFINE_ACTION_FUNCTION_NATIVE(_PlayerInfo, GetNextPlayer, player_t::GetNextPlaye
 int player_t::GetNextPlayerNumber(int pNum, bool noBots)
 {
 	int i = max<int>(pNum + 1, 0);
-	for (; i < MaxClients; ++i)
+	for (; i < MAXPLAYERS; ++i)
 	{
 		if (playeringame[i] && (!noBots || players[i].Bot == nullptr))
 			break;
 	}
 
-	return i < MaxClients ? i : -1;
+	return i < MAXPLAYERS ? i : -1;
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(_PlayerInfo, GetNextPlayerNumber, player_t::GetNextPlayerNumber)
