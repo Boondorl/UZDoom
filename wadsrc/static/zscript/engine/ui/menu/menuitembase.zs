@@ -38,7 +38,8 @@ class MenuItemBase : Object native ui version("2.4")
 	virtual int GetIndent() { return 0; }
 	virtual int Draw(OptionMenuDescriptor desc, int y, int indent, bool selected) { return indent; }
 
-	string GetTooltip() const { return mTooltip; }
+	version("4.15.1") string GetTooltip() const { return mTooltip; }
+	version("4.15.1") void SetTooltip(string tooltip) { mTooltip = tooltip; }
 	void OffsetPositionY(double ydelta) { mYpos += ydelta; }
 	double GetY() { return mYpos; }
 	double GetX() { return mXpos; }

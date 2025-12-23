@@ -137,8 +137,7 @@ class ListMenu : Menu
 			}
 		}
 
-		if (mDesc.mSelectedItem >= 0)
-			UpdateTooltip(mDesc.mItems[mDesc.mSelectedItem].GetTooltip());
+		UpdateTooltip(GetSelectedTooltip());
 	}
 
 	//=============================================================================
@@ -177,7 +176,7 @@ class ListMenu : Menu
 				if (mDesc.mitems[i].Selectable() && mDesc.mItems[i].CheckHotkey(ch))
 				{
 					mDesc.mSelectedItem = i;
-					UpdateTooltip(mDesc.mitems[mDesc.mSelectedItem].GetTooltip());
+					UpdateTooltip(GetSelectedTooltip());
 					MenuSound("menu/cursor");
 					return true;
 				}
@@ -187,7 +186,7 @@ class ListMenu : Menu
 				if (mDesc.mitems[i].Selectable() && mDesc.mItems[i].CheckHotkey(ch))
 				{
 					mDesc.mSelectedItem = i;
-					UpdateTooltip(mDesc.mitems[mDesc.mSelectedItem].GetTooltip());
+					UpdateTooltip(GetSelectedTooltip());
 					MenuSound("menu/cursor");
 					return true;
 				}
@@ -217,7 +216,7 @@ class ListMenu : Menu
 			}
 			while (!mDesc.mItems[mDesc.mSelectedItem].Selectable() && mDesc.mSelectedItem != startedAt);
 			if (mDesc.mSelectedItem == startedAt) mDesc.mSelectedItem = oldSelect;
-			else UpdateTooltip(mDesc.mitems[mDesc.mSelectedItem].GetTooltip());
+			else UpdateTooltip(GetSelectedTooltip());
 			MenuSound("menu/cursor");
 			return true;
 
@@ -229,7 +228,7 @@ class ListMenu : Menu
 			}
 			while (!mDesc.mItems[mDesc.mSelectedItem].Selectable() && mDesc.mSelectedItem != startedAt);
 			if (mDesc.mSelectedItem == startedAt) mDesc.mSelectedItem = oldSelect;
-			else UpdateTooltip(mDesc.mitems[mDesc.mSelectedItem].GetTooltip());
+			else UpdateTooltip(GetSelectedTooltip());
 			MenuSound("menu/cursor");
 			return true;
 
@@ -293,7 +292,7 @@ class ListMenu : Menu
 							//MenuSound("menu/cursor");
 						}
 						mDesc.mSelectedItem = i;
-						UpdateTooltip(mDesc.mitems[mDesc.mSelectedItem].GetTooltip());
+						UpdateTooltip(GetSelectedTooltip());
 						mDesc.mItems[i].MouseEvent(type, x, y);
 						return true;
 					}
@@ -387,6 +386,19 @@ class ListMenu : Menu
 			}
 		}
 		mDesc.mLineSpacing = newspace;
+	}
+
+	//=============================================================================
+	//
+	//
+	//
+	//=============================================================================
+
+	version("4.15.1") string GetSelectedTooltip() const
+	{
+		return mDesc && mDesc.mSelectedItem >= 0 && mDesc.mSelectedItem < mDesc.mItems.Size() && mDesc.mItems[mDesc.mSelectedItem]
+				? mDesc.mItems[mDesc.mSelectedItem].GetTooltip()
+				: "";
 	}
 }
 
