@@ -247,10 +247,10 @@ DEFINE_FIELD_NAMED(DBot, CoolDowns, _coolDowns)
 
 static FEntityProperties* GetEntityInfo(int ent, int base)
 {
-	return DBotManager::GetEntityInfo(ENamedName(ent), ENamedName(base));
+	return EntityDefManager::GetEntityInfo(ENamedName(ent), ENamedName(base));
 }
 
-DEFINE_ACTION_FUNCTION_NATIVE(DBot, GetEntityInfo, GetEntityInfo)
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetEntityInfo, GetEntityInfo)
 {
 	PARAM_PROLOGUE;
 	PARAM_INT(ent);
@@ -264,7 +264,7 @@ static int GetBotCount()
 	return DBotManager::CountBots();
 }
 
-DEFINE_ACTION_FUNCTION_NATIVE(DBot, GetBotCount, GetBotCount)
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetBotCount, GetBotCount)
 {
 	PARAM_PROLOGUE;
 

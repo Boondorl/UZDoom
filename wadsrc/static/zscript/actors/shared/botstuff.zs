@@ -81,9 +81,6 @@ class Bot : Thinker native
 
 	private native Map<Name, int> _coolDowns;
 
-	native clearscope static EntityProperties GetEntityInfo(Name entity, Name baseClass = 'Actor');
-	native clearscope static int GetBotCount();
-
 	native clearscope PlayerInfo GetPlayer() const;
 	native void SetMove(EBotMoveDirection forward = MDIR_NO_CHANGE, EBotMoveDirection side = MDIR_NO_CHANGE, EBotMoveDirection up = MDIR_NO_CHANGE, bool running = true);
 	native void SetButtons(EButtons cmd, bool set);
@@ -150,7 +147,7 @@ class Bot : Thinker native
 
 	clearscope EntityProperties GetWeaponInfo(Weapon weap) const
 	{
-		return weap ? GetEntityInfo(weap.GetClassName(), 'Weapon') : null;
+		return weap ? Level.GetEntityInfo(weap.GetClassName(), 'Weapon') : null;
 	}
 
 	clearscope double GetRange(EntityProperties props, Name prop, double propDef = 0.0, Name mod = 'None', double modDef = 1.0) const
@@ -320,7 +317,7 @@ class Bot : Thinker native
 			}
 			else
 			{
-				double runRange = GetRangeSquared(GetEntityInfo(Evade.GetClassName()), 'FrightenRange', modDef: evasiveness);
+				double runRange = GetRangeSquared(Level.GetEntityInfo(Evade.GetClassName()), 'FrightenRange', modDef: evasiveness);
 				if (runRange <= 0.0 || pawn.Distance3DSquared(Evade) > runRange)
 					Evade = null;
 			}
@@ -344,7 +341,7 @@ class Bot : Thinker native
 					continue;
 				}
 
-				double runRange = GetRangeSquared(GetEntityInfo(mo.GetClassName()), 'FrightenRange', modDef: evasiveness);
+				double runRange = GetRangeSquared(Level.GetEntityInfo(mo.GetClassName()), 'FrightenRange', modDef: evasiveness);
 				if (runRange <= 0.0)
 					continue;
 

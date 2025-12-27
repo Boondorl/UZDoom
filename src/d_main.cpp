@@ -3740,6 +3740,7 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<FileSys::ResourceN
 	//SBarInfo support. Note that the first SBARINFO lump contains the mugshot definition so it even needs to be read when a regular status bar is being used.
 	SBarInfo::Load();
 
+	EntityDefManager::ParseEntityDefinitions();
 	DBotManager::ParseBotDefinitions();
 
 	if (!batchrun)

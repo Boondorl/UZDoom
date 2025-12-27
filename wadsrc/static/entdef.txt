@@ -1,0 +1,643 @@
+// Doom weapons
+Fist
+{
+	ChaseRange 128.0
+	MaxCombatRange 64.0
+}
+
+Chainsaw
+{
+	ChaseRange 128.0
+	MaxCombatRange 64.0
+}
+
+Pistol
+{
+	MinCombatRange 96.0
+	MaxCombatRange 1024.0
+	MaxRefire 4
+}
+
+Shotgun
+{
+	MinCombatRange 64.0
+	MaxCombatRange 512.0
+}
+
+SuperShotgun
+{
+	MinCombatRange 48.0
+	MaxCombatRange 448.0
+	FrightenRange 96.0
+}
+
+Chaingun
+{
+	MinCombatRange 96.0
+	MaxCombatRange 896.0
+	MaxRefire 12
+}
+
+RocketLauncher
+{
+	ProjectileType "Rocket"
+	MinCombatRange 256.0
+	MaxCombatRange 896.0
+	ExplosiveRange 192.0
+	FrightenRange 256.0
+}
+
+Rocket
+{
+	FrightenRange 192.0
+}
+
+PlasmaRifle
+{
+	MinCombatRange 96.0
+	MaxCombatRange 1024.0
+	MaxRefire 20
+}
+
+PlasmaBall
+{
+	FrightenRange 64.0
+}
+
+BFG9000
+{
+	ProjectileType "BFGBall"
+	MinCombatRange 64.0
+	MaxCombatRange 640.0
+	FrightenRange 256.0
+}
+
+BFGBall
+{
+	FrightenRange 192.0
+}
+
+// Heretic weapons
+Staff
+{
+	ChaseRange 128.0
+	MaxCombatRange 64.0
+}
+
+StaffPowered
+{
+	ChaseRange 128.0
+	MaxCombatRange 64.0
+}
+
+// Gantlets
+Gauntlets
+{
+	ChaseRange 128.0
+	MaxCombatRange 64.0
+}
+
+GauntletsPowered
+{
+	ChaseRange 384.0
+	MaxCombatRange 256.0
+	FrightenRange 320.0
+}
+
+GoldWand
+{
+	MinCombatRange 96.0
+	CombatRange 1024.0
+	MaxRefire 8
+}
+
+GoldWandPowered
+{
+	MinCombatRange 64.0
+	MaxCombatRange 512.0
+	MaxRefire 5
+}
+
+GoldWandFX2
+{
+	FrightenRange 64.0
+}
+
+Crossbow
+{
+	MinCombatRange 64.0
+	MaxCombatRange 512.0
+	FrightenRange 96.0
+}
+
+CrossbowFX1
+{
+	FrightenRange 64.0
+}
+
+CrossbowFX3
+{
+	FrightenRange 48.0
+}
+
+CrossbowPowered : Crossbow
+{
+
+}
+
+CrossbowFX2 : CrossbowFX3
+{
+	
+}
+
+Blaster
+{
+	MinCombatRange 96.0
+	MaxCombatRange 800.0
+	MaxRefire 15
+}
+
+BlasterPowered
+{
+	MinCombatRange 96.0
+	MaxCombatRange 640.0
+	MaxRefire 4
+}
+
+BlasterFX1
+{
+	FrightenRange 64.0
+}
+
+Ripper
+{
+	FrightenRange 64.0
+}
+
+SkullRod
+{
+	MinCombatRange 64.0
+	MaxCombatRange 800.0
+	MaxRefire 20
+}
+
+HornRodFX1
+{
+	FrightenRange 64.0
+}
+
+SkullRodPowered
+{
+	MinCombatRange 64.0
+	MaxCombatRange 640.0
+	FrightenRange 96.0
+	MaxRefire 2
+}
+
+HornRodFX2
+{
+	FrightenRange 96.0
+}
+
+RainPillar
+{
+	FrightenRange 48.0
+}
+
+PhoenixRod
+{
+	ProjectileType "PhoenixFX1"
+	MinCombatRange 256.0
+	MaxCombatRange 896.0
+	ExplosiveRange 192.0
+	FrightenRange 192.0
+	MaxRefire 3
+}
+
+PhoenixFX1
+{
+	FrightenRange 192.0
+}
+
+PhoenixRodPowered
+{
+	MinCombatRange 48.0
+	MaxCombatRange 192.0
+	FrightenRange 96.0
+}
+
+PhoenixFX2
+{
+	FrightenRange 64.0
+}
+
+Mace
+{
+	MinCombatRange 48.0
+	MaxCombatRange 256.0
+}
+
+MaceFX1
+{
+	FrightenRange 64.0
+}
+
+MaceFX2 : MaceFX1
+{
+
+}
+
+MaceFX3
+{
+	FrightenRange 48.0
+}
+
+MacePowered
+{
+	ProjectileType "MaceFX4"
+	MinCombatRange 64.0
+	MaxCombatRange 256.0
+	FrightenRange 96.0
+	MaxRefire 3
+}
+
+MaceFX4
+{
+	FrightenRange 128.0
+}
+
+Beak
+{
+	ChaseRange 128.0
+	MaxCombatRange 64.0
+}
+
+BeakPowered : Beak
+{
+
+}
+
+// Heretic items
+EggFX
+{
+	FrightenRange 96.0
+}
+
+ActivatedTimeBomb
+{
+	FrightenRange 192.0
+}
+
+// Hexen weapons
+CWeapMace
+{
+	ChaseRange 192.0
+	MaxCombatRange 128.0
+}
+
+CWeapStaff
+{
+	MaxCombatRange 512.0
+	FrightenRange 64.0
+	MaxRefire 10
+}
+
+CStaffMissile
+{
+	FrightenRange 64.0
+}
+
+CWeapFlame
+{
+	ProjectileType "CFlameMissile"
+	MinCombatRange 96.0
+	MaxCombatRange 992.0
+	MaxRefire 3
+}
+
+CWeapWraithverge
+{
+	MinCombatRange 128.0
+	MaxCombatRange 640.0
+	FrightenRange 128.0
+	MaxRefire 0
+}
+
+HolySpirit
+{
+	FrightenRange 96.0
+}
+
+FWeapFist
+{
+	ChaseRange 192.0
+	MaxCombatRange 128.0
+}
+
+FWeapAxe
+{
+	ChaseRange 192.0
+	MaxCombatRange 128.0
+}
+
+FWeapHammer
+{
+	MaxCombatRange 512.0
+}
+
+HammerMissile
+{
+	FrightenRange 192.0
+}
+
+FWeapQuietus
+{
+	MinCombatRange 48.0
+	MaxCombatRange 512.0
+	FrightenRange 128.0
+}
+
+FSwordMissile
+{
+	FrightenRange 64.0
+}
+
+MWeapWand
+{
+	MinCombatRange 96.0
+	MaxCombatRange 1024.0
+	MaxRefire 6
+}
+
+FWeapFrost
+{
+	ChaseRange 96.0
+	MaxCombatRange 384.0
+	FrightenRange 64.0
+	MaxRefire 3
+}
+
+FrostMissile
+{
+	FrightenRange 48.0
+}
+
+MWeapLightning
+{
+	MinCombatRange 64.0
+	MaxCombatRange 512.0
+	FrightenRange 96.0
+	MaxRefire 3
+}
+
+LightningFloor
+{
+	FrightenRange 96.0
+}
+
+LightningCeiling
+{
+	FrightenRange 96.0
+}
+
+LightningZap
+{
+	FrightenRange 64.0
+}
+
+MWeapBloodscourge
+{
+	MinCombatRange 64.0
+	MaxCombatRange 800.0
+	FrightenRange 128.0
+	MaxRefire 3
+}
+
+MageStaffFX2
+{
+	FrightenRange 128.0
+}
+
+Snout
+{
+	ChaseRange 128.0
+	MaxCombatRange 64.0
+}
+
+// Hexen items
+ThrowingBomb
+{
+	FrightenRange 192.0
+}
+
+FireBomb
+{
+	FrightenRange 192.0
+}
+
+PoisonBag
+{
+	FrightenRange 192.0
+}
+
+PoisonCloud
+{
+	FrightenRange 192.0
+}
+
+TelOtherFX1
+{
+	FrightenRange 96.0
+}
+
+TelOtherFX2 : TelOtherFX1
+{
+
+}
+
+TelOtherFX3 : TelOtherFX1
+{
+
+}
+
+TelOtherFX4 : TelOtherFX1
+{
+
+}
+
+PorkFX
+{
+	FrightenRange 96.0
+}
+
+// Strife weapons
+PunchDagger
+{
+	ChaseRange 160.0
+	MaxCombatRange 80.0
+}
+
+StrifeCrossbow
+{
+	ProjectileType "ElectricBolt"
+	MinCombatRange 64.0
+	MaxCombatRange 512.0
+	MaxRefire 4
+}
+
+ElectricBolt
+{
+	FrightenRange 64.0
+}
+
+StrifeCrossbow2 : StrifeCrossbow
+{
+	ProjectileType "PoisonBolt"
+}
+
+PoisonBolt : ElectricBolt
+{
+
+}
+
+AssaultGun
+{
+	MinCombatRange 64.0
+	MaxCombatRange 640.0
+	MaxRefire 10
+}
+
+MiniMissileLauncher
+{
+	ProjectileType "MiniMissile"
+	MinCombatRange 128.0
+	MaxCombatRange 640.0
+	ExplosiveRange 96.0
+	FrightenRange 128.0
+	MaxRefire 5
+}
+
+MiniMissile
+{
+	FrightenRange 128.0
+}
+
+StrifeGrenadeLauncher
+{
+	MinCombatRange 320.0
+	MaxCombatRange 800.0
+	ExplosiveRange 256.0
+	FrightenRange 320.0
+	MaxRefire 2
+}
+
+HEGrenade
+{
+	FrightenRange 224.0
+}
+
+StrifeGrenadeLauncher2
+{
+	MinCombatRange 256.0
+	MaxCombatRange 800.0
+	ExplosiveRange 192.0
+	FrightenRange 256.0
+	MaxRefire 2
+}
+
+PhosphorousGrenade : PhosphorousFire
+{
+	
+}
+
+PhosphorousFire
+{
+	FrightenRange 192.0
+}
+
+FlameThrower
+{
+	MinCombatRange 48.0
+	MaxCombatRange 256.0
+	FrightenRange 96.0
+	MaxRefire 25
+}
+
+FlameMissile
+{
+	FrightenRange 64.0
+}
+
+Mauler
+{
+	MinCombatRange 48.0
+	MaxCombatRange 448.0
+	FrightenRange 96.0
+	MaxRefire 4
+}
+
+Mauler2
+{
+	MinCombatRange 64.0
+	MaxCombatRange 640.0
+	FrightenRange 96.0
+	MaxRefire 2
+}
+
+MaulerTorpedo : MaulerTorpedoWave
+{
+
+}
+
+MaulerTorpedoWave
+{
+	FrightenRange 96.0
+}
+
+Sigil
+{
+	MinCombatRange 64.0
+	MaxCombatRange 800.0
+	FrightenRange 96.0
+	MaxRefire 2
+}
+
+// Sigil1
+SpectralLightningV1
+{
+	FrightenRange 128.0
+}
+
+SpectralLightningV2
+{
+	FrightenRange 96.0
+}
+
+// Sigil2
+SpectralLightningH1
+{
+	FrightenRange 96.0
+}
+
+// Sigil3
+SpectralLightningBall1
+{
+	FrightenRange 96.0
+}
+
+// Sigil4
+SpectralLightningBigV1
+{
+	FrightenRange 128.0
+}
+
+// Sigil5
+SpectralLightningBigBall1
+{
+	FrightenRange 128.0
+}
+
+SpectralLightningH3
+{
+	FrightenRange 64.0
+}

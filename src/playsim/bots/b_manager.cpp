@@ -212,14 +212,14 @@ int DBotManager::CountBots(FLevelLocals* level)
 	return bots;
 }
 
-FEntityProperties* DBotManager::GetEntityInfo(FName ent, FName baseClass)
+FEntityProperties* EntityDefManager::GetEntityInfo(FName ent, FName baseClass)
 {
 	FName key = ent;
-	auto replacement = _botEntityReplacements.CheckKey(key);
+	auto replacement = _entityReplacements.CheckKey(key);
 	if (replacement != nullptr)
 		key = *replacement;
 
-	FEntityProperties* entInfo = BotEntityInfo.CheckKey(key);
+	FEntityProperties* entInfo = EntityInfo.CheckKey(key);
 	if (entInfo != nullptr)
 		return entInfo;
 
@@ -231,7 +231,7 @@ FEntityProperties* DBotManager::GetEntityInfo(FName ent, FName baseClass)
 	auto parent = classType->ParentClass;
 	while (parent != nullptr && parent->IsDescendantOf(baseClass))
 	{
-		entInfo = BotEntityInfo.CheckKey(parent->TypeName);
+		entInfo = EntityInfo.CheckKey(parent->TypeName);
 		if (entInfo != nullptr)
 			return entInfo;
 
@@ -247,7 +247,7 @@ FEntityProperties* DBotManager::GetEntityInfo(FName ent, FName baseClass)
 	auto info = actor->ActorInfo();
 	if (info->Replacee != nullptr)
 	{
-		entInfo = BotEntityInfo.CheckKey(info->Replacee->TypeName);
+		entInfo = EntityInfo.CheckKey(info->Replacee->TypeName);
 		if (entInfo != nullptr)
 			return entInfo;
 	}
@@ -255,7 +255,7 @@ FEntityProperties* DBotManager::GetEntityInfo(FName ent, FName baseClass)
 	// Or the actor replacing it.
 	if (info->Replacement != nullptr)
 	{
-		entInfo = BotEntityInfo.CheckKey(info->Replacement->TypeName);
+		entInfo = EntityInfo.CheckKey(info->Replacement->TypeName);
 		if (entInfo != nullptr)
 			return entInfo;
 	}
@@ -298,11 +298,11 @@ void DBotManager::SpawnNamedBots()
 
 static bool GetEntityDef(FName cls, FName base)
 {
-	auto clsDef = DBotManager::BotEntityInfo.CheckKey(cls);
+	auto clsDef = EntityDefManager::EntityInfo.CheckKey(cls);
 	if (clsDef == nullptr)
 		return false;
 
-	auto baseDef = DBotManager::BotEntityInfo.CheckKey(base);
+	auto baseDef = EntityDefManager::EntityInfo.CheckKey(base);
 	if (base == nullptr)
 		return false;
 
@@ -555,23 +555,17 @@ public:
 	}
 };
 
-// Boon TODO: Add backwards compat for zcajun bots
-void DBotManager::ParseBotDefinitions()
+void EntityDefManager::ParseEntityDefinitions()
 {
-	BotDefinitions.Clear();
-	BotEntityInfo.Clear();
+	EntityInfo.Clear();
 
 	constexpr int NoLump = -1;
-	constexpr char LumpName[] = "BOTDEF";
-	constexpr char BotDef[] = "Bot";
-	constexpr char EntityDef[] = "Entity";
+	constexpr char LumpName[] = "ENTDEF";
 	constexpr char Replaces[] = "Replaces";
 	constexpr char Abstract[] = "Abstract";
 
-	// TODO: #include support
-
-	TArray<FName> abstractEnts = {}, abstractBots = {};
-	FInheritenceTree entTree = {}, botTree = {};
+	TArray<FName> abstractEnts = {};
+	FInheritenceTree entTree = {};
 
 	int lump = NoLump;
 	int lastLump = 0;
@@ -585,11 +579,6 @@ void DBotManager::ParseBotDefinitions()
 			if (isAbstract)
 				sc.MustGetString();
 
-			const bool isBot = sc.Compare(BotDef);
-			if (!isBot && !sc.Compare(EntityDef))
-				sc.ScriptError("Expected '%s' or '%s', got '%s'.", BotDef, EntityDef, sc.String);
-
-			sc.MustGetString();
 			const FName key = sc.String;
 
 			FName parent = NAME_None;
@@ -618,34 +607,17 @@ void DBotManager::ParseBotDefinitions()
 			if (!sc.Compare("{"))
 				sc.ScriptError("Expected '{', got '%s'.", sc.String);
 
-			if(isBot)
-			{
-				if (botTree.IsInvalidClass(key))
-					sc.ScriptError("Bot '%s' already exists.", key.GetChars());
+			if (entTree.IsInvalidClass(key))
+				sc.ScriptError("Entity '%s' already exists.", key.GetChars());
 
-				FBotDefinition def = {};
-				BotDefinitions.Insert(key, ParseBot(sc, def));
-				botTree.InsertNode(key, parent, GetBotDef);
-				if (replacement != NAME_None)
-					_botReplacements.Insert(replacement, key);
+			FEntityProperties props = {};
+			EntityInfo.Insert(key, ParseEntity(sc, props));
+			entTree.InsertNode(key, parent, GetEntityDef);
+			if (replacement != NAME_None)
+				_entityReplacements.Insert(replacement, key);
 
-				if (isAbstract)
-					abstractBots.Push(key);
-			}
-			else
-			{
-				if (entTree.IsInvalidClass(key))
-					sc.ScriptError("Weapon '%s' already exists.", key.GetChars());
-
-				FEntityProperties props = {};
-				BotEntityInfo.Insert(key, ParseEntity(sc, props));
-				entTree.InsertNode(key, parent, GetEntityDef);
-				if (replacement != NAME_None)
-					_botEntityReplacements.Insert(replacement, key);
-
-				if (isAbstract)
-					abstractEnts.Push(key);
-			}
+			if (isAbstract)
+				abstractEnts.Push(key);
 		}
 	}
 
@@ -653,9 +625,87 @@ void DBotManager::ParseBotDefinitions()
 	// Now that we've done an initial pass, start inheriting.
 	FInheritenceError error = entTree.GenerateData();
 	if (error.HasError())
-		I_Error("BOTDEF - %s\n", error.GetError());
+		I_Error("ENTDEF - %s\n", error.GetError());
 
-	error = botTree.GenerateData();
+	for (auto& def : abstractEnts)
+	{
+		EntityInfo.Remove(def);
+		_entityReplacements.Remove(def);
+	}
+}
+
+// Boon TODO: Add backwards compat for zcajun bots
+void DBotManager::ParseBotDefinitions()
+{
+	BotDefinitions.Clear();
+
+	constexpr int NoLump = -1;
+	constexpr char LumpName[] = "BOTDEF";
+	constexpr char Replaces[] = "Replaces";
+	constexpr char Abstract[] = "Abstract";
+
+	// TODO: #include support
+
+	TArray<FName> abstractBots = {};
+	FInheritenceTree botTree = {};
+
+	int lump = NoLump;
+	int lastLump = 0;
+	while ((lump = fileSystem.FindLump(LumpName, &lastLump)) != NoLump)
+	{
+		FScanner sc = { lump };
+		sc.SetCMode(true);
+		while (sc.GetString())
+		{
+			const bool isAbstract = sc.Compare(Abstract);
+			if (isAbstract)
+				sc.MustGetString();
+
+			const FName key = sc.String;
+
+			FName parent = NAME_None;
+			sc.MustGetString();
+			if (sc.Compare(":"))
+			{
+				sc.MustGetString();
+				parent = sc.String;
+				if (parent == key)
+					sc.ScriptError("Definition '%s' tried to inherit from itself.", key.GetChars());
+
+				sc.MustGetString();
+			}
+
+			FName replacement = NAME_None;
+			if (sc.Compare(Replaces))
+			{
+				if (isAbstract)
+					sc.ScriptError("Abstract definitions cannot replace other definitions.");
+
+				sc.MustGetString();
+				replacement = sc.String;
+				sc.MustGetString();
+			}
+
+			if (!sc.Compare("{"))
+				sc.ScriptError("Expected '{', got '%s'.", sc.String);
+
+			if (botTree.IsInvalidClass(key))
+				sc.ScriptError("Bot '%s' already exists.", key.GetChars());
+
+			FBotDefinition def = {};
+			BotDefinitions.Insert(key, ParseBot(sc, def));
+			botTree.InsertNode(key, parent, GetBotDef);
+			if (replacement != NAME_None)
+				_botReplacements.Insert(replacement, key);
+
+			if (isAbstract)
+				abstractBots.Push(key);
+		}
+	}
+
+	// Boon TODO: Error handling definitely needs to be reworked.
+	// Now that we've done an initial pass, start inheriting.
+	FInheritenceError error = botTree.GenerateData();
 	if (error.HasError())
 		I_Error("BOTDEF - %s\n", error.GetError());
 
@@ -663,11 +713,6 @@ void DBotManager::ParseBotDefinitions()
 	{
 		BotDefinitions.Remove(def);
 		_botReplacements.Remove(def); // Just in case someone decided to try replacing it.
-	}
-	for (auto& def : abstractEnts)
-	{
-		BotEntityInfo.Remove(def);
-		_botEntityReplacements.Remove(def);
 	}
 }
 
@@ -707,7 +752,7 @@ FBotDefinition& DBotManager::ParseBot(FScanner& sc, FBotDefinition& def)
 	return def;
 }
 
-FEntityProperties& DBotManager::ParseEntity(FScanner& sc, FEntityProperties& props)
+FEntityProperties& EntityDefManager::ParseEntity(FScanner& sc, FEntityProperties& props)
 {
 	while (sc.GetString())
 	{

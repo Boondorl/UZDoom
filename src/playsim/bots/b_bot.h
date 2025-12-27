@@ -379,29 +379,41 @@ class DBotManager final
 private:
 	static inline TArray<FName> _botNameArgs = {};					// Bot names given when the host launched the game with the "-bots" arg.
 	static inline TMap<FName, FName> _botReplacements = {};			// Replacement IDs when fetching a bot's info.
-	static inline TMap<FName, FName> _botEntityReplacements = {};	// Replacement IDs when fetching an entity's info.
 
 	static FBotDefinition& ParseBot(FScanner& sc, FBotDefinition& def);				// Function that parses a bot block in BOTDEFS.
-	static FEntityProperties& ParseEntity(FScanner& sc, FEntityProperties& props);	// Function that parses a weapon block in BOTDEFS.
 
 public:
 	DBotManager() = delete;
 
 	static inline cycle_t BotThinkCycles = {};							// For tracking think time of bots specifically.
 	static inline TMap<FName, FBotDefinition> BotDefinitions = {};		// Default properties and userinfo to give when spawning a bot. Stored by bot ID.
-	static inline TMap<FName, FEntityProperties> BotEntityInfo = {};	// Key information about how bots should react to entities. Stored by entity ID.
 
 	static void ParseBotDefinitions();								// Parses the BOTDEF lumps.
 	static void SetNamedBots(const FString* args, int argCount);	// Parses the "-bots" arg for the names of the bots.
 	static void SpawnNamedBots();				// Spawns any named bots. Only the host can do this. Triggers on level load.
 	static int CountBots(FLevelLocals* level = nullptr);			// Counts the number of bots in the game.
 
-	static FEntityProperties* GetEntityInfo(FName ent, FName baseClass = NAME_Actor);	// If the ID isn't found, try and use baseClass to find a parent entity.
 	static FBotDefinition* GetBot(FName botName);
 	static bool SpawnBot(FName name = NAME_None);					// Spawns a bot over the network. If no name is passed, spawns a random one.
 	static bool TryAddBot(FLevelLocals* level, unsigned playerIndex, FName botID);		// Tries to add a bot to the game.
 	static void RemoveBot(unsigned botNum);						// Removes the bot and makes it emulate a player leaving the game.
 	static void RemoveAllBots();										// Removes all bots from the game.
+};
+
+class EntityDefManager final
+{
+private:
+	static inline TMap<FName, FName> _entityReplacements = {};	// Replacement IDs when fetching an entity's info.
+
+	static FEntityProperties& ParseEntity(FScanner& sc, FEntityProperties& props);	// Function that parses an entity block in ENTDEFS.
+
+public:
+	EntityDefManager() = delete;
+
+	static inline TMap<FName, FEntityProperties> EntityInfo = {};	// Key information about how bots should react to entities. Stored by entity ID.
+
+	static void ParseEntityDefinitions();								// Parses the ENTDEFS lumps.
+	static FEntityProperties* GetEntityInfo(FName ent, FName baseClass = NAME_Actor);	// If the ID isn't found, try and use baseClass to find a parent entity.
 };
 
 #endif

@@ -670,6 +670,8 @@ struct LevelLocals native
 	native clearscope VisualThinker SpawnClientSideVisualThinker(Class<VisualThinker> type);
 
 	clearscope native static bool WorldPaused(bool checkLag = false);
+	native clearscope static EntityProperties GetEntityInfo(Name entity, Name baseClass = 'Actor');
+	native clearscope static int GetBotCount();
 }
 
 // a few values of this need to be readable by the play code.
