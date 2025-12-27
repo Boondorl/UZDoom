@@ -237,6 +237,33 @@ FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, TObjPtr<DB
 	return arc;
 }
 
+FSerializer& Serialize(FSerializer& arc, const char* key, ZSMap<FName, int>& value, ZSMap<FName, int>* defval)
+{
+	if (!arc.BeginObject(key))
+		return arc;
+
+	if (arc.isWriting())
+	{
+		ZSMap<FName, int>::Iterator it = { value };
+		ZSMap<FName, int>::Pair* pair = nullptr;
+		while (it.NextPair(pair))
+			arc(pair->Key.GetChars(), pair->Value);
+	}
+	else
+	{
+		const char* k = nullptr;
+		while ((k = arc.GetKey()) != nullptr)
+		{
+			int val;
+			arc(k, val);
+			value[k] = val;
+		}
+	}
+
+	arc.EndObject();
+	return arc;
+}
+
 FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, std::variant<bool, int, double, FString>>& value, TMap<FName, std::variant<bool, int, double, FString>>* def)
 {
 	if (!arc.BeginObject(key))

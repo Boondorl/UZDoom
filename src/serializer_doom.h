@@ -24,6 +24,7 @@
 #pragma once
 
 #include "serializer.h"
+#include "maps.h"
 
 class player_t;
 class DBehavior;
@@ -67,6 +68,7 @@ FSerializer &Serialize(FSerializer &arc, const char *key, usercmd_t &cmd, usercm
 FSerializer &Serialize(FSerializer &arc, const char *key, FInterpolator &rs, FInterpolator *def);
 FSerializer& Serialize(FSerializer& arc, const char* key, struct FStandaloneAnimation& value, struct FStandaloneAnimation* defval);
 FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, TObjPtr<DBehavior*>>& value, TMap<FName, TObjPtr<DBehavior*>>* def);
+FSerializer& Serialize(FSerializer& arc, const char* key, ZSMap<FName, int>& value, ZSMap<FName, int>* defval);
 FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, std::variant<bool, int, double, FString>>& value, TMap<FName, std::variant<bool, int, double, FString>>* def);
 
 template<> FSerializer &Serialize(FSerializer &arc, const char *key, FPolyObj *&value, FPolyObj **defval);
