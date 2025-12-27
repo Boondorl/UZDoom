@@ -30,6 +30,8 @@ struct EntityProperties native
 	native clearscope bool GetBool(Name key, bool def = false) const;
 	native clearscope int GetInt(Name key, int def = 0) const;
 	native clearscope double GetDouble(Name key, double def = 0.0) const;
+	native clearscope int GetWholeNumber(Name key, int def = 0) const;
+	native clearscope double GetRealNumber(Name key, double def = 0.0) const;
 
 	native void RemoveProperty(Name key);
 	native void ResetProperty(Name key);
@@ -153,8 +155,8 @@ class Bot : Thinker native
 
 	clearscope double GetRange(EntityProperties props, Name prop, double propDef = 0.0, Name mod = 'None', double modDef = 1.0) const
 	{
-		double value = props && prop != 'None' ? props.GetDouble(prop, propDef) : propDef;
-		value *= mod != 'None' ? Properties.GetDouble(mod, modDef) : modDef;
+		double value = props && prop != 'None' ? props.GetRealNumber(prop, propDef) : propDef;
+		value *= mod != 'None' ? Properties.GetRealNumber(mod, modDef) : modDef;
 		return value;
 	}
 
@@ -248,11 +250,11 @@ class Bot : Thinker native
 	virtual void SearchForTarget()
 	{
 		if (!IsOnCoolDown('LastSeen'))
-			SetCoolDown('Fire', Properties.GetInt('ReactionTime', DEF_REACTION_TICS));
+			SetCoolDown('Fire', Properties.GetWholeNumber('ReactionTime', DEF_REACTION_TICS));
 
 		let pawn = GetPawn();
 		Actor target = GetTarget();
-		double viewFOV = Properties.GetDouble('ViewFOV', DEF_SIGHT_FOV);
+		double viewFOV = Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV);
 		if (target
 			&& (!IsTargetValid(target) || (!IsOnCoolDown('LastSeen') && !IsActorInView(target, viewFOV))))
 		{
@@ -297,7 +299,7 @@ class Bot : Thinker native
 		let partner = GetPartner();
 		Actor target = GetTarget();
 
-		double evasiveness = Properties.GetDouble('Evasiveness', 1.0);
+		double evasiveness = Properties.GetRealNumber('Evasiveness', 1.0);
 		if (Evade)
 		{
 			if (Evade == target)
@@ -332,7 +334,7 @@ class Bot : Thinker native
 			Actor mo;
 			Actor closest;
 			double closestDist = double.infinity;
-			double viewFOV = Properties.GetDouble('ViewFOV', DEF_SIGHT_FOV);
+			double viewFOV = Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV);
 			let it = ThinkerIterator.Create("Actor", STAT_DEFAULT);
 			while (mo = Actor(it.Next()))
 			{
@@ -434,7 +436,7 @@ class Bot : Thinker native
 		{
 			Inventory closest;
 			double closestDist = double.infinity;
-			double viewFOV = Properties.GetDouble('ViewFOV', DEF_SIGHT_FOV);
+			double viewFOV = Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV);
 			double rangeSq = itemRange * itemRange;
 			let it = BlockThingsIterator.Create(pawn, itemRange);
 			while (it.Next())
@@ -492,7 +494,7 @@ class Bot : Thinker native
 
 		Actor target = GetTarget();
 		Actor goal = GetGoal();
-		if (target && (IsOnCoolDown('LastSeen') || IsActorInView(target, Properties.GetDouble('ViewFOV', DEF_SIGHT_FOV))))
+		if (target && (IsOnCoolDown('LastSeen') || IsActorInView(target, Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV))))
 		{
 			aimingAtTarget = true;
 			AimPos = target.Pos.PlusZ(target.Height * 0.75 - target.FloorClip);
@@ -503,7 +505,7 @@ class Bot : Thinker native
 				proj = weapInfo.GetString('ProjectileType');
 
 			double dist = Level.Vec3Diff(viewPos, AimPos).Length();
-			double maxTrackingRange = MAX_FIRE_TRACKING_RANGE * Properties.GetDouble('Predictiveness', 1.0);
+			double maxTrackingRange = MAX_FIRE_TRACKING_RANGE * Properties.GetRealNumber('Predictiveness', 1.0);
 			if (proj && maxTrackingRange > 0.0 && dist < maxTrackingRange)
 			{
 				let def = GetDefaultByType(proj);
@@ -576,7 +578,7 @@ class Bot : Thinker native
 
 		let player = GetPlayer();
 		Actor target = GetTarget();
-		if (!target || !player.ReadyWeapon || !IsActorInView(target, Properties.GetDouble('ViewFOV', DEF_SIGHT_FOV)))
+		if (!target || !player.ReadyWeapon || !IsActorInView(target, Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV)))
 			return false;
 
 		let pawn = GetPawn();
@@ -590,9 +592,9 @@ class Bot : Thinker native
 		let weapInfo = GetWeaponInfo(player.ReadyWeapon);
 		if (weapInfo)
 		{
-			maxRefire = int(weapInfo.GetInt('MaxRefire', -1) * Properties.GetDouble('Aggressiveness', 1.0));
-			minRange = weapInfo.GetDouble('ExplosiveRange');
-			maxRange = weapInfo.GetDouble('MaxCombatRange') * Properties.GetDouble('Confidence', 1.0);
+			maxRefire = int(weapInfo.GetWholeNumber('MaxRefire', -1) * Properties.GetRealNumber('Aggressiveness', 1.0));
+			minRange = weapInfo.GetRealNumber('ExplosiveRange');
+			maxRange = weapInfo.GetRealNumber('MaxCombatRange') * Properties.GetRealNumber('Confidence', 1.0);
 			proj = weapInfo.GetString('ProjectileType');
 		}
 
@@ -617,7 +619,7 @@ class Bot : Thinker native
 				imprecisionMulti += 2.0;
 
 			Vector3 facing = (pawn.Angle.ToVector() * Cos(pawn.Pitch), -Sin(pawn.Pitch));
-			if (facing dot (dir / dist) < Cos((BASE_IMPRECISION + Properties.GetDouble('Imprecision')) * imprecisionMulti))
+			if (facing dot (dir / dist) < Cos((BASE_IMPRECISION + Properties.GetRealNumber('Imprecision')) * imprecisionMulti))
 				return false;
 		}
 

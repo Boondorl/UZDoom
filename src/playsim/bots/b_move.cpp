@@ -34,7 +34,11 @@ bool P_CheckPosition(AActor* thing, const DVector2& pos, FCheckPosition& tm, boo
 
 double DBot::GetJumpHeight() const
 {
-	// Boon TODO: Add a map format check to this!
+	// If playing in vanilla maps and jumping isn't explicitly set to enabled, avoid it
+	// as it might break some maps.
+	if (Level->maptype == MAPTYPE_DOOM && !(dmflags & DF_YES_JUMP))
+		return 0.0;
+
     const double gravity = _player->mo->GetGravity();
     const double jumpZ = _player->mo->FloatVar(NAME_JumpZ);
     if (jumpZ < EQUAL_EPSILON || (_player->mo->flags & MF_NOGRAVITY) || (_player->mo->flags2 & MF2_FLY) || gravity < EQUAL_EPSILON

@@ -96,6 +96,34 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetDouble, GetDouble)
 	ACTION_RETURN_FLOAT(GetDouble(self, key, def));
 }
 
+static int GetWholeNumber(FEntityProperties* self, int key, int def)
+{
+	return self->GetWholeNumber(ENamedName(key), def);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetWholeNumber, GetWholeNumber)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FEntityProperties);
+	PARAM_INT(key);
+	PARAM_INT(def);
+
+	ACTION_RETURN_FLOAT(GetWholeNumber(self, key, def));
+}
+
+static double GetRealNumber(FEntityProperties* self, int key, double def)
+{
+	return self->GetRealNumber(ENamedName(key), def);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetRealNumber, GetRealNumber)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FEntityProperties);
+	PARAM_INT(key);
+	PARAM_FLOAT(def);
+
+	ACTION_RETURN_FLOAT(GetRealNumber(self, key, def));
+}
+
 static void SetString(FEntityProperties* self, int key, const FString* value)
 {
 	self->SetString(ENamedName(key), *value);

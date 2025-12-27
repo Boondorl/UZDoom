@@ -171,6 +171,53 @@ public:
 		auto value = _properties.CheckKey(key);
 		return value != nullptr && std::holds_alternative<double>(*value) ? std::get<double>(*value) : def;
 	}
+
+	int GetWholeNumber(FName key, int def = 0) const
+	{
+		auto value = _properties.CheckKey(key);
+		if (value == nullptr)
+			return def;
+
+		if (std::holds_alternative<int>(*value))
+			return std::get<int>(*value);
+		else if (std::holds_alternative<double>(*value))
+			return static_cast<int>(std::get<double>(*value));
+
+		return def;
+	}
+
+	double GetRealNumber(FName key, double def = 0.0) const
+	{
+		auto value = _properties.CheckKey(key);
+		if (value == nullptr)
+			return def;
+
+		if (std::holds_alternative<int>(*value))
+			return std::get<int>(*value);
+		else if (std::holds_alternative<double>(*value))
+			return std::get<double>(*value);
+
+		return def;
+	}
+
+	FString AsString(FName key, const FString& def = {}) const
+	{
+		auto value = _properties.CheckKey(key);
+		if (value == nullptr)
+			return def;
+
+		switch (value->index())
+		{
+		case 0:
+			return std::get<bool>(*value) ? "true" : "false";
+		case 1:
+			return FStringf("%d", std::get<int>(*value));
+		case 2:
+			return FStringf("%f", std::get<double>(*value));
+		}
+
+		return std::get<FString>(*value);
+	}
 };
 
 class DBot : public DThinker
