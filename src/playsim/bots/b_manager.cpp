@@ -100,8 +100,8 @@ bool DBotManager::SpawnBot(FLevelLocals* const level, const FName& name)
 	}
 
 	// Send off the player slot + bot id.
-	Net_WriteByte(DEM_ADDBOT);
-	Net_WriteByte(playerIndex);
+	Net_WriteInt8(DEM_ADDBOT);
+	Net_WriteInt8(playerIndex);
 	Net_WriteString(key.GetChars());
 
 	return true;
@@ -145,9 +145,9 @@ bool DBotManager::TryAddBot(FLevelLocals* const level, const unsigned int player
 	level->Players[playerIndex]->Bot = static_cast<DBot*>(level->CreateThinker(botClass, DBot::DEFAULT_STAT));
 	level->Players[playerIndex]->Bot->Construct(level->Players[playerIndex], botID);
 
-	uint8_t* stream = bot->GenerateUserInfo(level->Players[playerIndex]->userinfo, level->Players[playerIndex]->Bot);
+	auto stream = bot->GenerateUserInfo(level->Players[playerIndex]->userinfo, level->Players[playerIndex]->Bot);
 	if (stream != nullptr)
-		D_ReadUserInfoStrings(playerIndex, &stream, false);
+		D_ReadUserInfoStrings(playerIndex, stream, false);
 
 	if (teamplay)
 		Printf("%s joined the %s team\n", level->Players[playerIndex]->userinfo.GetName(), Teams[level->Players[playerIndex]->userinfo.GetTeam()].GetName());
@@ -169,7 +169,7 @@ void DBotManager::RemoveBot(FLevelLocals* const level, const unsigned int botNum
 	// Make sure they stay on the same team next time they're added again.
 	const auto bot = BotDefinitions.CheckKey(level->Players[botNum]->Bot->GetBotID());
 	int team = level->Players[botNum]->userinfo.GetTeam();
-	if (!TeamLibrary.IsValidTeam(team))
+	if (!FTeam::IsValid(team))
 		team = bot->GetInt("Team", TEAM_NONE);
 
 	bot->SetInt("Team", team);
@@ -697,7 +697,7 @@ FBotDefinition& DBotManager::ParseBot(FScanner& sc, FBotDefinition& def)
 	if ((&def.GetString("PlayerClass"))->IsEmpty())
 		def.SetString("PlayerClass", "Random");
 
-	if (!TeamLibrary.IsValidTeam(def.GetInt("Team", UINT_MAX)))
+	if (!FTeam::IsValid(def.GetInt("Team", UINT_MAX)))
 		def.SetInt("Team", TEAM_NONE);
 
 	return def;
@@ -746,7 +746,7 @@ CCMD(removebots)
 		return;
 	}
 
-	Net_WriteByte(DEM_KILLBOTS);
+	Net_WriteInt8(DEM_KILLBOTS);
 }
 
 CCMD(removebot)
@@ -780,8 +780,8 @@ CCMD(removebot)
 		return;
 	}
 
-	Net_WriteByte(DEM_KILLBOT);
-	Net_WriteByte(i);
+	Net_WriteInt8(DEM_KILLBOT);
+	Net_WriteInt8(i);
 }
 
 CCMD(listbots)

@@ -240,7 +240,7 @@ public:
 	}
 
 	// This is needed so that the player's userinfo values get set correctly.
-	uint8_t* GenerateUserInfo(const TMap<FName, FBaseCVar*>& info, DBot* const bot)
+	TArrayView<uint8_t> GenerateUserInfo(const TMap<FName, FBaseCVar*>& info, DBot* const bot)
 	{
 		// Reset it if it's being regenerated.
 		_userInfo = FString{};
@@ -268,7 +268,7 @@ public:
 				_userInfo.AppendFormat("\\%s\\%s", pair->Key.GetChars(), value.GetChars());
 		}
 
-		return reinterpret_cast<uint8_t*>(const_cast<char*>(_userInfo.GetChars()));
+		return { const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(_userInfo.GetChars())), (unsigned)_userInfo.Len() };
 	}
 
 	inline const FEntityProperties& GetProperties() const

@@ -88,7 +88,7 @@ void DBot::CallBotThink()
 
 void DBot::NormalizeSpeed(short& cmd, const int* const speeds, const bool running)
 {
-	const bool curRunning = _player->cmd.ucmd.buttons & (BT_SPEED | BT_RUN);
+	const bool curRunning = _player->cmd.buttons & (BT_SPEED | BT_RUN);
 	if (curRunning && !running)
 		cmd *= static_cast<double>(speeds[0]) / speeds[1];
 	else if (!curRunning && running)
@@ -98,19 +98,19 @@ void DBot::NormalizeSpeed(short& cmd, const int* const speeds, const bool runnin
 void DBot::SetMove(const EBotMoveDirection forward, const EBotMoveDirection side, const EBotMoveDirection up, const bool running)
 {
 	if (forward != MDIR_NO_CHANGE)
-		_player->cmd.ucmd.forwardmove = forwardmove[running] * 256 * forward;
+		_player->cmd.forwardmove = forwardmove[running] * 256 * forward;
 	else
-		NormalizeSpeed(_player->cmd.ucmd.forwardmove, forwardmove, running);
+		NormalizeSpeed(_player->cmd.forwardmove, forwardmove, running);
 
 	if (side != MDIR_NO_CHANGE)
-		_player->cmd.ucmd.sidemove = sidemove[running] * 256 * side;
+		_player->cmd.sidemove = sidemove[running] * 256 * side;
 	else
-		NormalizeSpeed(_player->cmd.ucmd.sidemove, sidemove, running);
+		NormalizeSpeed(_player->cmd.sidemove, sidemove, running);
 
 	if (up != MDIR_NO_CHANGE)
-		_player->cmd.ucmd.upmove = flyspeed[running] * up;
+		_player->cmd.upmove = flyspeed[running] * up;
 	else
-		NormalizeSpeed(_player->cmd.ucmd.upmove, flyspeed, running);
+		NormalizeSpeed(_player->cmd.upmove, flyspeed, running);
 
 	SetButtons(BT_SPEED | BT_RUN, running);
 }
@@ -118,9 +118,9 @@ void DBot::SetMove(const EBotMoveDirection forward, const EBotMoveDirection side
 void DBot::SetButtons(const int cmds, const bool set)
 {
 	if (set)
-		_player->cmd.ucmd.buttons |= cmds;
+		_player->cmd.buttons |= cmds;
 	else
-		_player->cmd.ucmd.buttons &= ~cmds;
+		_player->cmd.buttons &= ~cmds;
 };
 
 void DBot::SetAngleCommand(short& cmd, const DAngle& curAng, const DAngle& destAng)
@@ -143,16 +143,16 @@ void DBot::SetAngle(const DAngle& dest, const EBotAngleCmd type)
 	switch (type)
 	{
 		case ACMD_YAW:
-			SetAngleCommand(_player->cmd.ucmd.yaw, _player->mo->Angles.Yaw, dest);
+			SetAngleCommand(_player->cmd.yaw, _player->mo->Angles.Yaw, dest);
 			break;
 
 		// This one is intentionally backwards due to how the pitch is applied.
 		case ACMD_PITCH:
-			SetAngleCommand(_player->cmd.ucmd.pitch, dest, _player->mo->Angles.Pitch);
+			SetAngleCommand(_player->cmd.pitch, dest, _player->mo->Angles.Pitch);
 			break;
 
 		case ACMD_ROLL:
-			SetAngleCommand(_player->cmd.ucmd.roll, _player->mo->Angles.Roll, dest);
+			SetAngleCommand(_player->cmd.roll, _player->mo->Angles.Roll, dest);
 			break;
 	}
 }
