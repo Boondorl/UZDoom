@@ -1353,6 +1353,19 @@ void G_Ticker ()
 		}
 	}
 
+	// This has to be manually cleared for bots since previously they relied on using the
+	// network buffers to do this. Bots will decide themselves what their command will
+	// be when it comes time to think.
+	player_t* bot = nullptr;
+	while ((bot = player_t::GetNextPlayer(bot)) != nullptr)
+	{
+		if (bot->Bot != nullptr)
+		{
+			bot->oldbuttons = bot->cmd.buttons;
+			bot->cmd = {};
+		}
+	}
+
 	C_RunDelayedCommands();
 
 	// do main actions
