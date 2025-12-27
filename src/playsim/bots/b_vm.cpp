@@ -38,7 +38,7 @@
 
 // FEntityProperties
 
-static void GetString(const FEntityProperties* const self, const int key, const FString* const def, FString* const res)
+static void GetString(FEntityProperties* self, int key, const FString* def, FString* res)
 {
 	*res = self->GetString(ENamedName(key), *def);
 }
@@ -54,7 +54,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetString, GetString)
 	ACTION_RETURN_STRING(res);
 }
 
-static int GetInt(const FEntityProperties* const self, const int key, const int def)
+static int GetInt(FEntityProperties* self, int key, int def)
 {
 	return self->GetInt(ENamedName(key), def);
 }
@@ -68,7 +68,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetInt, GetInt)
 	ACTION_RETURN_INT(GetInt(self, key, def));
 }
 
-static int GetBool(const FEntityProperties* const self, const int key, const int def)
+static int GetBool(FEntityProperties* self, int key, int def)
 {
 	return self->GetBool(ENamedName(key), def);
 }
@@ -82,7 +82,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetBool, GetBool)
 	ACTION_RETURN_INT(GetBool(self, key, def));
 }
 
-static double GetDouble(const FEntityProperties* const self, const int key, const double def)
+static double GetDouble(FEntityProperties* self, int key, double def)
 {
 	return self->GetDouble(ENamedName(key), def);
 }
@@ -96,7 +96,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetDouble, GetDouble)
 	ACTION_RETURN_FLOAT(GetDouble(self, key, def));
 }
 
-static void SetString(FEntityProperties* const self, const int key, const FString* const value)
+static void SetString(FEntityProperties* self, int key, const FString* value)
 {
 	self->SetString(ENamedName(key), *value);
 }
@@ -111,7 +111,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, SetString, SetString)
 	return 0;
 }
 
-static void SetInt(FEntityProperties* const self, const int key, const int value)
+static void SetInt(FEntityProperties* self, int key, int value)
 {
 	self->SetInt(ENamedName(key), value);
 }
@@ -126,7 +126,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, SetInt, SetInt)
 	return 0;
 }
 
-static void SetBool(FEntityProperties* const self, const int key, const int value)
+static void SetBool(FEntityProperties* self, int key, int value)
 {
 	self->SetBool(ENamedName(key), value);
 }
@@ -141,7 +141,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, SetBool, SetBool)
 	return 0;
 }
 
-static void SetDouble(FEntityProperties* const self, const int key, const double value)
+static void SetDouble(FEntityProperties* self, int key, double value)
 {
 	self->SetDouble(ENamedName(key), value);
 }
@@ -156,7 +156,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, SetDouble, SetDouble)
 	return 0;
 }
 
-static int HasProperty(const FEntityProperties* const self, const int key)
+static int HasProperty(FEntityProperties* self, int key)
 {
 	return self->HasProperty(ENamedName(key));
 }
@@ -169,7 +169,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, HasProperty, HasProperty)
 	ACTION_RETURN_INT(HasProperty(self, key));
 }
 
-static void RemoveProperty(FEntityProperties* const self, const int key)
+static void RemoveProperty(FEntityProperties* self, int key)
 {
 	self->RemoveProperty(ENamedName(key));
 }
@@ -183,7 +183,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, RemoveProperty, RemoveProperty)
 	return 0;
 }
 
-static void ResetProperty(FEntityProperties* const self, const int key)
+static void ResetProperty(FEntityProperties* self, int key)
 {
 	self->ResetProperty(ENamedName(key));
 }
@@ -197,7 +197,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, ResetProperty, ResetProperty)
 	return 0;
 }
 
-static void ResetAllProperties(FEntityProperties* const self)
+static void ResetAllProperties(FEntityProperties* self)
 {
 	self->ResetAllProperties();
 }
@@ -214,7 +214,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, ResetAllProperties, ResetAllPro
 
 DEFINE_FIELD(DBot, Properties)
 
-static FEntityProperties* GetEntityInfo(const int ent, const int base)
+static FEntityProperties* GetEntityInfo(int ent, int base)
 {
 	return DBotManager::GetEntityInfo(ENamedName(ent), ENamedName(base));
 }
@@ -226,19 +226,6 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, GetEntityInfo, GetEntityInfo)
 	PARAM_INT(base);
 
 	ACTION_RETURN_POINTER(GetEntityInfo(ent, base));
-}
-
-static int IsSectorDangerous(const sector_t* const sec)
-{
-	return DBot::IsSectorDangerous(sec);
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBot, IsSectorDangerous, IsSectorDangerous)
-{
-	PARAM_PROLOGUE;
-	PARAM_POINTER(sec, sector_t);
-
-	ACTION_RETURN_INT(IsSectorDangerous(sec));
 }
 
 static int GetBotCount()
@@ -253,7 +240,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, GetBotCount, GetBotCount)
 	ACTION_RETURN_INT(GetBotCount());
 }
 
-static player_t* GetPlayer(DBot* const self)
+static player_t* GetPlayer(DBot* self)
 {
 	return self->GetPlayer();
 }
@@ -265,9 +252,9 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, GetPlayer, GetPlayer)
 	ACTION_RETURN_POINTER(GetPlayer(self));
 }
 
-static int GetBotID(DBot* const self)
+static int GetBotID(DBot* self)
 {
-	return (&self->GetBotID())->GetIndex();
+	return self->GetBotID().GetIndex();
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DBot, GetBotID, GetBotID)
@@ -277,7 +264,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, GetBotID, GetBotID)
 	ACTION_RETURN_INT(GetBotID(self));
 }
 
-static void SetMove(DBot* const self, const int forw, const int side, const int up, const int running)
+static void SetMove(DBot* self, int forw, int side, int up, int running)
 {
 	self->SetMove(static_cast<EBotMoveDirection>(forw), static_cast<EBotMoveDirection>(side), static_cast<EBotMoveDirection>(up), running);
 }
@@ -294,7 +281,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, SetMove, SetMove)
 	return 0;
 }
 
-static void SetButtons(DBot* const self, const int buttons, const int set)
+static void SetButtons(DBot* self, int buttons, int set)
 {
 	self->SetButtons(buttons, set);
 }
@@ -309,7 +296,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, SetButtons, SetButtons)
 	return 0;
 }
 
-static void SetAngle(DBot* const self, const double destAng)
+static void SetAngle(DBot* self, double destAng)
 {
 	self->SetAngle(DAngle::fromDeg(destAng), ACMD_YAW);
 }
@@ -323,7 +310,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, SetAngle, SetAngle)
 	return 0;
 }
 
-static void SetPitch(DBot* const self, const double destAng)
+static void SetPitch(DBot* self, double destAng)
 {
 	self->SetAngle(DAngle::fromDeg(destAng), ACMD_PITCH);
 }
@@ -337,7 +324,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, SetPitch, SetPitch)
 	return 0;
 }
 
-static void SetRoll(DBot* const self, const double destAng)
+static void SetRoll(DBot* self, double destAng)
 {
 	self->SetAngle(DAngle::fromDeg(destAng), ACMD_ROLL);
 }
@@ -351,7 +338,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, SetRoll, SetRoll)
 	return 0;
 }
 
-static int IsActorInView(DBot* const self, AActor* const mo, const double fov)
+static int IsActorInView(DBot* self, AActor* mo, double fov)
 {
 	return self->IsActorInView(mo, DAngle::fromDeg(fov));
 }
@@ -365,7 +352,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, IsActorInView, IsActorInView)
 	ACTION_RETURN_INT(IsActorInView(self, mo, fov));
 }
 
-static int CheckShotPath(DBot* const self, const double x, const double y, const double z, const int projType, const double minDistance)
+static int CheckShotPath(DBot* self, double x, double y, double z, int projType, double minDistance)
 {
 	return self->CheckShotPath({ x, y, z }, ENamedName(projType), minDistance);
 }
@@ -382,7 +369,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, CheckShotPath, CheckShotPath)
 	ACTION_RETURN_INT(CheckShotPath(self, x, y, z, projType, minDist));
 }
 
-static AActor* FindTarget(DBot* const self, const double fov)
+static AActor* FindTarget(DBot* self, double fov)
 {
 	return self->FindTarget(DAngle::fromDeg(fov));
 }
@@ -395,7 +382,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, FindTarget, FindTarget)
 	ACTION_RETURN_POINTER(FindTarget(self, fov));
 }
 
-static int FindPartner(DBot* const self)
+static int FindPartner(DBot* self)
 {
 	return self->FindPartner();
 }
@@ -407,7 +394,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, FindPartner, FindPartner)
 	ACTION_RETURN_INT(FindPartner(self));
 }
 
-static int IsValidItem(DBot* const self, AActor* const item)
+static int IsValidItem(DBot* self, AActor* item)
 {
 	return self->IsValidItem(item);
 }
@@ -420,7 +407,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, IsValidItem, IsValidItem)
 	ACTION_RETURN_INT(IsValidItem(self, item));
 }
 
-static int FakeCheckPosition(DBot* const self, const double x, const double y, FCheckPosition* const tm, const int actorsOnly)
+static int FakeCheckPosition(DBot* self, double x, double y, FCheckPosition* tm, int actorsOnly)
 {
 	int res = 0;
 	if (tm == nullptr)
@@ -447,7 +434,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, FakeCheckPosition, FakeCheckPosition)
 	ACTION_RETURN_INT(FakeCheckPosition(self, x, y, tm, actorsOnly));
 }
 
-static double GetJumpHeight(DBot* const self)
+static double GetJumpHeight(DBot* self)
 {
 	return self->GetJumpHeight();
 }
@@ -459,7 +446,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, GetJumpHeight, GetJumpHeight)
 	ACTION_RETURN_FLOAT(GetJumpHeight(self));
 }
 
-static int CanReach(DBot* const self, AActor* const mo, const int jump)
+static int CanReach(DBot* self, AActor* mo, int jump)
 {
 	return self->CanReach(mo, jump);
 }
@@ -473,7 +460,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, CanReach, CanReach)
 	ACTION_RETURN_INT(CanReach(self, mo, jump));
 }
 
-static int CheckMove(DBot* const self, const double x, const double y, const int jump)
+static int CheckMove(DBot* self, double x, double y, int jump)
 {
 	return self->CheckMove({ x, y }, jump);
 }
@@ -488,7 +475,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, CheckMove, CheckMove)
 	ACTION_RETURN_INT(CheckMove(self, x, y, jump));
 }
 
-static int Move(DBot* const self, const int running, const int jump)
+static int Move(DBot* self, int running, int jump)
 {
 	return self->Move(running, jump);
 }
@@ -502,7 +489,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, Move, Move)
 	ACTION_RETURN_INT(Move(self, running, jump));
 }
 
-static void NewMoveDirection(DBot* const self, AActor* const goal, const int runAway, const int running, const int jump)
+static void NewMoveDirection(DBot* self, AActor* goal, int runAway, int running, int jump)
 {
 	self->NewMoveDirection(goal, runAway, running, jump);
 }

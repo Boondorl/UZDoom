@@ -19,21 +19,22 @@
 
 struct EntityProperties native
 {
-	// TODO: Return a list of properties? Is that even useful?
+	// Boon TODO: Return a list of properties? Is that even useful?
 	//       Default getters?
 	native void SetString(Name key, string value);
 	native void SetBool(Name key, bool value);
 	native void SetInt(Name key, int value);
 	native void SetDouble(Name key, double value);
-	native void RemoveProperty(Name key);
-	native void ResetProperty(Name key);
-	native void ResetAllProperties();
 
-	native clearscope bool HasProperty(Name key) const;
 	native clearscope string GetString(Name key, string def = "") const;
 	native clearscope bool GetBool(Name key, bool def = false) const;
 	native clearscope int GetInt(Name key, int def = 0) const;
 	native clearscope double GetDouble(Name key, double def = 0.0) const;
+
+	native void RemoveProperty(Name key);
+	native void ResetProperty(Name key);
+	native void ResetAllProperties();
+	native clearscope bool HasProperty(Name key) const;
 }
 
 enum EBotMoveDirection
@@ -72,18 +73,13 @@ class Bot : Thinker native
 	const BASE_IMPRECISION = 7.5;
 
 	native @EntityProperties Properties;
+	native Actor Evade;
 
-	Actor Evade;
+	protected native Vector3 AimPos;
 
-	protected Vector3 aimPos;
-	protected int targetCoolDown;
-	protected int evadeCoolDown;
-	protected int goalCoolDown;
-	protected int fireCoolDown;
-	protected int lastSeenCoolDown;
+	private native Map<Name, int> _coolDowns;
 
 	native clearscope static EntityProperties GetEntityInfo(Name entity, Name baseClass = 'Actor');
-	native clearscope static bool IsSectorDangerous(Sector sec);
 	native clearscope static int GetBotCount();
 
 	native clearscope PlayerInfo GetPlayer() const;
@@ -168,6 +164,22 @@ class Bot : Thinker native
 		return range * range;
 	}
 
+	void SetCoolDown(Name key, int time)
+	{
+		_coolDowns.Insert(key, Level.Time + time);
+	}
+
+	clearscope bool IsOnCoolDown(Name key) const
+	{
+		let [val, exists] = _coolDowns.GetValue();
+		return exists ? val > Level.Time : false;
+	}
+
+	void ResetCoolDowns()
+	{
+		_coolDowns.Clear();
+	}
+
 	void SetTarget(Actor target)
 	{
 		GetPawn().Target = target;
@@ -235,16 +247,14 @@ class Bot : Thinker native
 
 	virtual void SearchForTarget()
 	{
-		if (lastSeenCoolDown > 0)
-			--lastSeenCoolDown;
-		else
-			fireCoolDown = Properties.GetInt('ReactionTime', DEF_REACTION_TICS);
+		if (!IsOnCoolDown('LastSeen'))
+			SetCoolDown('Fire', Properties.GetInt('ReactionTime', DEF_REACTION_TICS));
 
 		let pawn = GetPawn();
 		Actor target = GetTarget();
 		double viewFOV = Properties.GetDouble('ViewFOV', DEF_SIGHT_FOV);
-		if (target && (!IsTargetValid(target)
-						|| (lastSeenCoolDown <= 0 && !IsActorInView(target, viewFOV))))
+		if (target
+			&& (!IsTargetValid(target) || (!IsOnCoolDown('LastSeen') && !IsActorInView(target, viewFOV))))
 		{
 			if (target == GetGoal())
 				SetGoal(null);
@@ -252,19 +262,16 @@ class Bot : Thinker native
 				Evade = null;
 
 			SetTarget(null);
-			targetCoolDown = 0;
+			SetCoolDown('Target', 0);
 		}
 
 		target = GetTarget();
 		if (target && IsActorInView(target, viewFOV))
-			lastSeenCoolDown = SIGHT_COOL_DOWN_TICS;
-
-		if (targetCoolDown > 0)
-			--targetCoolDown;
+			SetCoolDown('LastSeen', SIGHT_COOL_DOWN_TICS);
 
 		let player = GetPlayer();
 		Actor attacker = IsTargetValid(player.Attacker) ? player.Attacker : null;
-		if (!target || (targetCoolDown <= 0 && (attacker || (deathmatch && target.Player))) || !IsTargetDamageable(target))
+		if (!target || (!IsOnCoolDown('Target') && (attacker || (deathmatch && target.Player))) || !IsTargetDamageable(target))
 		{
 			if (attacker)
 				target = attacker;
@@ -274,9 +281,9 @@ class Bot : Thinker native
 			if (target)
 			{
 				SetTarget(target);
-				targetCoolDown = TARGET_COOL_DOWN_TICS;
-				lastSeenCoolDown = SIGHT_COOL_DOWN_TICS;
-				fireCoolDown = 0;
+				SetCoolDown('Target', TARGET_COOL_DOWN_TICS);
+				SetCoolDown('LastSeen', SIGHT_COOL_DOWN_TICS);
+				SetCoolDown('Fire', 0);
 			}
 		}
 
@@ -318,13 +325,9 @@ class Bot : Thinker native
 		}
 
 		if (!Evade)
-			evadeCoolDown = 0;
+			SetCoolDown('Evade', 0);
 
-		if (evadeCoolDown > 0)
-		{
-			--evadeCoolDown;
-		}
-		else if (evasiveness > 0.0)
+		if (evasiveness > 0.0 && !IsOnCoolDown('Evade'))
 		{
 			Actor mo;
 			Actor closest;
@@ -354,7 +357,7 @@ class Bot : Thinker native
 			if (closest)
 			{
 				Evade = closest;
-				evadeCoolDown = EVADE_COOL_DOWN_TICS;
+				SetCoolDown('Evade', EVADE_COOL_DOWN_TICS);
 				NewMoveDirection(Evade, true);
 			}
 		}
@@ -373,7 +376,7 @@ class Bot : Thinker native
 			if ((minRange > 0.0 && dist <= minRange) || (runRange > 0.0 && dist <= runRange))
 			{
 				Evade = target;
-				evadeCoolDown = 0;
+				SetCoolDown('Evade', 0);
 				NewMoveDirection(Evade, true);
 				return;
 			}
@@ -382,7 +385,7 @@ class Bot : Thinker native
 		if (partner && pawn.Distance3DSquared(partner) <= PARTNER_BACK_OFF_RANGE_SQ)
 		{
 			Evade = partner;
-			evadeCoolDown = 0;
+			SetCoolDown('Evade', 0);
 			NewMoveDirection(Evade, true, false);
 		}
 	}
@@ -414,7 +417,7 @@ class Bot : Thinker native
 				|| (chaseRange > 0.0 && dist <= chaseRange && CanReach(target)))
 			{
 				SetGoal(target);
-				goalCoolDown = 0;
+				SetCoolDown('Goal', 0);
 				return;
 			}
 		}
@@ -423,14 +426,11 @@ class Bot : Thinker native
 			SetGoal(null);
 
 		if (!GetGoal())
-			goalCoolDown = 0;
-
-		if (goalCoolDown > 0)
-			--goalCoolDown;
+			SetCoolDown('Goal', 0);
 
 		// Bots won't steal items as much in coop.
 		double itemRange = GetRange(Properties, 'ScavengeRange', DEF_ITEM_RANGE, 'Timidness');
-		if (itemRange > 0.0 && goalCoolDown <= 0 && (deathmatch || !Random[BotItem]()))
+		if (itemRange > 0.0 && !IsOnCoolDown('Goal') && (deathmatch || !Random[BotItem]()))
 		{
 			Inventory closest;
 			double closestDist = double.infinity;
@@ -458,7 +458,7 @@ class Bot : Thinker native
 			if (closest)
 			{
 				SetGoal(closest);
-				goalCoolDown = GOAL_COOL_DOWN_TICS;
+				SetCoolDown('Goal', GOAL_COOL_DOWN_TICS);
 				return;
 			}
 		}
@@ -478,7 +478,7 @@ class Bot : Thinker native
 				SetGoal(null);
 			}
 
-			goalCoolDown = 0;
+			SetCoolDown('Goal', 0);
 		}
 	}
 
@@ -488,11 +488,11 @@ class Bot : Thinker native
 		let pawn = GetPawn();
 
 		bool aimingAtTarget;
-		Vector3 viewPos = pawn.Pos.PlusZ(pawn.ViewHeight - pawn.FloorClip);
+		Vector3 viewPos = (pawn.Pos.XY, player.ViewZ);
 
 		Actor target = GetTarget();
 		Actor goal = GetGoal();
-		if (target && (lastSeenCoolDown > 0 || IsActorInView(target, Properties.GetDouble('ViewFOV', DEF_SIGHT_FOV))))
+		if (target && (IsOnCoolDown('LastSeen') || IsActorInView(target, Properties.GetDouble('ViewFOV', DEF_SIGHT_FOV))))
 		{
 			aimingAtTarget = true;
 			aimPos = target.Pos.PlusZ(target.Height * 0.75 - target.FloorClip);
@@ -571,11 +571,8 @@ class Bot : Thinker native
 
 	virtual bool TryFire()
 	{
-		if (fireCoolDown > 0)
-		{
-			--fireCoolDown;
+		if (IsOnCoolDown('Fire'))
 			return false;
-		}
 
 		let player = GetPlayer();
 		Actor target = GetTarget();
@@ -601,7 +598,7 @@ class Bot : Thinker native
 
 		if (maxRefire >= 0 && player.Refire >= maxRefire)
 		{
-			fireCoolDown = BURST_DELAY_TICS;
+			SetCoolDown('Fire', BURST_DELAY_TICS);
 			return false;
 		}
 
@@ -652,7 +649,7 @@ class Bot : Thinker native
 	virtual int BotDamaged(Actor inflictor, Actor source, int damage, Name damageType, EDmgFlags flags = 0, double angle = 0.0)
 	{
 		if (source == GetTarget())
-			lastSeenCoolDown = SIGHT_COOL_DOWN_TICS;
+			SetCoolDown('LastSeen', SIGHT_COOL_DOWN_TICS);
 
 		return damage;
 	}
@@ -660,7 +657,7 @@ class Bot : Thinker native
 	virtual void BotDied(Actor source, Actor inflictor, EDmgFlags dmgFlags = 0, Name meansOfDeath = 'None')
 	{
 		aimPos = (0.0, 0.0, 0.0);
-		evadeCoolDown = targetCoolDown = goalCoolDown = fireCoolDown = lastSeenCoolDown = 0;
+		ResetCoolDowns();
 		Evade = null;
 		SetGoal(null);
 		SetPartner(0u);
@@ -676,8 +673,7 @@ class Bot : Thinker native
 	virtual void FiredWeapon(bool altFire) {}
 }
 
-// Deprecated: Bots no longer use this.
-class CajunBodyNode : Actor
+deprecated("4.15.1") class CajunBodyNode : Actor
 {
 	Default
 	{
@@ -687,8 +683,7 @@ class CajunBodyNode : Actor
 	}
 }
 
-// Deprecated: Bots no longer use this.
-class CajunTrace : Actor
+deprecated("4.15.1") class CajunTrace : Actor
 {
 	Default
 	{

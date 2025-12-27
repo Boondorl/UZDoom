@@ -1750,30 +1750,43 @@ template<> FSerializer &Serialize(FSerializer &arc, const char *key, FFont *&fon
 
 }
 
-// Boon TODO: I think this is right?
-FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, FString>& value, TMap<FName, FString>* defval)
+FSerializer& Serialize(FSerializer& arc, const char* key, std::variant<bool, int, double, FString>& value, std::variant<bool, int, double, FString>* defval)
 {
 	if (arc.isWriting())
 	{
-		if (value.CountUsed() && arc.BeginObject(key))
+		if (!arc.w->inObject() || defval == nullptr || value != *defval)
 		{
-			TMap<FName, FString>::Pair* pair = nullptr;
-			TMap<FName, FString>::Iterator it = { value };
-			while (it.NextPair(pair))
-				Serialize(arc, pair->Key.GetChars(), pair->Value, defval != nullptr ? defval->CheckKey(pair->Key) : nullptr);
-
-			arc.EndObject();
+			arc.WriteKey(key);
+			switch (value.index())
+			{
+			case 0:
+				arc.w->Bool(std::get<bool>(value));
+				break;
+			case 1:
+				arc.w->Int(std::get<int>(value));
+				break;
+			case 2:
+				arc.w->Double(std::get<double>(value));
+				break;
+			case 3:
+				arc.w->String(std::get<FString>(value).GetChars());
+				break;
+			}
 		}
 	}
 	else
 	{
-		if (arc.BeginObject(key))
+		auto val = arc.r->FindKey(key);
+		if (val != nullptr)
 		{
-			const char* key = nullptr;
-			while ((key = arc.GetKey()) != nullptr)
-				value.Insert(key, arc.r->mKeyValue->GetString());
-
-			arc.EndObject();
+			if (val->IsBool())
+				value = val->GetBool();
+			else if (val->IsInt())
+				value = val->GetInt();
+			else if (val->IsDouble())
+				value = val->GetDouble();
+			else if (val->IsString())
+				value = UnicodeToString(val->GetString());
 		}
 	}
 

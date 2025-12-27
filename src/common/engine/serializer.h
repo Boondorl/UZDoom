@@ -35,6 +35,7 @@
 #include "tarray.h"
 #include "tflags.h"
 #include "vectors.h"
+#include <variant>
 
 #include "rapidjson/stringbuffer.h"
 
@@ -305,7 +306,7 @@ FSerializer &Serialize(FSerializer &arc, const char *key, ModelAnimFrame &ao, Mo
 FSerializer &Serialize(FSerializer& arc, const char* key, FTranslationID& value, FTranslationID* defval);
 FSerializer &Serialize(FSerializer& arc, const char* key, BoneOverride& value, BoneOverride* defval);
 FSerializer &Serialize(FSerializer& arc, const char* key, TRS& value, TRS* defval);
-FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, FString>& value, TMap<FName, FString>* defval);
+FSerializer& Serialize(FSerializer& arc, const char* key, std::variant<bool, int, double, FString>& value, std::variant<bool, int, double, FString>* defval);
 
 void SerializeFunctionPointer(FSerializer &arc, const char *key, FunctionPointerValue *&p);
 

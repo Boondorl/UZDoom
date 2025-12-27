@@ -67,6 +67,7 @@ FSerializer &Serialize(FSerializer &arc, const char *key, usercmd_t &cmd, usercm
 FSerializer &Serialize(FSerializer &arc, const char *key, FInterpolator &rs, FInterpolator *def);
 FSerializer& Serialize(FSerializer& arc, const char* key, struct FStandaloneAnimation& value, struct FStandaloneAnimation* defval);
 FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, TObjPtr<DBehavior*>>& value, TMap<FName, TObjPtr<DBehavior*>>* def);
+FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, std::variant<bool, int, double, FString>>& value, TMap<FName, std::variant<bool, int, double, FString>>* def);
 
 template<> FSerializer &Serialize(FSerializer &arc, const char *key, FPolyObj *&value, FPolyObj **defval);
 template<> FSerializer &Serialize(FSerializer &arc, const char *key, sector_t *&value, sector_t **defval);

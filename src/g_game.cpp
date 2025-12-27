@@ -2183,7 +2183,7 @@ void G_DoLoadGame ()
 	G_SerializeHub(arc);
 
 	// Boon TODO: Is this supposed to be here?
-	DBotManager::RemoveAllBots(primaryLevel);
+	DBotManager::RemoveAllBots();
 
 	savegamerestore = true; // Use the player actors in the savegame
 

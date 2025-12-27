@@ -47,11 +47,11 @@ extern void G_DoPlayerPop(int playernum);
 // is optional and, if not specified, a random one is chosen. This
 // can include duplicates. This is really only meant to be called
 // from the console command, but is network safe.
-bool DBotManager::SpawnBot(FLevelLocals* const level, const FName& name)
+bool DBotManager::SpawnBot(FName name)
 {
-	if (consoleplayer != Net_Arbitrator)
+	if (!players[consoleplayer].settings_controller)
 	{
-		Printf("Only the net arbitrator is allowed to spawn bots\n");
+		Printf("Only settings controllers are allowed to spawn bots\n");
 		return false;
 	}
 
@@ -67,10 +67,10 @@ bool DBotManager::SpawnBot(FLevelLocals* const level, const FName& name)
 		return false;
 	}
 
-	unsigned int playerIndex = 0u;
+	unsigned playerIndex = 0u;
 	for (; playerIndex < MAXPLAYERS; ++playerIndex)
 	{
-		if (!level->PlayerInGame(playerIndex))
+		if (!playeringame[false])
 			break;
 	}
 
@@ -103,14 +103,13 @@ bool DBotManager::SpawnBot(FLevelLocals* const level, const FName& name)
 	Net_WriteInt8(DEM_ADDBOT);
 	Net_WriteInt8(playerIndex);
 	Net_WriteString(key.GetChars());
-
 	return true;
 }
 
 // Attempts to add a bot to the given level. This is really only meant to be called when
 // receiving the network message to spawn a bot. SpawnBot should be used instead if network
 // safety is needed.
-bool DBotManager::TryAddBot(FLevelLocals* const level, const unsigned int playerIndex, const FName& botID)
+bool DBotManager::TryAddBot(FLevelLocals* level, unsigned playerIndex, FName botID)
 {
 	if (gamestate != GS_LEVEL)
 	{
@@ -118,82 +117,82 @@ bool DBotManager::TryAddBot(FLevelLocals* const level, const unsigned int player
 		return false;
 	}
 
-	if (level->PlayerInGame(playerIndex))
+	if (playeringame[playerIndex])
 	{
-		Printf("Couldn't add bot to slot %d, already occupied\n", playerIndex);
+		Printf("Couldn't add bot to slot %u, already occupied\n", playerIndex);
 		return false;
 	}
 
-	const auto bot = GetBot(botID);
+	auto bot = GetBot(botID);
 	if (bot == nullptr)
 	{
 		Printf("Bot %s does not exist\n", botID.GetChars());
 		return false;
 	}
 
-	const auto defClass = PClass::FindClass("Bot");
-	const auto& cls = bot->GetString("BotClass", "Bot");
+	static PClass* DefaultClass = PClass::FindClass(NAME_Bot);
+
+	auto& cls = bot->GetString("BotClass", "Bot");
 	auto botClass = PClass::FindClass(cls);
-	if (botClass == nullptr || !botClass->IsDescendantOf(defClass))
+	if (botClass == nullptr || !botClass->IsDescendantOf(DefaultClass))
 	{
-		Printf("Bot class %s is invalid, defaulting to Bot\n", cls.GetChars());
-		botClass = defClass;
+		Printf(TEXTCOLOR_RED "Bot class %s is invalid, defaulting to Bot\n", cls.GetChars());
+		botClass = DefaultClass;
 	}
 
 	multiplayer = true; // Count this as multiplayer, even if it's not a netgame.
 	playeringame[playerIndex] = true;
-	level->Players[playerIndex]->Bot = static_cast<DBot*>(level->CreateThinker(botClass, DBot::DEFAULT_STAT));
-	level->Players[playerIndex]->Bot->Construct(level->Players[playerIndex], botID);
+	players[playerIndex].Bot = level->CreateThinker<DBot>(&players[playerIndex], botID);
 
-	auto stream = bot->GenerateUserInfo(level->Players[playerIndex]->userinfo, level->Players[playerIndex]->Bot);
-	if (stream != nullptr)
+	auto stream = bot->GenerateUserInfo(players[playerIndex].userinfo, players[playerIndex].Bot);
+	if (stream.Size() > 0)
 		D_ReadUserInfoStrings(playerIndex, stream, false);
 
 	if (teamplay)
-		Printf("%s joined the %s team\n", level->Players[playerIndex]->userinfo.GetName(), Teams[level->Players[playerIndex]->userinfo.GetTeam()].GetName());
+		Printf("%s joined the %s team\n", players[playerIndex].userinfo.GetName(), Teams[players[playerIndex].userinfo.GetTeam()].GetName());
 	else
-		Printf("%s joined the game\n", level->Players[playerIndex]->userinfo.GetName());
+		Printf("%s joined the game\n", players[playerIndex].userinfo.GetName());
 
 	// PlayerSpawned needs to be called before PlayerEntered
-	level->Players[playerIndex]->playerstate = PST_ENTER;
+	players[playerIndex].playerstate = PST_ENTER;
 	level->DoReborn(playerIndex);
 	level->localEventManager->PlayerEntered(playerIndex, false);
 	return true;
 }
 
-void DBotManager::RemoveBot(FLevelLocals* const level, const unsigned int botNum)
+void DBotManager::RemoveBot(unsigned botNum)
 {
-	if (level->Players[botNum]->Bot == nullptr)
+	if (players[botNum].Bot == nullptr)
 		return;
 
 	// Make sure they stay on the same team next time they're added again.
-	const auto bot = BotDefinitions.CheckKey(level->Players[botNum]->Bot->GetBotID());
-	int team = level->Players[botNum]->userinfo.GetTeam();
+	auto bot = BotDefinitions.CheckKey(players[botNum].Bot->GetBotID());
+	int team = players[botNum].userinfo.GetTeam();
 	if (!FTeam::IsValid(team))
 		team = bot->GetInt("Team", TEAM_NONE);
 
 	bot->SetInt("Team", team);
-	level->Players[botNum]->playerstate = PST_GONE;
+	players[botNum].playerstate = PST_GONE;
 	G_DoPlayerPop(botNum);
 }
 
-void DBotManager::RemoveAllBots(FLevelLocals* const level)
+void DBotManager::RemoveAllBots()
 {
-	for (unsigned int i = 0u; i < MAXPLAYERS; ++i)
+	for (unsigned i = 0u; i < MAXPLAYERS; ++i)
 	{
-		if (level->Players[i]->Bot != nullptr)
-			RemoveBot(level, i);
+		if (players[i].Bot != nullptr)
+			RemoveBot(i);
 	}
 }
 
-int DBotManager::CountBots(FLevelLocals* const level)
+int DBotManager::CountBots(FLevelLocals* level)
 {
 	int bots = 0;
 	if (level == nullptr)
 	{
-		for (const auto lev : AllLevels())
+		for (auto lev : AllLevels())
 		{
-			for (unsigned int i = 0u; i < MAXPLAYERS; ++i)
+			for (unsigned i = 0u; i < MAXPLAYERS; ++i)
 			{
 				if (lev->PlayerInGame(i) && lev->Players[i]->Bot != nullptr)
 					++bots;
@@ -202,7 +201,7 @@ int DBotManager::CountBots(FLevelLocals* const level)
 	}
 	else
 	{
-		for (unsigned int i = 0u; i < MAXPLAYERS; ++i)
+		for (unsigned i = 0u; i < MAXPLAYERS; ++i)
 		{
 			if (level->PlayerInGame(i) && level->Players[i]->Bot != nullptr)
 				++bots;
@@ -212,10 +211,10 @@ int DBotManager::CountBots(FLevelLocals* const level)
 	return bots;
 }
 
-FEntityProperties* DBotManager::GetEntityInfo(const FName& ent, const FName& baseClass)
+FEntityProperties* DBotManager::GetEntityInfo(FName ent, FName baseClass)
 {
 	FName key = ent;
-	const auto replacement = _botEntityReplacements.CheckKey(key);
+	auto replacement = _botEntityReplacements.CheckKey(key);
 	if (replacement != nullptr)
 		key = *replacement;
 
@@ -224,11 +223,11 @@ FEntityProperties* DBotManager::GetEntityInfo(const FName& ent, const FName& bas
 		return entInfo;
 
 	// Maybe a class it inherits from has one?
-	const PClass* const classType = PClass::FindClass(ent);
+	auto classType = PClass::FindClass(ent);
 	if (classType == nullptr || !classType->IsDescendantOf(baseClass))
 		return nullptr;
 
-	const PClass* parent = classType->ParentClass;
+	auto parent = classType->ParentClass;
 	while (parent != nullptr && parent->IsDescendantOf(baseClass))
 	{
 		entInfo = BotEntityInfo.CheckKey(parent->TypeName);
@@ -239,12 +238,12 @@ FEntityProperties* DBotManager::GetEntityInfo(const FName& ent, const FName& bas
 	}
 
 	// If it's an actor, what about replacements?
-	const PClassActor* const actor = PClass::FindActor(ent);
+	auto actor = PClassActor::FindActor(ent);
 	if (actor == nullptr)
 		return nullptr;
 
 	// Like the actor it replaces.
-	const FActorInfo* const info = actor->ActorInfo();
+	auto info = actor->ActorInfo();
 	if (info->Replacee != nullptr)
 	{
 		entInfo = BotEntityInfo.CheckKey(info->Replacee->TypeName);
@@ -263,17 +262,17 @@ FEntityProperties* DBotManager::GetEntityInfo(const FName& ent, const FName& bas
 	return nullptr;
 }
 
-FBotDefinition* DBotManager::GetBot(const FName& botName)
+FBotDefinition* DBotManager::GetBot(FName botName)
 {
 	FName id = botName;
-	const auto replacement = _botReplacements.CheckKey(botName);
+	auto replacement = _botReplacements.CheckKey(botName);
 	if (replacement != nullptr)
 		id = *replacement;
 
 	return BotDefinitions.CheckKey(id);
 }
 
-void DBotManager::SetNamedBots(const FString* const args, const int argCount)
+void DBotManager::SetNamedBots(const FString* args, int argCount)
 {
 	_botNameArgs.Clear();
 	if (consoleplayer != Net_Arbitrator)
@@ -283,57 +282,57 @@ void DBotManager::SetNamedBots(const FString* const args, const int argCount)
 		_botNameArgs.Push(args[i]);
 }
 
-void DBotManager::SpawnNamedBots(FLevelLocals* const level)
+void DBotManager::SpawnNamedBots()
 {
 	if (gamestate != GS_LEVEL || consoleplayer != Net_Arbitrator)
 		return;
 
-	for (const auto& name : _botNameArgs)
-		SpawnBot(level, name);
+	for (auto& name : _botNameArgs)
+		SpawnBot(name);
 
 	_botNameArgs.Clear();
 }
 
 // BOTDEF parsing
 
-static bool GetEntityDef(const FName& cls, const FName& base)
+static bool GetEntityDef(FName cls, FName base)
 {
-	const auto clsDef = DBotManager::BotEntityInfo.CheckKey(cls);
+	auto clsDef = DBotManager::BotEntityInfo.CheckKey(cls);
 	if (clsDef == nullptr)
 		return false;
 
-	const FEntityProperties* const baseDef = DBotManager::BotEntityInfo.CheckKey(base);
+	auto baseDef = DBotManager::BotEntityInfo.CheckKey(base);
 	if (base == nullptr)
 		return false;
 
-	TMap<FName, FString>::ConstPair* pair = nullptr;
-	TMap<FName, FString>::ConstIterator it = { baseDef->GetProperties() };
+	FEntityProperties::PropertyDictionary::ConstIterator it = { baseDef->GetProperties() };
+	FEntityProperties::PropertyDictionary::ConstPair* pair = nullptr;
 	while (it.NextPair(pair))
 	{
 		if (!clsDef->HasProperty(pair->Key))
-			clsDef->SetString(pair->Key, pair->Value);
+			clsDef->SetValue(pair->Key, pair->Value);
 	}
 
 	return true;
 }
 
-static bool GetBotDef(const FName& cls, const FName& base)
+static bool GetBotDef(FName cls, FName base)
 {
-	const auto clsDef = DBotManager::BotDefinitions.CheckKey(cls);
+	auto clsDef = DBotManager::BotDefinitions.CheckKey(cls);
 	if (clsDef == nullptr)
 		return false;
 
-	const FBotDefinition* const baseDef = DBotManager::BotDefinitions.CheckKey(base);
+	auto baseDef = DBotManager::BotDefinitions.CheckKey(base);
 	if (base == nullptr)
 		return false;
 
-	const auto& props = clsDef->GetProperties();
-	TMap<FName, FString>::ConstPair* pair = nullptr;
-	TMap<FName, FString>::ConstIterator it = { (&baseDef->GetProperties())->GetProperties() };
+	auto& props = clsDef->GetProperties();
+	FEntityProperties::PropertyDictionary::ConstIterator it = { baseDef->GetProperties().GetProperties() };
+	FEntityProperties::PropertyDictionary::ConstPair* pair = nullptr;
 	while (it.NextPair(pair))
 	{
 		if (!props.HasProperty(pair->Key))
-			clsDef->SetString(pair->Key, pair->Value);
+			clsDef->SetValue(pair->Key, pair->Value);
 	}
 
 	return true;
@@ -346,7 +345,7 @@ private:
 
 public:
 	FInheritenceError() = default;
-	FInheritenceError(const FString& _error) : _error(_error) {}
+	FInheritenceError(const FString& error) : _error(error) {}
 
 	const char* GetError() const
 	{
@@ -355,7 +354,7 @@ public:
 
 	bool HasError() const
 	{
-		return !_error.IsEmpty();
+		return _error.IsNotEmpty();
 	}
 };
 
@@ -365,13 +364,13 @@ private:
 	bool _bVisited = false;
 	FName _parent = NAME_None;
 	FName _cls = NAME_None;
-	bool (*_nodeAction)(const FName&, const FName&) = nullptr;
+	bool (*_nodeAction)(FName, FName) = nullptr;
 	TArray<FName> _children = {};
 
 public:
-	FTreeNode(const FName& _cls, const FName& _parent, bool (*_nodeAction)(const FName&, const FName&)) : _cls(_cls), _parent(_parent), _nodeAction(_nodeAction) {}
+	FTreeNode(FName _cls, FName _parent, bool (*_nodeAction)(FName, FName)) : _cls(_cls), _parent(_parent), _nodeAction(_nodeAction) {}
 
-	const FName& GetParent() const
+	FName GetParent() const
 	{
 		return _parent;
 	}
@@ -396,7 +395,7 @@ public:
 		return _cls == NAME_None || _nodeAction == nullptr;
 	}
 
-	void Validate(const FName& cls, const FName& parent, bool (*action)(const FName&, const FName&))
+	void Validate(FName cls, FName parent, bool (*action)(FName, FName))
 	{
 		if (!IsInvalid())
 			return;
@@ -409,7 +408,7 @@ public:
 		}
 	}
 
-	void AddChildNode(const FName& child)
+	void AddChildNode(FName child)
 	{
 		if (child != NAME_None && _children.Find(child) >= _children.Size())
 			_children.Push(child);
@@ -424,16 +423,12 @@ public:
 
 			bool res = _nodeAction(_cls, _parent);
 			if (!res)
-			{
-				FString e = {};
-				e.Format("%s failed to inherit from %s.", _cls.GetChars(), _parent.GetChars());
-				return { e };
-			}
+				return { FStringf("%s failed to inherit from %s.", _cls.GetChars(), _parent.GetChars()) };
 		}
 
-		for (const auto& cls : _children)
+		for (auto& cls : _children)
 		{
-			const auto node = nodes.CheckKey(cls);
+			auto node = nodes.CheckKey(cls);
 			if (node == nullptr)
 				continue;
 
@@ -453,9 +448,9 @@ private:
 	TMap<FName, FTreeNode> _nodeList = {};
 
 public:
-	bool IsInvalidClass(const FName& cls) const
+	bool IsInvalidClass(FName cls) const
 	{
-		const auto node = _nodeList.CheckKey(cls);
+		auto node = _nodeList.CheckKey(cls);
 		return node != nullptr && !node->IsInvalid();
 	}
 
@@ -464,17 +459,13 @@ public:
 	// visited are also safe.
 	FInheritenceError ValidateNodes()
 	{
-		TMap<FName, FTreeNode>::Pair* pair = nullptr;
 		TMap<FName, FTreeNode>::Iterator it = { _nodeList };
+		TMap<FName, FTreeNode>::Pair* pair = nullptr;
 		while (it.NextPair(pair))
 		{
 			// Class that never got defined.
 			if (pair->Value.IsInvalid())
-			{
-				FString e = {};
-				e.Format("Class %s was inherited from but never defined.", pair->Key.GetChars());
-				return { e };
-			}
+				return { FStringf("Class %s was inherited from but never defined.", pair->Key.GetChars()) };
 
 			if (pair->Value.CouldPotentiallyLoop())
 			{
@@ -486,13 +477,9 @@ public:
 				{
 					// Recursion detected.
 					if (traversed.Find(parent) < traversed.Size())
-					{
-						FString e = {};
-						e.Format("Class %s has no root class (inherits recursively).", pair->Key.GetChars());
-						return { e };
-					}
+						return { FStringf("Class %s has no root class (inherits recursively).", pair->Key.GetChars()) };
 
-					const auto node = _nodeList.CheckKey(parent);
+					auto node = _nodeList.CheckKey(parent);
 					// Must have been found in a valid path previously.
 					if (node->WasVisited())
 						break;
@@ -515,9 +502,9 @@ public:
 		if (error.HasError())
 			return error;
 
-		for (const auto& cls : _roots)
+		for (auto& cls : _roots)
 		{
-			const auto node = _nodeList.CheckKey(cls);
+			auto node = _nodeList.CheckKey(cls);
 			if (node == nullptr)
 				continue;
 
@@ -530,7 +517,7 @@ public:
 		return {};
 	}
 
-	void InsertNode(const FName& cls, const FName& parent, bool (*action)(const FName&, const FName&))
+	void InsertNode(FName cls, FName parent, bool (*action)(FName, FName))
 	{
 		if (cls == NAME_None)
 			return;
@@ -567,6 +554,7 @@ public:
 	}
 };
 
+// Boon TODO: Add backwards compat for zcajun bots
 void DBotManager::ParseBotDefinitions()
 {
 	BotDefinitions.Clear();
@@ -670,12 +658,12 @@ void DBotManager::ParseBotDefinitions()
 	if (error.HasError())
 		I_Error("BOTDEF - %s\n", error.GetError());
 
-	for (const auto& def : abstractBots)
+	for (auto& def : abstractBots)
 	{
 		BotDefinitions.Remove(def);
 		_botReplacements.Remove(def); // Just in case someone decided to try replacing it.
 	}
-	for (const auto& def : abstractEnts)
+	for (auto& def : abstractEnts)
 	{
 		BotEntityInfo.Remove(def);
 		_botEntityReplacements.Remove(def);
@@ -690,11 +678,26 @@ FBotDefinition& DBotManager::ParseBot(FScanner& sc, FBotDefinition& def)
 			break;
 
 		const FName key = sc.String;
-		sc.MustGetString();
-		def.SetString(key, sc.String);
+		if (sc.CheckBoolToken())
+		{
+			def.SetBool(key, sc.Number);
+		}
+		else if (sc.CheckFloat())
+		{
+			def.SetDouble(key, sc.Float);
+		}
+		else if (sc.CheckNumber())
+		{
+			def.SetInt(key, sc.Number);
+		}
+		else
+		{
+			sc.MustGetString();
+			def.SetString(key, sc.String);
+		}
 	}
 
-	if ((&def.GetString("PlayerClass"))->IsEmpty())
+	if (def.GetString("PlayerClass").IsEmpty())
 		def.SetString("PlayerClass", "Random");
 
 	if (!FTeam::IsValid(def.GetInt("Team", UINT_MAX)))
@@ -711,8 +714,23 @@ FEntityProperties& DBotManager::ParseEntity(FScanner& sc, FEntityProperties& pro
 			break;
 
 		const FName key = sc.String;
-		sc.MustGetString();
-		props.SetString(key, sc.String);
+		if (sc.CheckBoolToken())
+		{
+			props.SetBool(key, sc.Number);
+		}
+		else if (sc.CheckFloat())
+		{
+			props.SetDouble(key, sc.Float);
+		}
+		else if (sc.CheckNumber())
+		{
+			props.SetInt(key, sc.Number);
+		}
+		else
+		{
+			sc.MustGetString();
+			props.SetString(key, sc.String);
+		}
 	}
 
 	return props;
@@ -735,14 +753,14 @@ CCMD(addbot)
 		return;
 	}
 
-	DBotManager::SpawnBot(primaryLevel, argv.argc() > 1 ? FName(argv[1]) : NAME_None);
+	DBotManager::SpawnBot(argv.argc() > 1 ? FName(argv[1]) : NAME_None);
 }
 
 CCMD(removebots)
 {
-	if (consoleplayer != Net_Arbitrator)
+	if (!players[consoleplayer].settings_controller)
 	{
-		Printf("Only the net arbitrator can remove bots\n");
+		Printf("Only settings controllers can remove bots\n");
 		return;
 	}
 
@@ -753,25 +771,22 @@ CCMD(removebot)
 {
 	if (argv.argc() != 2)
 	{
-		Printf("removebot botname : remove a bot from the game\n");
+		Printf("removebot [botname] : remove a bot from the game\n");
 		return;
 	}
 
-	if (consoleplayer != Net_Arbitrator)
+	if (!players[consoleplayer].settings_controller)
 	{
-		Printf("Only the net arbitrator can remove bots\n");
+		Printf("Only settings controllers can remove bots\n");
 		return;
 	}
 
 	const FName id = argv[1];
-	unsigned int i = 0u;
+	unsigned i = 0u;
 	for (; i < MAXPLAYERS; ++i)
 	{
-		if (primaryLevel->PlayerInGame(i) && primaryLevel->Players[i]->Bot != nullptr
-			&& primaryLevel->Players[i]->Bot->GetBotID() == id)
-		{
+		if (playeringame[i] && players[i].Bot != nullptr && players[i].Bot->GetBotID() == id)
 			break;
-		}
 	}
 
 	if (i >= MAXPLAYERS)
@@ -786,22 +801,19 @@ CCMD(removebot)
 
 CCMD(listbots)
 {
-	TMap<FName, FBotDefinition>::ConstPair* pair = nullptr;
 	TMap<FName, FBotDefinition>::ConstIterator it = { DBotManager::BotDefinitions };
+	TMap<FName, FBotDefinition>::ConstPair* pair = nullptr;
 	while (it.NextPair(pair))
 	{
-		unsigned int i = 0u;
+		unsigned i = 0u;
 		for (; i < MAXPLAYERS; ++i)
 		{
-			if (primaryLevel->PlayerInGame(i) && primaryLevel->Players[i]->Bot != nullptr
-				&& primaryLevel->Players[i]->Bot->GetBotID() == pair->Key)
-			{
+			if (playeringame[i] && players[i].Bot != nullptr && players[i].Bot->GetBotID() == pair->Key)
 				break;
-			}
 		}
 
 		Printf("%s%s\n", pair->Key.GetChars(), i < MAXPLAYERS ? " (active)" : "");
 	}
 
-	Printf("> %d bots\n> %d bots active\n", DBotManager::BotDefinitions.CountUsed(), DBotManager::CountBots(primaryLevel));
+	Printf("> %d bots\n> %d bots active\n", DBotManager::BotDefinitions.CountUsed(), DBotManager::CountBots());
 }

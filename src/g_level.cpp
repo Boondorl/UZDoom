@@ -1532,7 +1532,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 		I_Error("no start for player %d found.", pnumerr);
 	}
 
-	DBotManager::SpawnNamedBots(this);
+	DBotManager::SpawnNamedBots();
 
 	// If loading in from existing data, allow things to reinitialize if needed.
 	if (FromSnapshot || savegamerestore)

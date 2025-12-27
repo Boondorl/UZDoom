@@ -1408,7 +1408,7 @@ void D_Display ()
 void D_ErrorCleanup ()
 {
 	savegamerestore = false;
-	DBotManager::RemoveAllBots(primaryLevel);
+	DBotManager::RemoveAllBots();
 	D_QuitNetGame ();
 	if (demorecording || demoplayback)
 		G_CheckDemoStatus ();

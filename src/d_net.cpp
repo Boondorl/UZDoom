@@ -2708,20 +2708,20 @@ void Net_DoCommand(int cmd, TArrayView<uint8_t>& stream, int player)
 
 	case DEM_ADDBOT:
 	{
-		const unsigned int playerID = ReadInt8(stream);
+		const unsigned playerID = ReadInt8(stream);
 		const FName botID = ReadStringConst(stream);
 		DBotManager::TryAddBot(primaryLevel, playerID, botID);
 		break;
 	}
 
 	case DEM_KILLBOTS:
-		DBotManager::RemoveAllBots(primaryLevel);
+		DBotManager::RemoveAllBots();
 		break;
 
 	case DEM_KILLBOT:
 	{
-		const unsigned int playerID = ReadInt8(stream);
-		DBotManager::RemoveBot(primaryLevel, playerID);
+		const unsigned playerID = ReadInt8(stream);
+		DBotManager::RemoveBot(playerID);
 		break;
 	}
 

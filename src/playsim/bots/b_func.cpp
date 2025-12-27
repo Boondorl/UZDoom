@@ -26,19 +26,19 @@
 #include "actorinlines.h" // b_bot.h is defined in here via d_player.h.
 #include "p_linetracedata.h"
 
-extern int P_GetRealMaxHealth(AActor* actor, int max);
+int P_GetRealMaxHealth(AActor* actor, int max);
 
-static bool IsHexenArmorValid(AActor* const mo, AActor* const item)
+static bool IsHexenArmorValid(AActor* mo, AActor* item)
 {
-	const auto hexenArmor = mo->FindInventory(NAME_HexenArmor);
+	auto hexenArmor = mo->FindInventory(NAME_HexenArmor, true);
 	if (hexenArmor != nullptr)
 	{
 		const int slot = item->IntVar(NAME_Health);
 		if (slot < 0 || slot > 3)
 			return false;
 
-		const double* const slots = hexenArmor->FloatArray(NAME_Slots);
-		const double* const increments = hexenArmor->FloatArray(NAME_SlotsIncrement);
+		auto slots = hexenArmor->FloatArray(NAME_Slots);
+		auto increments = hexenArmor->FloatArray(NAME_SlotsIncrement);
 		if (item->IntVar(NAME_Amount) <= 0)
 		{
 			if (slots[slot] < increments[slot])
@@ -59,7 +59,7 @@ static bool IsHexenArmorValid(AActor* const mo, AActor* const item)
 }
 
 // Check to see if the bot is capable of picking up a given item.
-bool DBot::IsValidItem(AActor* const item)
+bool DBot::IsValidItem(AActor* item)
 {
 	// Not something that can be picked up.
 	if (item == nullptr || !(item->flags & MF_SPECIAL) || !item->IsKindOf(NAME_Inventory))
@@ -68,12 +68,7 @@ bool DBot::IsValidItem(AActor* const item)
 	// Check for class restrictions.
 	IFVIRTUALPTRNAME(item, NAME_Inventory, CanPickup)
 	{
-		int res = false;
-		VMValue params[] = { item, _player->mo };
-		VMReturn ret[] = { &res };
-
-		VMCall(func, params, 2, ret, 1);
-		if (!res)
+		if (!CallVM<int>(func, item, _player->mo))
 			return false;
 	}
 
@@ -81,15 +76,15 @@ bool DBot::IsValidItem(AActor* const item)
 	const int itemFlags = item->IntVar(NAME_ItemFlags);
 	if (item->IsKindOf(NAME_Weapon))
 	{
-		const auto heldWeapon = _player->mo->FindInventory(item->GetClass());
+		auto heldWeapon = _player->mo->FindInventory(item->GetClass());
 		if (heldWeapon == nullptr)
 			return true;
 
 		if ((!alwaysapplydmflags && !deathmatch) || (dmflags & DF_WEAPONS_STAY))
 			return false;
 
-		const auto ammo1 = heldWeapon->PointerVar<AActor>(NAME_Ammo1);
-		const auto ammo2 = heldWeapon->PointerVar<AActor>(NAME_Ammo2);
+		auto ammo1 = heldWeapon->PointerVar<AActor>(NAME_Ammo1);
+		auto ammo2 = heldWeapon->PointerVar<AActor>(NAME_Ammo2);
 		return (ammo1 != nullptr && ammo1->IntVar(NAME_Amount) < ammo1->IntVar(NAME_MaxAmount))
 				|| (ammo2 != nullptr && ammo2->IntVar(NAME_Amount) < ammo2->IntVar(NAME_MaxAmount));
 	}
@@ -97,12 +92,7 @@ bool DBot::IsValidItem(AActor* const item)
 	{
 		PClass* parent = nullptr;
 		IFVIRTUALPTRNAME(item, NAME_Ammo, GetParentAmmo)
-		{
-			VMValue params[] = { item };
-			VMReturn ret[] = { (void**)&parent };
-
-			VMCall(func, params, 1, ret, 1);
-		}
+			parent = CallVM<PClass*>(func, item);
 
 		AActor* heldAmmo = nullptr;
 		if (parent != nullptr)
@@ -114,7 +104,7 @@ bool DBot::IsValidItem(AActor* const item)
 	{
 		constexpr int bAutoActivate = 1 << 1;
 
-		const auto powerup = item->PointerVar<PClassActor>(NAME_PowerupType);
+		auto powerup = item->PointerVar<PClassActor>(NAME_PowerupType);
 		if (powerup == nullptr)
 			return false;
 
@@ -135,9 +125,9 @@ bool DBot::IsValidItem(AActor* const item)
 		if ((itemFlags & bIsHealth) && !item->IsKindOf(NAME_HealthPickup))
 		{
 			// Unfortunately this has to be checked manually since Megaspheres are set up like this.
-			const auto testItem = item->GetClass()->TypeName == NAME_Megasphere
-									? GetDefaultByName(NAME_MegasphereHealth)
-									: item;
+			auto testItem = item->GetClass()->TypeName == NAME_Megasphere
+							? GetDefaultByName(NAME_MegasphereHealth)
+							: item;
 
 			if (testItem != nullptr)
 			{
@@ -151,16 +141,16 @@ bool DBot::IsValidItem(AActor* const item)
 		
 		if (itemFlags & bIsArmor)
 		{
-			const auto testItem = item->GetClass()->TypeName == NAME_Megasphere
-									? GetDefaultByName(NAME_BlueArmorForMegasphere)
-									: item;
+			auto testItem = item->GetClass()->TypeName == NAME_Megasphere
+							? GetDefaultByName(NAME_BlueArmorForMegasphere)
+							: item;
 
 			if (testItem != nullptr)
 			{
-				const auto basicArmor = _player->mo->FindInventory(NAME_BasicArmor);
+				auto basicArmor = _player->mo->FindInventory(NAME_BasicArmor, true);
 				if (basicArmor != nullptr)
 				{
-					int total = basicArmor->IntVar(NAME_Amount);
+					const int total = basicArmor->IntVar(NAME_Amount);
 
 					// Decide more carefully how to pick up armor in case it's a downgrade.
 					if (testItem->IsKindOf(NAME_BasicArmorPickup)
@@ -182,12 +172,12 @@ bool DBot::IsValidItem(AActor* const item)
 	}
 
 	// If a generic item, check the bot isn't holding the maximum.
-	const auto heldItem = _player->mo->FindInventory(item->GetClass());
+	auto heldItem = _player->mo->FindInventory(item->GetClass());
 	return heldItem == nullptr || heldItem->IntVar(NAME_Amount) < heldItem->IntVar(NAME_MaxAmount);
 }
 
 // Simple check to see if a given Actor is within view of the bot.
-bool DBot::IsActorInView(AActor* const mo, const DAngle& fov)
+bool DBot::IsActorInView(AActor* mo, DAngle fov)
 {
 	const DAngle viewFOV = fov <= nullAngle ? DAngle180 : fov;
 	return mo != nullptr
@@ -197,13 +187,13 @@ bool DBot::IsActorInView(AActor* const mo, const DAngle& fov)
 
 // Sets the bot's FriendPlayer value to the player index it wants to stick with. Ignores bots
 // since that can cause them to swarm around each other like a hive of angry bees.
-unsigned int DBot::FindPartner()
+unsigned DBot::FindPartner()
 {
-	unsigned int newFriend = Level->PlayerNum(_player) + 1;
+	unsigned newFriend = Level->PlayerNum(_player) + 1;
 	double closest = std::numeric_limits<double>::infinity();
-	for (unsigned int i = 0u; i < MAXPLAYERS; ++i)
+	for (unsigned i = 0u; i < MAXPLAYERS; ++i)
 	{
-		AActor* const client = Level->Players[i]->mo;
+		AActor* client = Level->Players[i]->mo;
 		if (Level->PlayerInGame(i) && _player != Level->Players[i] && Level->Players[i]->Bot == nullptr
 			&& Level->Players[i]->health > 0 && _player->mo->IsTeammate(client))
 		{
@@ -220,7 +210,7 @@ unsigned int DBot::FindPartner()
 }
 
 // Attempts to set the bot's target. If not in deathmatch mode, tries to get a monster within 16 blockmap units.
-AActor* DBot::FindTarget(const DAngle& fov)
+AActor* DBot::FindTarget(DAngle fov)
 {
 	const DAngle viewFOV = fov <= nullAngle ? DAngle180 : fov;
 	if (!deathmatch)
@@ -231,9 +221,9 @@ AActor* DBot::FindTarget(const DAngle& fov)
 
 	AActor *target = nullptr;
 	double closest = std::numeric_limits<double>::infinity();
-	for (unsigned int i = 0u; i < MAXPLAYERS; ++i)
+	for (unsigned i = 0u; i < MAXPLAYERS; ++i)
 	{
-		AActor* const client = Level->Players[i]->mo;
+		AActor* client = Level->Players[i]->mo;
 		if (Level->PlayerInGame(i) && _player != Level->Players[i]
 			&& Level->Players[i]->health > 0 && !_player->mo->IsTeammate(client))
 		{
@@ -254,11 +244,11 @@ AActor* DBot::FindTarget(const DAngle& fov)
 // Fires off a series of tracers to emulate a missile moving down along a path. Collision checking
 // of the Actor type is intentionally kept lazy since more robust solutions can be written from
 // ZScript.
-bool DBot::CheckShotPath(const DVector3& dest, const FName& projectileType, const double minDistance)
+bool DBot::CheckShotPath(const DVector3& dest, FName projectileType, double minDistance)
 {
 	const PClassActor* missileType = nullptr;
 	if (projectileType != NAME_None)
-		missileType = PClass::FindActor(projectileType);
+		missileType = PClassActor::FindActor(projectileType);
 
 	double radius = 0.0, height = 0.0;
 	bool ripper = false;
@@ -266,7 +256,7 @@ bool DBot::CheckShotPath(const DVector3& dest, const FName& projectileType, cons
 	if (isProjectile)
 	{
 		// Don't bother testing against missiles that don't move.
-		const auto def = GetDefaultByType(missileType);
+		auto def = GetDefaultByType(missileType);
 		if (def->Speed < EQUAL_EPSILON)
 			return false;
 

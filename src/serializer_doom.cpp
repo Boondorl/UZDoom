@@ -237,6 +237,32 @@ FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, TObjPtr<DB
 	return arc;
 }
 
+FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, std::variant<bool, int, double, FString>>& value, TMap<FName, std::variant<bool, int, double, FString>>* def)
+{
+	if (!arc.BeginObject(key))
+		return arc;
+
+	if (arc.isWriting())
+	{
+		TMap<FName, std::variant<bool, int, double, FString>>::Iterator it = { value };
+		TMap<FName, std::variant<bool, int, double, FString>>::Pair* pair = nullptr;
+		while (it.NextPair(pair))
+			Serialize(arc, pair->Key.GetChars(), pair->Value, def != nullptr ? def->CheckKey(pair->Key) : nullptr);
+	}
+	else
+	{
+		const char* k = nullptr;
+		while ((k = arc.GetKey()) != nullptr)
+		{
+			std::variant<bool, int, double, FString> val;
+			arc(k, val);
+			value[k] = val;
+		}
+	}
+
+	arc.EndObject();
+	return arc;
+}
 
 template<> FSerializer &Serialize(FSerializer &ar, const char *key, FPolyObj *&value, FPolyObj **defval)
 {

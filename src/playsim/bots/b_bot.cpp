@@ -28,10 +28,13 @@
 
 extern int forwardmove[2], sidemove[2], flyspeed[2];
 
-IMPLEMENT_CLASS(DBot, false, false)
+IMPLEMENT_CLASS(DBot, false, true)
+IMPLEMENT_POINTERS_START(DBot)
+	IMPLEMENT_POINTER(Evade)
+IMPLEMENT_POINTERS_END
 
 // For Thinkers the default constructor isn't called at all, so these need to be initialized here.
-void DBot::Construct(player_t* const player, const FName& botID)
+void DBot::Construct(player_t* player, FName botID)
 {
 	_player = player;
 	_botID = botID;
@@ -41,9 +44,10 @@ void DBot::Construct(player_t* const player, const FName& botID)
 // This has to be cleared manually since the destructor never gets called on Thinkers.
 void DBot::OnDestroy()
 {
-	Super::OnDestroy();
-
 	Properties.Clear();
+	CoolDowns.Clear();
+
+	Super::OnDestroy();
 }
 
 // The player pointer isn't serialized since bots will have their slots rearranged on load
@@ -54,17 +58,23 @@ void DBot::Serialize(FSerializer &arc)
 
 	if (arc.isWriting())
 	{
-		TMap<FName, FString> props = Properties.GetProperties();
+		FEntityProperties::PropertyDictionary& props = *const_cast<FEntityProperties::PropertyDictionary*>(&Properties.GetProperties());
 		arc("botid", _botID)
+			("evade", Evade)
+			("aimpos", AimPos)
+			("cooldowns", CoolDowns)
 			("properties", props);
 	}
 	else
 	{
-		TMap<FName, FString> props = {};
+		FEntityProperties::PropertyDictionary props = {};
 		arc("botid", _botID)
+			("evade", Evade)
+			("aimpos", AimPos)
+			("cooldowns", CoolDowns)
 			("properties", props);
 
-		const FBotDefinition* const def = DBotManager::BotDefinitions.CheckKey(_botID);
+		const FBotDefinition* def = DBotManager::BotDefinitions.CheckKey(_botID);
 		if (def == nullptr)
 			Properties = { props }; // Keep its properties and key just in case it needs to be removed.
 		else
@@ -78,24 +88,21 @@ void DBot::CallBotThink()
 	DBotManager::BotThinkCycles.Clock();
 
 	IFVIRTUAL(DBot, BotThink)
-	{
-		VMValue params[] = { this };
-		VMCall(func, params, 1, nullptr, 0);
-	}
+		CallVM<void>(func, this);
 
 	DBotManager::BotThinkCycles.Unclock();
 }
 
-void DBot::NormalizeSpeed(short& cmd, const int* const speeds, const bool running)
+void DBot::NormalizeSpeed(short& cmd, const int* speeds, bool running)
 {
-	const bool curRunning = _player->cmd.buttons & (BT_SPEED | BT_RUN);
+	const bool curRunning = (_player->cmd.buttons & (BT_SPEED | BT_RUN));
 	if (curRunning && !running)
 		cmd *= static_cast<double>(speeds[0]) / speeds[1];
 	else if (!curRunning && running)
 		cmd *= static_cast<double>(speeds[1]) / speeds[0];
 }
 
-void DBot::SetMove(const EBotMoveDirection forward, const EBotMoveDirection side, const EBotMoveDirection up, const bool running)
+void DBot::SetMove(EBotMoveDirection forward, EBotMoveDirection side, EBotMoveDirection up, bool running)
 {
 	if (forward != MDIR_NO_CHANGE)
 		_player->cmd.forwardmove = forwardmove[running] * 256 * forward;
@@ -115,7 +122,7 @@ void DBot::SetMove(const EBotMoveDirection forward, const EBotMoveDirection side
 	SetButtons(BT_SPEED | BT_RUN, running);
 }
 
-void DBot::SetButtons(const int cmds, const bool set)
+void DBot::SetButtons(int cmds, bool set)
 {
 	if (set)
 		_player->cmd.buttons |= cmds;
@@ -123,7 +130,7 @@ void DBot::SetButtons(const int cmds, const bool set)
 		_player->cmd.buttons &= ~cmds;
 };
 
-void DBot::SetAngleCommand(short& cmd, const DAngle& curAng, const DAngle& destAng)
+void DBot::SetAngleCommand(short& cmd, DAngle curAng, DAngle destAng)
 {
 	constexpr double AngToCmd = 65536.0 / 360.0;
 	constexpr int MaxAngleCmd = 32768;
@@ -138,7 +145,7 @@ void DBot::SetAngleCommand(short& cmd, const DAngle& curAng, const DAngle& destA
 	cmd = angleCmd;
 }
 
-void DBot::SetAngle(const DAngle& dest, const EBotAngleCmd type)
+void DBot::SetAngle(DAngle dest, EBotAngleCmd type)
 {
 	switch (type)
 	{
