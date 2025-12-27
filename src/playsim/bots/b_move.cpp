@@ -118,6 +118,8 @@ bool DBot::CanReach(AActor* mo, bool doJump)
                     continue;
                 }
 
+				// TODO: Check for doors here.
+
                 return false;
             }
         }
@@ -153,33 +155,67 @@ bool DBot::CanReach(AActor* mo, bool doJump)
 
 // Check to ensure the spot ahead of the bot is a valid place that can be walked. Tries
 // to prevent walking over ledges and will automatically jump as well.
-bool DBot::CheckMove(const DVector2& pos, bool doJump)
+bool DBot::CheckMove(const DVector2& pos, bool* jumped, bool* interacted)
 {
+	if (jumped != nullptr)
+		*jumped = false;
+	if (interacted != nullptr)
+		*interacted = false;
+
     // No jump check since the bot will just warp up ledges anyway.
     if (_player->mo->flags & MF_NOCLIP)
         return true;
 
     const double curZ = _player->mo->Z();
-    const double jumpHeight = doJump ? GetJumpHeight() : 0.0;
+    const double jumpHeight = jumped != nullptr ? GetJumpHeight() : 0.0;
+	const DVector2 usePos = _player->mo->Pos().XY() + _player->mo->Angles.Yaw.ToVector(_player->mo->FloatVar(NAME_UseRange));
     FCheckPosition tm = {};
     if (!FakeCheckPosition(pos, tm))
     {
-        // Check for a thing that can be stepped up on.
-        if (!(_player->mo->flags2 & MF2_PASSMOBJ) || (Level->i_compatflags & COMPATF_NO_PASSMOBJ))
-            return false;
+		if (_player->mo->BlockingLine != nullptr)
+		{
+			if (interacted != nullptr)
+			{
+				auto line = _player->mo->BlockingLine;
+				if (line->special == 0 || !(line->activation & (SPAC_Use | SPAC_UseThrough | SPAC_UseBack)))
+					return false;
 
-        // Don't walk on top of other players.
-        AActor* blocking = _player->mo->BlockingMobj;
-        if (blocking == nullptr || blocking->player != nullptr)
-            return false;
+				const int side = P_PointOnLineSide(_player->mo->X(), _player->mo->Y(), line);
+				const int useSide = P_PointOnLineSide(usePos.X, usePos.Y, line);
+				// If the use action doesn't cross the line, they're probably not looking at it, so don't try
+				// and open it.
+				if (side == useSide)
+					return false;
 
-        // Not enough room or too high to actually step up.
-        const double top = blocking->Top();
-        if (tm.ceilingz - top < _player->mo->Height
-            || (curZ + _player->mo->MaxStepHeight < top))
-        {
-            return false;
-        }
+				if ((side == 1 && (line->activation & SPAC_UseBack))
+					|| (side != 1 && (line->activation & (SPAC_Use | SPAC_UseThrough))))
+				{
+					*interacted = true;
+					return true;
+				}
+			}
+
+			return false;
+		}
+		else
+		{
+			// Check for a thing that can be stepped up on.
+			if (!(_player->mo->flags2 & MF2_PASSMOBJ) || (Level->i_compatflags & COMPATF_NO_PASSMOBJ))
+				return false;
+
+			// Don't walk on top of other players.
+			AActor* blocking = _player->mo->BlockingMobj;
+			if (blocking == nullptr || blocking->player != nullptr)
+				return false;
+
+			// Not enough room or too high to actually step up.
+			const double top = blocking->Top();
+			if (tm.ceilingz - top < _player->mo->Height
+				|| (curZ + _player->mo->MaxStepHeight < top))
+			{
+				return false;
+			}
+		}
     }
 
     if (tm.ceilingz - tm.floorz < _player->mo->Height
@@ -198,14 +234,14 @@ bool DBot::CheckMove(const DVector2& pos, bool doJump)
 	}
 
     // Check if it's jumpable.
-    if (doJump && tm.floorz > curZ + _player->mo->MaxStepHeight)
-        SetButtons(BT_JUMP, true);
+    if (jumped != nullptr && tm.floorz > curZ + _player->mo->MaxStepHeight)
+		*jumped = true;
 
     return true;
 }
 
 // Try and move the bot in its current movedir.
-bool DBot::Move(bool running, bool doJump)
+bool DBot::Move(bool running, bool doJump, bool doInteract)
 {
 	if (_player->mo->movedir >= DI_NODIR)
 	{
@@ -216,8 +252,14 @@ bool DBot::Move(bool running, bool doJump)
     const DVector2 pos = { _player->mo->X() + (_player->mo->radius - 1.0) * xspeed[_player->mo->movedir],
                             _player->mo->Y() + (_player->mo->radius - 1.0) * yspeed[_player->mo->movedir] };
 
-	if (!CheckMove(pos, doJump))
+	bool jumped = false, interacted = false;
+	if (!CheckMove(pos, doJump ? &jumped : nullptr, doInteract ? &interacted : nullptr))
         return false;
+
+	if (jumped)
+		SetButtons(BT_JUMP, true);
+	if (interacted)
+		SetButtons(BT_USE, true);
 
     constexpr double MinForward = 60.0;
     constexpr double MaxForward = 120.0;
@@ -240,9 +282,9 @@ bool DBot::Move(bool running, bool doJump)
 
 // Similar to Move() but will also set a cool down on the random turning if it could move.
 // Only used when trying to pick a new direction to move.
-bool DBot::TryWalk(bool running, bool doJump)
+bool DBot::TryWalk(bool running, bool doJump, bool doInteract)
 {
-    if (!Move(running, doJump))
+    if (!Move(running, doJump, doInteract))
         return false;
 
     constexpr int CoolDown = TICRATE / 5;
@@ -250,7 +292,7 @@ bool DBot::TryWalk(bool running, bool doJump)
     return true;
 }
 
-void DBot::NewMoveDirection(AActor* goal, bool runAway, bool running, bool doJump)
+void DBot::NewMoveDirection(AActor* goal, bool runAway, bool running, bool doJump, bool doInteract)
 {
     int baseDir = 0;
     if (goal != nullptr)
@@ -278,35 +320,35 @@ void DBot::NewMoveDirection(AActor* goal, bool runAway, bool running, bool doJum
         baseDir = ((pr_botnewchasedir() & 1) * 2 - 1 + baseDir) % 8;
 
     _player->mo->movedir = baseDir;
-    if (TryWalk(running, doJump))
+    if (TryWalk(running, doJump, doInteract))
         return;
 
     _player->mo->movedir = (baseDir + 1) % 8;
-    if (TryWalk(running, doJump))
+    if (TryWalk(running, doJump, doInteract))
         return;
 
     _player->mo->movedir = (baseDir - 1) % 8;
-    if (TryWalk(running, doJump))
+    if (TryWalk(running, doJump, doInteract))
         return;
 
     _player->mo->movedir = (baseDir + 2) % 8;
-    if (TryWalk(running, doJump))
+    if (TryWalk(running, doJump, doInteract))
         return;
 
     _player->mo->movedir = (baseDir - 2) % 8;
-    if (TryWalk(running, doJump))
+    if (TryWalk(running, doJump, doInteract))
         return;
 
     _player->mo->movedir = (baseDir + 3) % 8;
-    if (TryWalk(running, doJump))
+    if (TryWalk(running, doJump, doInteract))
         return;
 
     _player->mo->movedir = (baseDir - 3) % 8;
-    if (TryWalk(running, doJump))
+    if (TryWalk(running, doJump, doInteract))
         return;
 
     _player->mo->movedir = (baseDir + 4) % 8;
-    if (TryWalk(running, doJump))
+    if (TryWalk(running, doJump, doInteract))
         return;
 
     // Couldn't move at all.

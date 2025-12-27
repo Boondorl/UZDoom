@@ -68,7 +68,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetInt, GetInt)
 	ACTION_RETURN_INT(GetInt(self, key, def));
 }
 
-static int GetBool(FEntityProperties* self, int key, int def)
+static int GetBool(FEntityProperties* self, int key, bool def)
 {
 	return self->GetBool(ENamedName(key), def);
 }
@@ -77,9 +77,9 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetBool, GetBool)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FEntityProperties);
 	PARAM_INT(key);
-	PARAM_INT(def);
+	PARAM_BOOL(def);
 
-	ACTION_RETURN_INT(GetBool(self, key, def));
+	ACTION_RETURN_BOOL(GetBool(self, key, def));
 }
 
 static double GetDouble(FEntityProperties* self, int key, double def)
@@ -154,7 +154,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, SetInt, SetInt)
 	return 0;
 }
 
-static void SetBool(FEntityProperties* self, int key, int value)
+static void SetBool(FEntityProperties* self, int key, bool value)
 {
 	self->SetBool(ENamedName(key), value);
 }
@@ -163,7 +163,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, SetBool, SetBool)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FEntityProperties);
 	PARAM_INT(key);
-	PARAM_INT(value);
+	PARAM_BOOL(value);
 
 	SetBool(self, key, value);
 	return 0;
@@ -194,7 +194,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, HasProperty, HasProperty)
 	PARAM_SELF_STRUCT_PROLOGUE(FEntityProperties);
 	PARAM_INT(key);
 
-	ACTION_RETURN_INT(HasProperty(self, key));
+	ACTION_RETURN_BOOL(HasProperty(self, key));
 }
 
 static void RemoveProperty(FEntityProperties* self, int key)
@@ -295,7 +295,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, GetBotID, GetBotID)
 	ACTION_RETURN_INT(GetBotID(self));
 }
 
-static void SetMove(DBot* self, int forw, int side, int up, int running)
+static void SetMove(DBot* self, int forw, int side, int up, bool running)
 {
 	self->SetMove(static_cast<EBotMoveDirection>(forw), static_cast<EBotMoveDirection>(side), static_cast<EBotMoveDirection>(up), running);
 }
@@ -306,13 +306,13 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, SetMove, SetMove)
 	PARAM_INT(forw);
 	PARAM_INT(side);
 	PARAM_INT(up);
-	PARAM_INT(running);
+	PARAM_BOOL(running);
 
 	SetMove(self, forw, side, up, running);
 	return 0;
 }
 
-static void SetButtons(DBot* self, int buttons, int set)
+static void SetButtons(DBot* self, int buttons, bool set)
 {
 	self->SetButtons(buttons, set);
 }
@@ -321,7 +321,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, SetButtons, SetButtons)
 {
 	PARAM_SELF_PROLOGUE(DBot);
 	PARAM_INT(buttons);
-	PARAM_INT(set);
+	PARAM_BOOL(set);
 
 	SetButtons(self, buttons, set);
 	return 0;
@@ -380,7 +380,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, IsActorInView, IsActorInView)
 	PARAM_POINTER(mo, AActor);
 	PARAM_FLOAT(fov);
 
-	ACTION_RETURN_INT(IsActorInView(self, mo, fov));
+	ACTION_RETURN_BOOL(IsActorInView(self, mo, fov));
 }
 
 static int CheckShotPath(DBot* self, double x, double y, double z, int projType, double minDistance)
@@ -397,7 +397,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, CheckShotPath, CheckShotPath)
 	PARAM_INT(projType);
 	PARAM_FLOAT(minDist);
 
-	ACTION_RETURN_INT(CheckShotPath(self, x, y, z, projType, minDist));
+	ACTION_RETURN_BOOL(CheckShotPath(self, x, y, z, projType, minDist));
 }
 
 static AActor* FindTarget(DBot* self, double fov)
@@ -435,10 +435,10 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, IsValidItem, IsValidItem)
 	PARAM_SELF_PROLOGUE(DBot);
 	PARAM_POINTER(item, AActor);
 
-	ACTION_RETURN_INT(IsValidItem(self, item));
+	ACTION_RETURN_BOOL(IsValidItem(self, item));
 }
 
-static int FakeCheckPosition(DBot* self, double x, double y, FCheckPosition* tm, int actorsOnly)
+static int FakeCheckPosition(DBot* self, double x, double y, FCheckPosition* tm, bool actorsOnly)
 {
 	int res = 0;
 	if (tm == nullptr)
@@ -460,9 +460,9 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, FakeCheckPosition, FakeCheckPosition)
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
 	PARAM_POINTER(tm, FCheckPosition);
-	PARAM_INT(actorsOnly);
+	PARAM_BOOL(actorsOnly);
 
-	ACTION_RETURN_INT(FakeCheckPosition(self, x, y, tm, actorsOnly));
+	ACTION_RETURN_BOOL(FakeCheckPosition(self, x, y, tm, actorsOnly));
 }
 
 static double GetJumpHeight(DBot* self)
@@ -477,7 +477,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, GetJumpHeight, GetJumpHeight)
 	ACTION_RETURN_FLOAT(GetJumpHeight(self));
 }
 
-static int CanReach(DBot* self, AActor* mo, int jump)
+static int CanReach(DBot* self, AActor* mo, bool jump)
 {
 	return self->CanReach(mo, jump);
 }
@@ -486,14 +486,20 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, CanReach, CanReach)
 {
 	PARAM_SELF_PROLOGUE(DBot);
 	PARAM_POINTER(mo, AActor);
-	PARAM_INT(jump);
+	PARAM_BOOL(jump);
 
-	ACTION_RETURN_INT(CanReach(self, mo, jump));
+	ACTION_RETURN_BOOL(CanReach(self, mo, jump));
 }
 
-static int CheckMove(DBot* self, double x, double y, int jump)
+static int CheckMove(DBot* self, double x, double y, bool jump, bool allowInteract, int* jumped, int* interacted)
 {
-	return self->CheckMove({ x, y }, jump);
+	bool j = false, i = false;
+	bool res = self->CheckMove({ x, y }, jump ? &j : nullptr, allowInteract ? &i : nullptr);
+	if (jumped != nullptr)
+		*jumped = j;
+	if (interacted != nullptr)
+		*interacted = i;
+	return res;
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DBot, CheckMove, CheckMove)
@@ -501,38 +507,49 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, CheckMove, CheckMove)
 	PARAM_SELF_PROLOGUE(DBot);
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
-	PARAM_INT(jump);
+	PARAM_BOOL(jump);
+	PARAM_BOOL(allowInteract);
 
-	ACTION_RETURN_INT(CheckMove(self, x, y, jump));
+	int jumped = false, interacted = false;
+	bool res = CheckMove(self, x, y, jump, allowInteract, &jumped, &interacted);
+	if (numret > 0)
+		ret[0].SetInt(res);
+	if (numret > 1)
+		ret[1].SetInt(jumped);
+	if (numret > 2)
+		ret[2].SetInt(interacted);
+	return numret;
 }
 
-static int Move(DBot* self, int running, int jump)
+static int Move(DBot* self, bool running, bool jump, bool allowInteract)
 {
-	return self->Move(running, jump);
+	return self->Move(running, jump, allowInteract);
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DBot, Move, Move)
 {
 	PARAM_SELF_PROLOGUE(DBot);
-	PARAM_INT(running);
-	PARAM_INT(jump);
+	PARAM_BOOL(running);
+	PARAM_BOOL(jump);
+	PARAM_BOOL(allowInteract);
 
-	ACTION_RETURN_INT(Move(self, running, jump));
+	ACTION_RETURN_BOOL(Move(self, running, jump, allowInteract));
 }
 
-static void NewMoveDirection(DBot* self, AActor* goal, int runAway, int running, int jump)
+static void NewMoveDirection(DBot* self, AActor* goal, bool runAway, bool running, bool jump, bool allowInteract)
 {
-	self->NewMoveDirection(goal, runAway, running, jump);
+	self->NewMoveDirection(goal, runAway, running, jump, allowInteract);
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DBot, NewMoveDirection, NewMoveDirection)
 {
 	PARAM_SELF_PROLOGUE(DBot);
 	PARAM_POINTER(mo, AActor);
-	PARAM_INT(runAway);
-	PARAM_INT(running)
-	PARAM_INT(jump);
+	PARAM_BOOL(runAway);
+	PARAM_BOOL(running)
+	PARAM_BOOL(jump);
+	PARAM_BOOL(allowInteract);
 
-	NewMoveDirection(self, mo, runAway, running, jump);
+	NewMoveDirection(self, mo, runAway, running, jump, allowInteract);
 	return 0;
 }

@@ -97,9 +97,9 @@ class Bot : Thinker native
 	native clearscope double GetJumpHeight() const;
 	native bool FakeCheckPosition(Vector2 dest, out FCheckPosition tm = null, bool actorsOnly = false);
 	native bool CanReach(Actor mo, bool jump = true);
-	native bool CheckMove(Vector2 dest, bool jump = true);
-	native bool Move(bool running = true, bool jump = true);
-	native void NewMoveDirection(Actor goal = null, bool runAway = false, bool running = true, bool jump = true);
+	native bool, bool, bool CheckMove(Vector2 dest, bool jump = true, bool allowInteract = true);
+	native bool Move(bool running = true, bool jump = true, bool allowInteract = true);
+	native void NewMoveDirection(Actor goal = null, bool runAway = false, bool running = true, bool jump = true, bool allowInteract = true);
 
 	clearscope PlayerPawn GetPawn() const
 	{
