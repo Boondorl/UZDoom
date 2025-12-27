@@ -213,6 +213,9 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, ResetAllProperties, ResetAllPro
 // DBot
 
 DEFINE_FIELD(DBot, Properties)
+DEFINE_FIELD(DBot, Evade)
+DEFINE_FIELD(DBot, AimPos)
+DEFINE_FIELD_NAMED(DBot, CoolDowns, _coolDowns)
 
 static FEntityProperties* GetEntityInfo(int ent, int base)
 {

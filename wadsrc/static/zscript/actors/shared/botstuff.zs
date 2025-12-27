@@ -20,7 +20,7 @@
 struct EntityProperties native
 {
 	// Boon TODO: Return a list of properties? Is that even useful?
-	//       Default getters?
+	//       	  Default getters?
 	native void SetString(Name key, string value);
 	native void SetBool(Name key, bool value);
 	native void SetInt(Name key, int value);
@@ -171,7 +171,7 @@ class Bot : Thinker native
 
 	clearscope bool IsOnCoolDown(Name key) const
 	{
-		let [val, exists] = _coolDowns.GetValue();
+		let [val, exists] = _coolDowns.CheckValue(key);
 		return exists ? val > Level.Time : false;
 	}
 
@@ -495,14 +495,14 @@ class Bot : Thinker native
 		if (target && (IsOnCoolDown('LastSeen') || IsActorInView(target, Properties.GetDouble('ViewFOV', DEF_SIGHT_FOV))))
 		{
 			aimingAtTarget = true;
-			aimPos = target.Pos.PlusZ(target.Height * 0.75 - target.FloorClip);
+			AimPos = target.Pos.PlusZ(target.Height * 0.75 - target.FloorClip);
 
 			class<Actor> proj;
 			let weapInfo = GetWeaponInfo(player.ReadyWeapon);
 			if (weapInfo)
 				proj = weapInfo.GetString('ProjectileType');
 
-			double dist = Level.Vec3Diff(viewPos, aimPos).Length();
+			double dist = Level.Vec3Diff(viewPos, AimPos).Length();
 			double maxTrackingRange = MAX_FIRE_TRACKING_RANGE * Properties.GetDouble('Predictiveness', 1.0);
 			if (proj && maxTrackingRange > 0.0 && dist < maxTrackingRange)
 			{
@@ -511,22 +511,22 @@ class Bot : Thinker native
 				{
 					int tics = int(dist / def.Speed);
 					double multi = 1.0 - dist / maxTrackingRange;
-					aimPos.XY = Level.Vec2Offset(aimPos.XY, target.Vel.XY * tics * multi);
-					aimPos.Z += target.Vel.Z * 0.2 * multi;
+					AimPos.XY = Level.Vec2Offset(AimPos.XY, target.Vel.XY * tics * multi);
+					AimPos.Z += target.Vel.Z * 0.2 * multi;
 				}
 			}
 		}
 		else if (goal is "Inventory")
 		{
-			aimPos = goal.Pos.PlusZ(goal.Height * 0.5 - goal.FloorClip);
+			AimPos = goal.Pos.PlusZ(goal.Height * 0.5 - goal.FloorClip);
 		}
 		else
 		{
 			double moveAng = pawn.MoveDir < 8 ? pawn.MoveDir * 45.0 : pawn.Angle;
-			aimPos = viewPos + (moveAng.ToVector(), 0.0);
+			AimPos = viewPos + (moveAng.ToVector(), 0.0);
 		}
 
-		Vector3 diff = Level.Vec3Diff(viewPos, aimPos);
+		Vector3 diff = Level.Vec3Diff(viewPos, AimPos);
 		if (!(diff ~== (0.0, 0.0, 0.0)))
 		{
 			double speed = Max(pawn.Speed, 1.0);
@@ -581,7 +581,7 @@ class Bot : Thinker native
 
 		let pawn = GetPawn();
 		Vector3 origPos = pawn.Pos.PlusZ(pawn.ViewHeight - pawn.FloorClip);
-		Vector3 dir = Level.Vec3Diff(origPos, aimPos);
+		Vector3 dir = Level.Vec3Diff(origPos, AimPos);
 		double dist = dir.Length();
 
 		double minRange, maxRange;
@@ -621,7 +621,7 @@ class Bot : Thinker native
 				return false;
 		}
 
-		if (!CheckShotPath(aimPos, proj ? proj.GetClassName() : 'None', minRange))
+		if (!CheckShotPath(AimPos, proj ? proj.GetClassName() : 'None', minRange))
 			return false;
 
 		SetButtons(BT_ATTACK, true);
@@ -656,7 +656,7 @@ class Bot : Thinker native
 
 	virtual void BotDied(Actor source, Actor inflictor, EDmgFlags dmgFlags = 0, Name meansOfDeath = 'None')
 	{
-		aimPos = (0.0, 0.0, 0.0);
+		AimPos = (0.0, 0.0, 0.0);
 		ResetCoolDowns();
 		Evade = null;
 		SetGoal(null);
@@ -673,7 +673,7 @@ class Bot : Thinker native
 	virtual void FiredWeapon(bool altFire) {}
 }
 
-deprecated("4.15.1") class CajunBodyNode : Actor
+class CajunBodyNode : Actor deprecated("4.15.1") 
 {
 	Default
 	{
@@ -683,7 +683,7 @@ deprecated("4.15.1") class CajunBodyNode : Actor
 	}
 }
 
-deprecated("4.15.1") class CajunTrace : Actor
+class CajunTrace : Actor deprecated("4.15.1") 
 {
 	Default
 	{

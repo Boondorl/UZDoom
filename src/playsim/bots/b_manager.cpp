@@ -39,7 +39,8 @@
 #include "d_net.h"
 #include "events.h"
 
-static FRandom pr_botspawn("BotSpawn");
+// This needs to be client-sided since it'll be called outside of the server loop.
+static FCRandom pr_botspawn("BotSpawn");
 
 extern void G_DoPlayerPop(int playernum);
 
@@ -70,7 +71,7 @@ bool DBotManager::SpawnBot(FName name)
 	unsigned playerIndex = 0u;
 	for (; playerIndex < MAXPLAYERS; ++playerIndex)
 	{
-		if (!playeringame[false])
+		if (!playeringame[playerIndex])
 			break;
 	}
 

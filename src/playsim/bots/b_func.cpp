@@ -92,7 +92,12 @@ bool DBot::IsValidItem(AActor* item)
 	{
 		PClass* parent = nullptr;
 		IFVIRTUALPTRNAME(item, NAME_Ammo, GetParentAmmo)
-			parent = CallVM<PClass*>(func, item);
+		{
+			VMValue params[] = { item };
+			VMReturn ret[] = { (void**)&parent };
+
+			VMCall(func, params, 1, ret, 1);
+		}
 
 		AActor* heldAmmo = nullptr;
 		if (parent != nullptr)
