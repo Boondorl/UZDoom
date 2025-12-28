@@ -301,7 +301,7 @@ public:
 		TMap<FName, FBaseCVar*>::ConstIterator it = { info };
 		while (it.NextPair(pair))
 		{
-			value = _properties.GetString(pair->Key);
+			value = _properties.AsString(pair->Key);
 			if (func != nullptr)
 			{
 				params[1] = pair->Key.GetIndex();

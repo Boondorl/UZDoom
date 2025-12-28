@@ -13,7 +13,7 @@ UZDoomBot2
 
 UZDoomBot3
 {
-	Name nooblord
+	Name "nooblord"
 	Color "21BC34"
 }
 
@@ -30,7 +30,7 @@ UZDoomBot5
 
 UZDoomBot6
 {
-	Name xX_360n0sc0p3z_Xx
+	Name "xX_360n0sc0p3z_Xx"
 	Color "E10F0F"
 }
 

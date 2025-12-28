@@ -433,6 +433,11 @@ class Bot : Thinker native
 		double itemRange = GetRange(Properties, 'ScavengeRange', DEF_ITEM_RANGE, 'Timidness');
 		if (itemRange > 0.0 && !IsOnCoolDown('Goal') && (deathmatch || !Random[BotItem]()))
 		{
+			Array<string> classes;
+			string pref = Properties.GetString('PreferredWeapons');
+			if (pref.IsNotEmpty())
+				pref.Split(classes, ",", TOK_SKIPEMPTY);
+
 			Inventory closest;
 			double closestDist = double.infinity;
 			double viewFOV = Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV);
@@ -447,6 +452,19 @@ class Bot : Thinker native
 				double dist = pawn.Distance3DSquared(item);
 				if (item.bBigPowerup || (item.bIsHealth && isLowHealth))
 					dist *= 0.5625; // 0.75 * 0.75
+				
+				if (item is "Weapon")
+				{
+					string wType = item.GetClassName();
+					foreach (cls : classes)
+					{
+						if (wType ~== cls)
+						{
+							dist *= 0.5625;
+							break;
+						}
+					}
+				}
 
 				if (dist <= rangeSq && dist < closestDist && IsValidItem(item)
 					&& IsActorInView(item, viewFOV) && CanReach(item))
@@ -542,6 +560,22 @@ class Bot : Thinker native
 		// Prefer not to select melee weapons.
 		if (weap.bMeleeWeapon)
 			weight *= 0.7;
+
+		string pref = Properties.GetString('PreferredWeapons');
+		if (pref.IsNotEmpty())
+		{
+			string weapType = weap.GetClassName();
+			Array<string> classes;
+			pref.Split(classes, ",", TOK_SKIPEMPTY);
+			foreach (cls : classes)
+			{
+				if (weapType ~== cls)
+				{
+					weight *= 2.0;
+					break;
+				}
+			}
+		}
 		
 		return weight;
 	}
