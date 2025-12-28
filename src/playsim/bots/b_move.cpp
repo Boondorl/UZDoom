@@ -77,80 +77,101 @@ bool DBot::CanReach(AActor* mo, bool doJump)
         return false;
 
     // Intentionally ignore portals here.
-    const DVector3 dir = _player->mo->Vec3To(mo);
-    const DVector2 dest = _player->mo->Pos().XY() + dir.XY();
     const double jumpHeight = doJump ? GetJumpHeight() : 0.0;
+	const bool doHazardCheck = !_player->mo->Sector->IsDangerous(_player->mo->Pos(), _player->mo->Height);
     constexpr int MaxBlocks = 3;
 
-    int blockCounter = 0;
-    const bool doHazardCheck = !_player->mo->Sector->IsDangerous(_player->mo->Pos(), _player->mo->Height);
-    const sector_t* prevSec = _player->mo->Sector;
-    double prevZ = _player->mo->floorz;
-    const intercept_t* in = nullptr;
-    FPathTraverse it = { Level, _player->mo->X(), _player->mo->Y(), dest.X, dest.Y, PT_ADDLINES | PT_ADDTHINGS };
-    while ((in = it.Next()) != nullptr)
-    {
-        if (in->isaline)
-        {
-            const line_t* line = in->d.line;
-            if (!(line->flags & ML_TWOSIDED) || (line->flags & (ML_BLOCKING | ML_BLOCKEVERYTHING | ML_BLOCK_PLAYERS)))
-            {
-                return false;
-            }
-            else
-            {
-				const DVector2 hitPos = it.InterceptPoint(in);
-				const double hitZ = _player->mo->Z() + dir.Z * in->frac;
+	const DVector3 dir = _player->mo->Vec3To(mo);
+	DVector2 ofs = { 1.0, 0.0 };
+	if (!dir.XY().isZero())
+	{
+		ofs = dir.XY();
+		ofs.MakeUnit();
+		ofs = { -ofs.Y, ofs.X };
+	}
+	ofs *= _player->mo->radius;
 
-                //Determine if going to use backsector/frontsector.
-                sector_t* sec = (line->backsector == prevSec) ? line->frontsector : line->backsector;
-                if (doHazardCheck && sec->IsDangerous({ hitPos, hitZ }, _player->mo->Height))
-                    return false;
+	for (int i = 0; i < 3; ++i)
+	{
+		DVector2 origin = _player->mo->Pos().XY();
+		if (i == 1)
+			origin += ofs;
+		else if (i == 2)
+			origin -= ofs;
 
-                const double ceilZ = NextHighestCeilingAt(sec, hitPos.X, hitPos.Y, hitZ, hitZ + _player->mo->Height);
-                const double floorZ = NextLowestFloorAt(sec, hitPos.Y, hitPos.Y, hitZ, 0, _player->mo->MaxStepHeight);
+		const DVector2 dest = origin + dir.XY();
+		int blockCounter = 0;
+		const sector_t* prevSec = Level->PointInSector(origin);
+		double prevZ = _player->mo->floorz;
+		const intercept_t* in = nullptr;
+		FPathTraverse it = { Level, origin.X, origin.Y, dest.X, dest.Y, PT_ADDLINES | PT_ADDTHINGS };
+		while ((in = it.Next()) != nullptr)
+		{
+			if (in->isaline)
+			{
+				const line_t* line = in->d.line;
+				if (!(line->flags & ML_TWOSIDED) || (line->flags & (ML_BLOCKING | ML_BLOCKEVERYTHING | ML_BLOCK_PLAYERS)))
+				{
+					return false;
+				}
+				else
+				{
+					const DVector2 hitPos = it.InterceptPoint(in);
+					const double hitZ = _player->mo->Z() + dir.Z * in->frac;
 
-                if (floorZ <= prevZ + _player->mo->MaxStepHeight + jumpHeight
-                    && ceilZ - floorZ >= _player->mo->Height)
-                {
-                    prevZ = floorZ;
-                    prevSec = sec;
-                    continue;
-                }
+					//Determine if going to use backsector/frontsector.
+					sector_t* sec = (line->backsector == prevSec) ? line->frontsector : line->backsector;
+					if (doHazardCheck && sec->IsDangerous({ hitPos, hitZ }, _player->mo->Height))
+						return false;
 
-				// TODO: Check for doors here.
+					const double ceilZ = NextHighestCeilingAt(sec, hitPos.X, hitPos.Y, hitZ, hitZ + _player->mo->Height);
+					const double floorZ = NextLowestFloorAt(sec, hitPos.Y, hitPos.Y, hitZ, 0, _player->mo->MaxStepHeight);
 
-                return false;
-            }
-        }
-        else
-        {
-            AActor* thing = in->d.thing;
-            if (thing == _player->mo)
-                continue;
+					if (floorZ <= prevZ + _player->mo->MaxStepHeight + jumpHeight
+						&& ceilZ - floorZ >= _player->mo->Height)
+					{
+						prevZ = floorZ;
+						prevSec = sec;
+						continue;
+					}
 
-            if (thing == mo)
-                break;
+					// TODO: Check for doors here.
 
-            if (!(thing->flags & MF_SOLID))
-                continue;
+					return false;
+				}
+			}
+			else
+			{
+				AActor* thing = in->d.thing;
+				if (thing == _player->mo)
+					continue;
 
-            // Ignore living things since they'll likely move out of the way.
-            if (thing->player != nullptr || (thing->flags3 & MF3_ISMONSTER))
-            {
-                // Unless there's too many in the way.
-                if (++blockCounter >= MaxBlocks)
-                    return false;
+				if (thing == mo)
+					break;
 
-                continue;
-            }
+				if (!(thing->flags & MF_SOLID))
+					continue;
 
-            return false;
-        }
-    }
+				// Ignore living things since they'll likely move out of the way.
+				if (thing->player != nullptr || (thing->flags3 & MF3_ISMONSTER))
+				{
+					// Unless there's too many in the way.
+					if (++blockCounter >= MaxBlocks)
+						return false;
 
-    // This is done last in case there was a valid stairway leading up to the target.
-    return mo->Z() <= prevZ + _player->mo->MaxStepHeight + jumpHeight;
+					continue;
+				}
+
+				return false;
+			}
+		}
+
+		// This is done last in case there was a valid stairway leading up to the target.
+		if (mo->Z() > prevZ + _player->mo->MaxStepHeight + jumpHeight)
+			return false;
+	}
+
+	return true;
 }
 
 // Check to ensure the spot ahead of the bot is a valid place that can be walked. Tries
