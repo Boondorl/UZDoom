@@ -174,6 +174,8 @@ bool DBot::CanReach(AActor* mo, bool doJump)
 	return true;
 }
 
+int P_CheckKeys(AActor* owner, int keynum, bool remote, bool quiet);
+
 // Check to ensure the spot ahead of the bot is a valid place that can be walked. Tries
 // to prevent walking over ledges and will automatically jump as well.
 bool DBot::CheckMove(const DVector2& pos, bool* jumped, bool* interacted)
@@ -208,12 +210,33 @@ bool DBot::CheckMove(const DVector2& pos, bool* jumped, bool* interacted)
 				if (side == useSide)
 					return false;
 
-				if ((side == 1 && (line->activation & SPAC_UseBack))
-					|| (side != 1 && (line->activation & (SPAC_Use | SPAC_UseThrough))))
+				if ((side == 1 && !(line->activation & SPAC_UseBack))
+					|| (side != 1 && !(line->activation & (SPAC_Use | SPAC_UseThrough))))
 				{
-					*interacted = true;
-					return true;
+					return false;
 				}
+
+				if (line->locknumber)
+				{
+					if (!P_CheckKeys(_player->mo, line->locknumber, false, true))
+						return false;
+				}
+				else
+				{
+					int lock = 0;
+					if (line->special == 13 || line->special == 14)
+						lock = line->args[3];
+					else if (line->special == 83 || line->special == 85 || line->special == 202)
+						lock = line->args[4];
+					else if (line->special == 158)
+						lock = line->args[2];
+
+					if (lock && !P_CheckKeys(_player->mo, lock, false, true))
+						return false;
+				}
+
+				*interacted = true;
+				return true;
 			}
 
 			return false;
