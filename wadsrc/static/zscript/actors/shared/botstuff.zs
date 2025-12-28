@@ -69,6 +69,7 @@ class Bot : Thinker native
 	const PARTNER_WALK_RANGE_SQ = 640.0 * 640.0;
 	const PARTNER_BACK_OFF_RANGE_SQ = 128.0 * 128.0;
 	const MAX_FIRE_TRACKING_RANGE = 256.0;
+	const QUICK_TURN_RANGE = 96.0;
 	const MAX_ANGLE = 180.0;
 	const MAX_TURN_SPEED = 4.0;
 	const MAX_TURN_SPEED_BONUS = MAX_TURN_SPEED * 3.0;
@@ -686,7 +687,7 @@ class Bot : Thinker native
 		let pawn = GetPawn();
 
 		bool aimingAtTarget;
-		Vector3 viewPos = (pawn.Pos.XY, player.ViewZ);
+		Vector3 viewPos = pawn.Pos.PlusZ(pawn.ViewHeight - pawn.FloorClip);
 
 		Actor target = GetTarget();
 		Actor goal = GetGoal();
@@ -721,13 +722,12 @@ class Bot : Thinker native
 		else
 		{
 			double moveAng = pawn.MoveDir < 8 ? pawn.MoveDir * 45.0 : pawn.Angle;
-			AimPos = viewPos + (moveAng.ToVector(), 0.0);
+			AimPos = viewPos + (moveAng.ToVector(), 0.0) * QUICK_TURN_RANGE;
 		}
 
 		Vector3 diff = Level.Vec3Diff(viewPos, AimPos);
 		if (!(diff ~== (0.0, 0.0, 0.0)))
 		{
-			double speed = Max(pawn.Speed, 1.0);
 			double turnMulti = 1.0;
 			if (player.AttackDown)
 				turnMulti *= 0.5;
@@ -738,15 +738,19 @@ class Bot : Thinker native
 				if (target.CurSector.GetLightLevel() <= DARKNESS_THRESHOLD)
 					turnMulti *= 0.5;
 			}
+			// If the thing it's looking at is very close, turn faster.
+			double dist = diff.Length();
+			if (dist < QUICK_TURN_RANGE)
+				turnMulti *= 1.0 + (1.0 - (dist / QUICK_TURN_RANGE));
 
 			// Turning is allowed to be faster if the angle is wider.
 			double delta = Actor.DeltaAngle(pawn.Angle, diff.XY.Angle());
-			double maxTurn = (MAX_TURN_SPEED + MAX_TURN_SPEED_BONUS * Abs(delta) / MAX_ANGLE) * speed * turnMulti;
+			double maxTurn = (MAX_TURN_SPEED + MAX_TURN_SPEED_BONUS * Abs(delta) / MAX_ANGLE) * turnMulti;
 			double turn = Clamp(delta, -maxTurn, maxTurn);
 			SetAngle(pawn.Angle + turn);
 
 			delta = Actor.DeltaAngle(pawn.Pitch, -Atan2(diff.Z, diff.XY.Length()));
-			maxTurn = (MAX_TURN_SPEED + MAX_TURN_SPEED_BONUS * Abs(delta) / MAX_ANGLE) * speed * turnMulti;
+			maxTurn = (MAX_TURN_SPEED + MAX_TURN_SPEED_BONUS * Abs(delta) / MAX_ANGLE) * turnMulti;
 			turn = Clamp(delta, -maxTurn, maxTurn);
 			SetPitch(pawn.Pitch + turn);
 		}
@@ -813,6 +817,8 @@ class Bot : Thinker native
 				imprecisionMulti += 1.0;
 			if (target.bShadow)
 				imprecisionMulti += 2.0;
+			if (player.ReadyWeapon.bMeleeWeapon)
+				imprecisionMulti *= 2.0;
 
 			Vector3 facing = (pawn.Angle.ToVector() * Cos(pawn.Pitch), -Sin(pawn.Pitch));
 			if (facing dot (dir / dist) < Cos((BASE_IMPRECISION + Properties.GetRealNumber('Imprecision')) * imprecisionMulti))
@@ -822,6 +828,7 @@ class Bot : Thinker native
 		if (!CheckShotPath(AimPos, proj ? proj.GetClassName() : 'None', minRange))
 			return false;
 
+		// TODO: Add some logic for alt fires as well
 		SetButtons(BT_ATTACK, true);
 		return true;
 	}
