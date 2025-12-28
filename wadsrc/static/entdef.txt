@@ -1,18 +1,22 @@
 // Doom weapons
 Fist
 {
+	Priority 1
+	StrengthBonus 20.0
 	ChaseRange 128.0
 	MaxCombatRange 64.0
 }
 
 Chainsaw
 {
+	Priority 5
 	ChaseRange 128.0
 	MaxCombatRange 64.0
 }
 
 Pistol
 {
+	Priority 5
 	MinCombatRange 96.0
 	MaxCombatRange 1024.0
 	MaxRefire 4
@@ -20,12 +24,14 @@ Pistol
 
 Shotgun
 {
+	Priority 15
 	MinCombatRange 64.0
 	MaxCombatRange 512.0
 }
 
 SuperShotgun
 {
+	Priority 30
 	MinCombatRange 48.0
 	MaxCombatRange 448.0
 	FrightenRange 96.0
@@ -33,6 +39,7 @@ SuperShotgun
 
 Chaingun
 {
+	Priority 15
 	MinCombatRange 96.0
 	MaxCombatRange 896.0
 	MaxRefire 12
@@ -40,6 +47,7 @@ Chaingun
 
 RocketLauncher
 {
+	Priority 25
 	ProjectileType "Rocket"
 	MinCombatRange 256.0
 	MaxCombatRange 896.0
@@ -54,6 +62,7 @@ Rocket
 
 PlasmaRifle
 {
+	Priority 30
 	MinCombatRange 96.0
 	MaxCombatRange 1024.0
 	MaxRefire 20
@@ -66,6 +75,7 @@ PlasmaBall
 
 BFG9000
 {
+	Priority 100
 	ProjectileType "BFGBall"
 	MinCombatRange 64.0
 	MaxCombatRange 640.0

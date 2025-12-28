@@ -65,11 +65,22 @@ bool DBot::IsValidItem(AActor* item)
 	if (item == nullptr || !(item->flags & MF_SPECIAL) || !item->IsKindOf(NAME_Inventory))
 		return false;
 
-	// Check for class restrictions.
-	IFVIRTUALPTRNAME(item, NAME_Inventory, CanPickup)
+	// Already picked up a copy of this item.
 	{
-		if (!CallVM<int>(func, item, _player->mo))
-			return false;
+		IFVM(Inventory, HasPickedUpLocally)
+		{
+			if (CallVM<int>(func, item, _player->mo))
+				return false;
+		}
+	}
+
+	// Check for class restrictions.
+	{
+		IFVIRTUALPTRNAME(item, NAME_Inventory, CanPickup)
+		{
+			if (!CallVM<int>(func, item, _player->mo))
+				return false;
+		}
 	}
 
 	// The rest of these have specific conditions to check for.

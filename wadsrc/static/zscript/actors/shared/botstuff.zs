@@ -210,6 +210,7 @@ class Bot : Thinker native
 		SearchForTarget();
 		CheckEvade();
 		UpdateGoal();
+		UpdateInventory();
 		
 		AdjustAngles();
 		HandleMovement();
@@ -481,6 +482,160 @@ class Bot : Thinker native
 		}
 	}
 
+	clearscope double GetAmmoWeighting(Weapon weap) const
+	{
+		if (!weap)
+			return 0.0;
+		
+		let ammo1 = weap.Ammo1;
+		let ammo2 = weap.Ammo2;
+		if (!ammo1 && !ammo2)
+			return 0.5;
+		if (sv_infiniteammo || GetPawn().FindInventory("PowerInfiniteAmmo", true))
+			return 1.0;
+
+		double weight;
+		if (ammo1 && !ammo2)
+			weight = double(ammo1.Amount) / ammo1.MaxAmount;
+		else if (!ammo1 && ammo2)
+			weight = double(ammo2.Amount) / ammo2.MaxAmount;
+		else
+			weight = (double(ammo1.Amount) / ammo1.MaxAmount) * 0.5 + (double(ammo2.Amount) / ammo2.MaxAmount) * 0.5;
+		
+		return weight;
+	}
+
+	virtual void UpdateInventory()
+	{
+		let player = GetPlayer();
+		let pawn = GetPawn();
+		let target = GetTarget();
+
+		if (player.PendingWeapon != WP_NOCHANGE || player.IsTotallyFrozen())
+			return;
+
+		double dist = target ? pawn.Distance3D(target) : -1.0;
+		Weapon weap = player.ReadyWeapon;
+		double switchChance;
+		bool mustChange;
+		if (!weap || !weap.CheckAmmo(Weapon.EitherFire, false))
+		{
+			mustChange = true;
+		}
+		else
+		{
+			switchChance = (1.0 - GetAmmoWeighting(weap)) * 0.1;
+			if (weap.bMeleeWeapon)
+				switchChance *= 1.5;
+
+			if (dist >= 0.0)
+			{
+				let def = GetWeaponInfo(weap);
+				if (def)
+				{
+					double maxRange = GetRange(def, 'MaxCombatRange', mod: 'Confidence');
+					if (dist > maxRange)
+						switchChance *= dist / maxRange;
+					double minRange = GetRange(def, 'MinCombatRange', mod: 'Timidness');
+					if (dist < minRange)
+						switchChance *= minRange / dist;
+				}
+			}
+			else if (!weap.bMeleeWeapon)
+			{
+				// Don't switch as much if just idling.
+				switchChance *= 0.25;
+			}
+		}
+
+		if (!mustChange && FRandom[BotSwitch](0.0, 1.0) >= switchChance)
+			return;
+
+		Weapon change = WP_NOCHANGE;
+
+		bool tomed = pawn.FindInventory("PowerWeaponLevel2", true) != null;
+		bool strong = pawn.FindInventory("PowerStrength") != null;
+		Weapon best = WP_NOCHANGE;
+		double bestChance = -double.infinity;
+		for (int i; i < PlayerPawn.NUM_WEAPON_SLOTS && change == WP_NOCHANGE; ++i)
+		{
+			for (int j; j < player.Weapons.SlotSize(i); ++j)
+			{
+				let w = Weapon(pawn.FindInventory(player.Weapons.GetWeapon(i, j)));
+				if (!w || w == weap)
+					continue;
+				if (tomed && w.SisterWeapon && w.SisterWeapon.bPowered_Up)
+					continue;
+				if (!tomed && w.bPowered_Up)
+					continue;
+				if (!w.CheckAmmo(Weapon.EitherFire, false))
+					continue;
+				
+				bool ignoreWimpy;
+				double weight = GetAmmoWeighting(w) * 0.01;
+				let def = GetWeaponInfo(w);
+				if (def)
+				{
+					weight *= def.GetWholeNumber('Priority', 10);
+					if (strong)
+					{
+						double bonus = def.GetRealNumber('StrengthBonus', 1.0);
+						weight = int(weight * bonus);
+						ignoreWimpy = bonus > 1.0;
+					}
+					if (dist >= 0.0)
+					{
+						double maxRange = GetRange(def, 'MaxCombatRange', mod: 'Confidence');
+						if (dist > maxRange)
+							weight *= maxRange / dist;
+						double minRange = GetRange(def, 'MinCombatRange', mod: 'Timidness');
+						if (dist < minRange)
+							weight *= dist / minRange;
+					}
+				}
+				else
+				{
+					if (w.bMeleeWeapon && w.bWimpy_Weapon && strong)
+						ignoreWimpy = true;
+					weight *= 20 + (30 * (!w.bWimpy_Weapon || ignoreWimpy));
+				}
+
+				// Prefer not to select melee weapons.
+				if (w.bMeleeWeapon)
+					weight *= 0.7;
+
+				if (weight > bestChance)
+				{
+					best = w;
+					bestChance = weight;
+				}
+
+				// Don't ever intentionally select wimpy weapons, only do so if
+				// completely out of ammo or if you're using a melee weapon.
+				if (weap && weap.bMeleeWeapon && !w.bMeleeWeapon)
+					ignoreWimpy = true;
+
+				if (w.bWimpy_Weapon && !mustChange && !ignoreWimpy)
+					continue;
+
+				if (FRandom[BotSwitch](0.0, 1.0) < weight)
+				{
+					change = w;
+					break;
+				}
+			}
+		}
+		// If we couldn't find a non-wimpy weapon, switch to the best weapon
+		// we had available.
+		if (change == WP_NOCHANGE && mustChange)
+			change = best;
+
+		// Normally weapon switching is handled via networked inputs which bots won't have access to, so
+		// just use the weapon directly to swap.
+		if (change != WP_NOCHANGE && change != weap)
+			change.Use(false);
+	}
+
 	virtual void AdjustAngles()
 	{
 		let player = GetPlayer();
@@ -575,7 +730,7 @@ class Bot : Thinker native
 
 		let player = GetPlayer();
 		Actor target = GetTarget();
-		if (!target || !player.ReadyWeapon || !IsActorInView(target, Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV)))
+		if (!target || !player.ReadyWeapon || player.PendingWeapon != WP_NOCHANGE || !IsActorInView(target, Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV)))
 			return false;
 
 		let pawn = GetPawn();
@@ -672,7 +827,9 @@ class Bot : Thinker native
 	virtual void FiredWeapon(bool altFire) {}
 }
 
-class CajunBodyNode : Actor deprecated("4.15.1") 
+// Unused; only here for backwards compat
+
+class CajunBodyNode : Actor
 {
 	Default
 	{
@@ -682,7 +839,7 @@ class CajunBodyNode : Actor deprecated("4.15.1")
 	}
 }
 
-class CajunTrace : Actor deprecated("4.15.1") 
+class CajunTrace : Actor
 {
 	Default
 	{
