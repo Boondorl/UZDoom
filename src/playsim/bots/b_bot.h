@@ -308,8 +308,11 @@ public:
 				VMCall(func, params, 3, ret, 1);
 			}
 
-			if (!value.IsEmpty())
+			if (value.IsNotEmpty())
+			{
+				value.ReplaceChars('\\', '/');
 				_userInfo.AppendFormat("\\%s\\%s", pair->Key.GetChars(), value.GetChars());
+			}
 		}
 
 		return { const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(_userInfo.GetChars())), (unsigned)_userInfo.Len() };

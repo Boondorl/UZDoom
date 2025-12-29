@@ -669,7 +669,7 @@ void FLevelLocals::SerializePlayers(FSerializer &arc, bool skipload)
 //
 //==========================================================================
 
-void FLevelLocals::ReadOnePlayer(FSerializer &arc, bool fromHub)
+void FLevelLocals::ReadOnePlayer(FSerializer& arc, bool fromHub)
 {
 	if (!arc.BeginObject(nullptr))
 		return;
@@ -679,28 +679,82 @@ void FLevelLocals::ReadOnePlayer(FSerializer &arc, bool fromHub)
 	player_t temp = {};
 	temp.Serialize(arc);
 
-	for (unsigned int i = 0; i < MAXPLAYERS; ++i)
+	if (temp.Bot == nullptr)
 	{
-		if (!PlayerInGame(i))
-			continue;
-
-		if (!fromHub)
+		unsigned i = 0u;
+		for (; i < MAXPLAYERS; ++i)
 		{
-			// This temp player has undefined pitch limits, so set them to something
-			// that should leave the pitch stored in the savegame intact when
-			// rendering. The real pitch limits will be set by P_SerializePlayers()
-			// via a net command, but that won't be processed in time for a screen
-			// wipe, so we need something here.
-			temp.MaxPitch = temp.MinPitch = temp.mo->Angles.Pitch;
-			CopyPlayer(Players[i], &temp, name.GetChars());
-		}
-		else
-		{
-			// we need the player actor, so that G_FinishTravel can destroy it later.
-			Players[i]->mo = temp.mo;
+			if (!PlayerInGame(i) || Players[i]->Bot != nullptr)
+				continue;
+
+			if (!fromHub)
+			{
+				// This temp player has undefined pitch limits, so set them to something
+				// that should leave the pitch stored in the savegame intact when
+				// rendering. The real pitch limits will be set by P_SerializePlayers()
+				// via a net command, but that won't be processed in time for a screen
+				// wipe, so we need something here.
+				temp.MaxPitch = temp.MinPitch = temp.mo->Angles.Pitch;
+				CopyPlayer(Players[i], &temp, name.GetChars());
+			}
+			else
+			{
+				// we need the player actor, so that G_FinishTravel can destroy it later.
+				Players[i]->mo = temp.mo;
+			}
+
+			break;
 		}
 
-		break;
+		if (i >= MAXPLAYERS)
+			temp.mo->Destroy();
+	}
+	else
+	{
+		// This intentionally uses the global array since we want to always ensure it's a truly
+		// free slot if we need to add a new bot.
+		unsigned firstFree = MAXPLAYERS;
+		for (unsigned i = 0u; i < MAXPLAYERS; ++i)
+		{
+			if (!playeringame[i])
+			{
+				firstFree = i;
+				break;
+			}
+		}
+
+		unsigned i = 0u;
+		for (; i < MAXPLAYERS; ++i)
+		{
+			if (!PlayerInGame(i) || Players[i]->Bot == nullptr || name.Compare(Players[i]->userinfo.GetName()))
+				continue;
+
+			if (!fromHub)
+				CopyPlayer(Players[i], &temp, name.GetChars());
+			else
+				Players[i]->mo = temp.mo;
+
+			Players[i]->Bot->ResetPlayer(Players[i]);
+			break;
+		}
+
+		if (i >= MAXPLAYERS)
+		{
+			if (firstFree < MAXPLAYERS)
+			{
+				playeringame[firstFree] = true;
+				if (!fromHub)
+					CopyPlayer(Players[firstFree], &temp, name.GetChars());
+				else
+					Players[firstFree]->mo = temp.mo;
+				Players[firstFree]->Bot->ResetPlayer(Players[firstFree]);
+			}
+			else
+			{
+				temp.mo->Destroy();
+				temp.Bot->Destroy();
+			}
+		}
 	}
 
 	arc.EndObject();
@@ -736,6 +790,13 @@ void FLevelLocals::ReadMultiplePlayers(FSerializer &arc, int numPlayers, bool fr
 		}
 	}
 
+	TArray<unsigned> freeSlots = {};
+	for (unsigned i = 0u; i < MAXPLAYERS; ++i)
+	{
+		if (!playeringame[i])
+			freeSlots.Insert(0u, i);
+	}
+
 	// Now try to match players from the savegame with players present
 	// based on their names. If two players in the savegame have the
 	// same name, then they are assigned to players in the current game
@@ -747,12 +808,17 @@ void FLevelLocals::ReadMultiplePlayers(FSerializer &arc, int numPlayers, bool fr
 
 		for (auto& p : tempPlayers)
 		{
+			if ((p.Info.Bot == nullptr) ^ (Players[i]->Bot == nullptr))
+				continue;
+
 			if (!p.bUsed && !p.Name.Compare(Players[i]->userinfo.GetName()))
 			{
 				// Found a match, so copy our temp player to the real player
 				if (!fromHub)
 				{
 					Printf("Found %s's (%d) data\n", Players[i]->userinfo.GetName(), i);
+					if (Players[i]->Bot == nullptr)
+						p.Info.MaxPitch = p.Info.MinPitch = p.Info.mo->Angles.Pitch;
 					CopyPlayer(Players[i], &p.Info, p.Name.GetChars());
 				}
 				else
@@ -762,6 +828,8 @@ void FLevelLocals::ReadMultiplePlayers(FSerializer &arc, int numPlayers, bool fr
 
 				p.bUsed = true;
 				assignedPlayers[i] = true;
+				if (Players[i]->Bot != nullptr)
+					Players[i]->Bot->ResetPlayer(Players[i]);
 				break;
 			}
 		}
@@ -771,16 +839,17 @@ void FLevelLocals::ReadMultiplePlayers(FSerializer &arc, int numPlayers, bool fr
 	// players on a first-come, first-served basis.
 	for (unsigned int i = 0; i < MAXPLAYERS; ++i)
 	{
-		if (!PlayerInGame(i) || assignedPlayers[i])
+		if (!PlayerInGame(i) || assignedPlayers[i] || Players[i]->Bot != nullptr)
 			continue;
 
 		for (auto& p : tempPlayers)
 		{
-			if (!p.bUsed)
+			if (!p.bUsed && p.Info.Bot == nullptr)
 			{
 				if (!fromHub)
 				{
 					Printf("Assigned %s (%d) to %s's data\n", Players[i]->userinfo.GetName(), i, p.Name.GetChars());
+					p.Info.MaxPitch = p.Info.MinPitch = p.Info.mo->Angles.Pitch;
 					CopyPlayer(Players[i], &p.Info, p.Name.GetChars());
 				}
 				else
@@ -794,12 +863,42 @@ void FLevelLocals::ReadMultiplePlayers(FSerializer &arc, int numPlayers, bool fr
 		}
 	}
 
+	// For any remaining bots, rather than overriding existing ones, create new ones.
+	for (auto& p : tempPlayers)
+	{
+		if (!freeSlots.Size())
+			break;
+
+		if (!p.bUsed && p.Info.Bot != nullptr)
+		{
+			unsigned i = 0u;
+			freeSlots.Pop(i);
+			playeringame[i] = true;
+			if (!fromHub)
+			{
+				Printf("Created bot %s in slot %u\n", Players[i]->userinfo.GetName(), i);
+				CopyPlayer(Players[i], &p.Info, p.Name.GetChars());
+			}
+			else
+			{
+				Players[i]->mo = p.Info.mo;
+			}
+
+			p.bUsed = true;
+			Players[i]->Bot->ResetPlayer(Players[i]);
+		}
+	}
+
 	// Remove any temp players that were not used. Happens if there are now
 	// less players in the game than there were in the save
 	for (auto& p : tempPlayers)
 	{
 		if (!p.bUsed)
+		{
 			p.Info.mo->Destroy();
+			if (p.Info.Bot != nullptr)
+				p.Info.Bot->Destroy();
+		}
 	}
 }
 
