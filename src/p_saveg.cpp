@@ -748,6 +748,7 @@ void FLevelLocals::ReadOnePlayer(FSerializer& arc, bool fromHub)
 				else
 					Players[firstFree]->mo = temp.mo;
 				Players[firstFree]->Bot->ResetPlayer(Players[firstFree]);
+				R_BuildPlayerTranslation(firstFree);
 			}
 			else
 			{
@@ -876,7 +877,7 @@ void FLevelLocals::ReadMultiplePlayers(FSerializer &arc, int numPlayers, bool fr
 			playeringame[i] = true;
 			if (!fromHub)
 			{
-				Printf("Created bot %s in slot %u\n", Players[i]->userinfo.GetName(), i);
+				Printf("Created bot %s in slot %u\n", p.Name.GetChars(), i);
 				CopyPlayer(Players[i], &p.Info, p.Name.GetChars());
 			}
 			else
@@ -886,6 +887,7 @@ void FLevelLocals::ReadMultiplePlayers(FSerializer &arc, int numPlayers, bool fr
 
 			p.bUsed = true;
 			Players[i]->Bot->ResetPlayer(Players[i]);
+			R_BuildPlayerTranslation(i);
 		}
 	}
 
