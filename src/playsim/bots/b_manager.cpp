@@ -150,7 +150,7 @@ bool DBotManager::TryAddBot(FLevelLocals* level, unsigned playerIndex, FName bot
 	if (stream.Size() > 0)
 		D_ReadUserInfoStrings(playerIndex, stream, false);
 
-	if (teamplay)
+	if (teamplay && FTeam::IsValid(players[playerIndex].userinfo.GetTeam()))
 		Printf("%s joined the %s team\n", players[playerIndex].userinfo.GetName(), Teams[players[playerIndex].userinfo.GetTeam()].GetName());
 	else
 		Printf("%s joined the game\n", players[playerIndex].userinfo.GetName());
@@ -729,13 +729,13 @@ FBotDefinition& DBotManager::ParseBot(FScanner& sc, FBotDefinition& def)
 		{
 			def.SetBool(key, sc.Number);
 		}
-		else if (sc.CheckFloat())
-		{
-			def.SetDouble(key, sc.Float);
-		}
 		else if (sc.CheckNumber())
 		{
 			def.SetInt(key, sc.Number);
+		}
+		else if (sc.CheckFloat())
+		{
+			def.SetDouble(key, sc.Float);
 		}
 		else
 		{
@@ -765,13 +765,13 @@ FEntityProperties& EntityDefManager::ParseEntity(FScanner& sc, FEntityProperties
 		{
 			props.SetBool(key, sc.Number);
 		}
-		else if (sc.CheckFloat())
-		{
-			props.SetDouble(key, sc.Float);
-		}
 		else if (sc.CheckNumber())
 		{
 			props.SetInt(key, sc.Number);
+		}
+		else if (sc.CheckFloat())
+		{
+			props.SetDouble(key, sc.Float);
 		}
 		else
 		{
