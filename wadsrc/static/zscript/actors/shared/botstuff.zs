@@ -98,6 +98,7 @@ class Bot : Thinker native
 	native clearscope double GetJumpHeight() const;
 	native bool FakeCheckPosition(Vector2 dest, out FCheckPosition tm = null, bool actorsOnly = false);
 	native bool CanReach(Actor mo, bool jump = true);
+	// Boon TODO: Return desired inputs
 	native bool, bool, bool CheckMove(Vector2 dest, bool jump = true, bool allowInteract = true);
 	native bool Move(bool running = true, bool jump = true, bool allowInteract = true);
 	native void NewMoveDirection(Actor goal = null, bool runAway = false, bool running = true, bool jump = true, bool allowInteract = true);
@@ -855,8 +856,10 @@ class Bot : Thinker native
 			if (target.CurSector.GetLightLevel() <= DARKNESS_THRESHOLD)
 				imprecisionMulti += 1.0;
 			if (target.bShadow)
-				imprecisionMulti += 2.0;
+				imprecisionMulti += 1.0;
 			if (player.ReadyWeapon.bMeleeWeapon)
+				imprecisionMulti *= 2.0;
+			if (player.AttackDown)
 				imprecisionMulti *= 2.0;
 
 			Vector3 facing = (pawn.Angle.ToVector() * Cos(pawn.Pitch), -Sin(pawn.Pitch));

@@ -199,47 +199,46 @@ bool DBot::CheckMove(const DVector2& pos, bool* jumped, bool* interacted)
     {
 		if (_player->mo->BlockingLine != nullptr)
 		{
-			if (interacted != nullptr)
+			if (interacted == nullptr)
+				return false;
+
+			auto line = _player->mo->BlockingLine;
+			if (line->special == 0 || !(line->activation & (SPAC_Use | SPAC_UseThrough | SPAC_UseBack)))
+				return false;
+
+			const int side = P_PointOnLineSide(_player->mo->X(), _player->mo->Y(), line);
+			const int useSide = P_PointOnLineSide(usePos.X, usePos.Y, line);
+			// If the use action doesn't cross the line, they're probably not looking at it, so don't try
+			// and open it.
+			if (side == useSide)
+				return false;
+
+			if ((side == 1 && !(line->activation & SPAC_UseBack))
+				|| (side != 1 && !(line->activation & (SPAC_Use | SPAC_UseThrough))))
 			{
-				auto line = _player->mo->BlockingLine;
-				if (line->special == 0 || !(line->activation & (SPAC_Use | SPAC_UseThrough | SPAC_UseBack)))
-					return false;
-
-				const int side = P_PointOnLineSide(_player->mo->X(), _player->mo->Y(), line);
-				const int useSide = P_PointOnLineSide(usePos.X, usePos.Y, line);
-				// If the use action doesn't cross the line, they're probably not looking at it, so don't try
-				// and open it.
-				if (side == useSide)
-					return false;
-
-				if ((side == 1 && !(line->activation & SPAC_UseBack))
-					|| (side != 1 && !(line->activation & (SPAC_Use | SPAC_UseThrough))))
-				{
-					return false;
-				}
-
-				if (line->locknumber)
-				{
-					if (!P_CheckKeys(_player->mo, line->locknumber, false, true))
-						return false;
-				}
-				else
-				{
-					int lock = 0;
-					if (line->special == 13 || line->special == 14)
-						lock = line->args[3];
-					else if (line->special == 83 || line->special == 85 || line->special == 202)
-						lock = line->args[4];
-					else if (line->special == 158)
-						lock = line->args[2];
-
-					if (lock && !P_CheckKeys(_player->mo, lock, false, true))
-						return false;
-				}
-
-				*interacted = true;
+				return false;
 			}
 
+			if (line->locknumber)
+			{
+				if (!P_CheckKeys(_player->mo, line->locknumber, false, true))
+					return false;
+			}
+			else
+			{
+				int lock = 0;
+				if (line->special == 13 || line->special == 14)
+					lock = line->args[3];
+				else if (line->special == 83 || line->special == 85 || line->special == 202)
+					lock = line->args[4];
+				else if (line->special == 158)
+					lock = line->args[2];
+
+				if (lock && !P_CheckKeys(_player->mo, lock, false, true))
+					return false;
+			}
+
+			*interacted = true;
 			return false;
 		}
 		else
@@ -315,7 +314,7 @@ bool DBot::Move(bool running, bool doJump, bool doInteract)
     const double absAng = fabs(delta);
 
     EBotMoveDirection forw = absAng <= MinForward || absAng >= MaxForward ? MDIR_FORWARDS : MDIR_NO_CHANGE;
-    EBotMoveDirection side = absAng >= MinSide || absAng <= MaxSide ? MDIR_LEFT : MDIR_NO_CHANGE;
+    EBotMoveDirection side = absAng >= MinSide && absAng <= MaxSide ? MDIR_LEFT : MDIR_NO_CHANGE;
     if (side == MDIR_LEFT && delta < 0.0)
         side = MDIR_RIGHT;
     if (forw == MDIR_FORWARDS && absAng > 90.0)
