@@ -759,6 +759,11 @@ class Bot : Thinker native
 			AimPos = viewPos + (moveAng.ToVector(), 0.0) * QUICK_TURN_RANGE;
 		}
 
+		// If we're using something, only update the aim position, don't actually turn
+		// to look at it just yet.
+		if (player.Cmd.Buttons & BT_USE)
+			return;
+
 		Vector3 diff = Level.Vec3Diff(viewPos, AimPos);
 		if (!(diff ~== (0.0, 0.0, 0.0)))
 		{

@@ -68,6 +68,7 @@ static FRandom pr_actorinspecialsector ("ActorInSpecialSector");
 EXTERN_CVAR(Bool, cl_predict_specials)
 EXTERN_CVAR(Bool, forcewater)
 EXTERN_CVAR (Bool, haptics_do_world)
+EXTERN_CVAR(Bool, sv_allowbotexit)
 
 // [RH] Check dmflags for noexit and respond accordingly
 bool FLevelLocals::CheckIfExitIsGood (AActor *self, level_info_t *info)
@@ -80,6 +81,10 @@ bool FLevelLocals::CheckIfExitIsGood (AActor *self, level_info_t *info)
 
 	// We must kill all monsters to exit the Level
 	if ((dmflags2 & DF2_KILL_MONSTERS) && killed_monsters != total_monsters)
+		return false;
+
+	// Bots can't exit unless explicitly allowed (prevents them from randomly leaving the level).
+	if ((deathmatch || !sv_allowbotexit) && self->player != nullptr && self->player->Bot != nullptr)
 		return false;
 
 	// Is this a deathmatch game and we're not allowed to exit?

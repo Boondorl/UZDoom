@@ -30,6 +30,8 @@
 static FRandom pr_bottrywalk("BotTryWalk");
 static FRandom pr_botnewchasedir("BotNewChaseDir");
 
+CVAR(Bool, sv_allowbotexit, false, CVAR_SERVERINFO | CVAR_NOSAVE)
+
 bool P_CheckPosition(AActor* thing, const DVector2& pos, FCheckPosition& tm, bool actorsonly);
 
 double DBot::GetJumpHeight() const
@@ -236,7 +238,6 @@ bool DBot::CheckMove(const DVector2& pos, bool* jumped, bool* interacted)
 				}
 
 				*interacted = true;
-				return true;
 			}
 
 			return false;
@@ -297,13 +298,13 @@ bool DBot::Move(bool running, bool doJump, bool doInteract)
                             _player->mo->Y() + (_player->mo->radius - 1.0) * yspeed[_player->mo->movedir] };
 
 	bool jumped = false, interacted = false;
-	if (!CheckMove(pos, doJump ? &jumped : nullptr, doInteract ? &interacted : nullptr))
-        return false;
-
+	const bool res = CheckMove(pos, doJump ? &jumped : nullptr, doInteract ? &interacted : nullptr);
 	if (jumped)
 		SetButtons(BT_JUMP, true);
 	if (interacted)
 		SetButtons(BT_USE, true);
+	if (!res)
+		return false;
 
     constexpr double MinForward = 60.0;
     constexpr double MaxForward = 120.0;
