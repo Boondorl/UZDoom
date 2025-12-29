@@ -143,7 +143,8 @@ bool DBotManager::TryAddBot(FLevelLocals* level, unsigned playerIndex, FName bot
 
 	multiplayer = true; // Count this as multiplayer, even if it's not a netgame.
 	playeringame[playerIndex] = true;
-	players[playerIndex].Bot = level->CreateThinker<DBot>(&players[playerIndex], botID);
+	players[playerIndex].Bot = dyn_cast<DBot>(level->CreateThinker(botClass, DBot::DEFAULT_STAT));
+	players[playerIndex].Bot->Construct(&players[playerIndex], botID);
 
 	auto stream = bot->GenerateUserInfo(players[playerIndex].userinfo, players[playerIndex].Bot);
 	if (stream.Size() > 0)

@@ -1627,9 +1627,6 @@ void FLevelLocals::AddToTravellingList(DThinker* th)
 	TravellingThinkers.Push(th);
 	if (mo != nullptr)
 	{
-		if (mo->player != nullptr)
-			AddToTravellingList(mo->player->Bot);
-
 		if (!(mo->flags & MF_UNMORPHED))
 			AddToTravellingList(mo->alternative);
 
@@ -1645,11 +1642,12 @@ void FLevelLocals::StartTravel()
 {
 	bTravelling = true;
 
-	if (!deathmatch)
+	for (size_t i = 0u; i < MAXPLAYERS; ++i)
 	{
-		for (size_t i = 0u; i < MAXPLAYERS; ++i)
+		if (PlayerInGame(i))
 		{
-			if (PlayerInGame(i) && Players[i]->health > 0)
+			AddToTravellingList(Players[i]->Bot);
+			if (!deathmatch && Players[i]->health > 0)
 				AddToTravellingList(Players[i]->mo);
 		}
 	}
@@ -1840,6 +1838,26 @@ int FLevelLocals::FinishTravel()
 	// otherwise they'll pile up infinitely.
 	Thinkers.CleanUpTravellers(savegamerestore);
 	ClientSideThinkers.CleanUpTravellers(savegamerestore);
+
+	// For deathmatch, the bot thinker always needs to transfer over, but it should be recreated
+	// to reset it properly.
+	if (deathmatch)
+	{
+		for (size_t i = 0u; i < MAXPLAYERS; ++i)
+		{
+			if (PlayerInGame(i) && Players[i]->Bot != nullptr
+				&& toCallBack.Find(Players[i]->Bot) < toCallBack.Size())
+			{
+				auto cls = Players[i]->Bot->GetClass();
+				auto id = Players[i]->Bot->GetBotID();
+				int stat = Players[i]->Bot->GetStatNum();
+
+				Players[i]->Bot->Destroy();
+				Players[i]->Bot = dyn_cast<DBot>(CreateThinker(cls, stat));
+				Players[i]->Bot->Construct(Players[i], id);
+			}
+		}
+	}
 
 	// Some ZScript will be called here so we have to do this last.
 	for (size_t i = 0u; i < MAXPLAYERS; ++i)
