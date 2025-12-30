@@ -157,6 +157,7 @@ bool DBotManager::TryAddBot(FLevelLocals* level, unsigned playerIndex, FName bot
 
 	// PlayerSpawned needs to be called before PlayerEntered
 	players[playerIndex].playerstate = PST_ENTER;
+	players[playerIndex].cls = nullptr;
 	level->DoReborn(playerIndex);
 	level->localEventManager->PlayerEntered(playerIndex, false);
 	return true;

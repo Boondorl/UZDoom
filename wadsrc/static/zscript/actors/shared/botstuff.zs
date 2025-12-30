@@ -886,6 +886,30 @@ class Bot : Thinker native
 
 	virtual string ModifySpawnProperty(Name property, string value)
 	{
+		if (property == 'PlayerClass')
+		{
+			string pref = Properties.GetString('PreferredPlayerClasses');
+			if (pref.IsNotEmpty())
+			{
+				Array<string> classes;
+				pref.Split(classes, ",", TOK_SKIPEMPTY);
+				Array<string> pTypes;
+				foreach (cls : classes)
+				{
+					foreach (info : PlayerClasses)
+					{
+						if (PlayerPawn.GetPrintableDisplayName(info.Type) ~== cls)
+						{
+							pTypes.Push(cls);
+							break;
+						}
+					}
+				}
+				if (pTypes.Size())
+					value = pTypes[Random[BotClass](0, pTypes.Size()-1)];
+			}
+		}
+
 		return value;
 	}
 

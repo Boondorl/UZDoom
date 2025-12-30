@@ -268,6 +268,8 @@ public:
 	void SetAngle(DAngle dest, EBotAngleCmd type);			// Sets the angle commands.
 };
 
+FString D_EscapeUserInfo(const char* str);
+
 // Info about bots in the BOTDEF files.
 struct FBotDefinition
 {
@@ -310,12 +312,12 @@ public:
 
 			if (value.IsNotEmpty())
 			{
-				value.ReplaceChars('\\', '/');
+				value = D_EscapeUserInfo(value.GetChars());
 				_userInfo.AppendFormat("\\%s\\%s", pair->Key.GetChars(), value.GetChars());
 			}
 		}
 
-		return { const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(_userInfo.GetChars())), (unsigned)_userInfo.Len() };
+		return { const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(_userInfo.GetChars())), (unsigned)_userInfo.Len() + 1 };
 	}
 
 	const FEntityProperties& GetProperties() const
