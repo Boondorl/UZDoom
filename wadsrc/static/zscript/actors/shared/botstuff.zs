@@ -299,15 +299,28 @@ class Bot : Thinker native
 		let partner = GetPartner();
 		Actor target = GetTarget();
 
+		// If we can chase down targets with the weapon, don't try and evade them.
+		let rwInfo = GetWeaponInfo(player.ReadyWeapon);
+		double defRange = 256.0;
+		if (rwInfo)
+		{
+			if (GetRange(rwInfo, 'ChaseRange', mod: 'Aggressiveness') > 0.0)
+				defRange = 0.0;
+		}
+		else if (player.ReadyWeapon && player.ReadyWeapon.bMeleeWeapon)
+		{
+			defRange = 0.0;
+		}
+
 		double evasiveness = Properties.GetRealNumber('Evasiveness', 1.0);
 		if (Evade)
 		{
 			if (Evade == target)
 			{
-				double minRange = GetRangeSquared(GetWeaponInfo(player.ReadyWeapon), 'MinCombatRange', mod: 'Timidness');
+				double minRange = GetRangeSquared(rwInfo, 'MinCombatRange', mod: 'Timidness');
 				
 				let weapInfo = target.Player ? GetWeaponInfo(target.Player.ReadyWeapon) : null;
-				double runRange = GetRangeSquared(weapInfo, 'FrightenRange', 256.0, modDef: evasiveness);
+				double runRange = GetRangeSquared(weapInfo, 'FrightenRange', defRange, modDef: evasiveness);
 
 				double dist = pawn.Distance3DSquared(target);
 				if ((minRange <= 0.0 || dist > minRange) && (runRange <= 0.0 || dist > runRange))
@@ -376,10 +389,10 @@ class Bot : Thinker native
 
 		if (target)
 		{
-			double minRange = GetRangeSquared(GetWeaponInfo(player.ReadyWeapon), 'MinCombatRange', mod: 'Timidness');
+			double minRange = GetRangeSquared(rwInfo, 'MinCombatRange', mod: 'Timidness');
 			
 			let weapInfo = target.Player ? GetWeaponInfo(target.Player.ReadyWeapon) : null;
-			double runRange = GetRangeSquared(weapInfo, 'FrightenRange', 256.0, modDef: evasiveness);
+			double runRange = GetRangeSquared(weapInfo, 'FrightenRange', defRange, modDef: evasiveness);
 
 			double dist = pawn.Distance3DSquared(target);
 			if ((minRange > 0.0 && dist <= minRange) || (runRange > 0.0 && dist <= runRange))
