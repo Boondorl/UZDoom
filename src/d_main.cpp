@@ -3742,6 +3742,7 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<FileSys::ResourceN
 
 	EntityDefManager::ParseEntityDefinitions();
 	DBotManager::ParseBotDefinitions();
+	DBotManager::ParseZCajun();
 
 	if (!batchrun)
 	{

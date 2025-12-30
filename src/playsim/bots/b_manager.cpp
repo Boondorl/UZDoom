@@ -636,7 +636,6 @@ void EntityDefManager::ParseEntityDefinitions()
 	}
 }
 
-// Boon TODO: Add backwards compat for zcajun bots
 void DBotManager::ParseBotDefinitions()
 {
 	BotDefinitions.Clear();
@@ -745,11 +744,11 @@ FBotDefinition& DBotManager::ParseBot(FScanner& sc, FBotDefinition& def)
 		}
 	}
 
-	if (def.GetString("PlayerClass").IsEmpty())
-		def.SetString("PlayerClass", "Random");
+	if (def.GetString(NAME_PlayerClass).IsEmpty())
+		def.SetString(NAME_PlayerClass, "Random");
 
-	if (!FTeam::IsValid(def.GetInt("Team", UINT_MAX)))
-		def.SetInt("Team", TEAM_NONE);
+	if (!FTeam::IsValid(def.GetInt(NAME_Team, UINT_MAX)))
+		def.SetInt(NAME_Team, TEAM_NONE);
 
 	return def;
 }
@@ -782,6 +781,168 @@ FEntityProperties& EntityDefManager::ParseEntity(FScanner& sc, FEntityProperties
 	}
 
 	return props;
+}
+
+// ZCajun support. This should never be used, it's just here for convenience of converting
+// existing bot files.
+
+#if defined _WIN32 || defined __APPLE__
+static FString M_GetCajunPath(const char* botfilename)
+{
+	FString path;
+	path << progdir << "zcajun/" << botfilename;
+	if (!FileExists(path))
+		path = "";
+	return path;
+}
+#else
+static FString M_GetCajunPath(const char* botfilename)
+{
+	FString path;
+	// Check first in $HOME/.config/zdoom/botfilename.
+	path = GetUserFile(botfilename);
+	if (!FileExists(path))
+	{
+		// Then check in SHARE_DIR/botfilename.
+		path = SHARE_DIR;
+		path << "/" << botfilename;
+		if (!FileExists(path))
+			path = "";
+	}
+	return path;
+}
+#endif
+
+static constexpr auto BOTFILENAME = "bots.cfg";
+
+static const char* BotConfigStrings[] =
+{
+	"aiming",
+	"perfection",
+	"reaction",
+	"isp",
+	"team",
+	nullptr
+};
+
+enum EZCajunProperties
+{
+	BOTCFG_AIMING,
+	BOTCFG_PERFECTION,
+	BOTCFG_REACTION,
+	BOTCFG_ISP,
+	BOTCFG_TEAM
+};
+
+void DBotManager::ParseZCajun()
+{
+	const FString path = M_GetCajunPath(BOTFILENAME);
+	if (path.IsEmpty())
+		return;
+
+	FScanner sc = {};
+	if (!sc.OpenFile(path.GetChars()))
+		return;
+
+	while (sc.GetString())
+	{
+		if (!sc.Compare("{"))
+			sc.ScriptError("Unexpected token '%s'", sc.String);
+
+		FBotDefinition bot = {};
+		bot.SetDouble(NAME_Autoaim, 0.0);
+		bot.SetDouble(NAME_MoveBob, 0.25);
+
+		while (true)
+		{
+			sc.MustGetString();
+			if (sc.Compare("}"))
+				break;
+
+			switch (sc.MatchString(BotConfigStrings))
+			{
+			// These are just estimates of converting the previous properties to the new
+			// values. They won't be perfect but should roughly capture the same idea.
+			case BOTCFG_AIMING:
+				sc.MustGetNumber();
+				bot.SetDouble(NAME_Imprecision, max<double>(15.0 * (1.0 - (sc.Number / 100.0)), 0.0));
+				break;
+
+			case BOTCFG_PERFECTION:
+				// This didn't do anything, so just ignore it.
+				sc.MustGetNumber();
+				break;
+
+			case BOTCFG_REACTION:
+				sc.MustGetNumber();
+				bot.SetInt(NAME_ReactionTime, 8 + max<int>(static_cast<int>(8 * (1.0 - (sc.Number / 100.0))), 0));
+				break;
+
+			case BOTCFG_ISP:
+				sc.MustGetNumber();
+				bot.SetDouble(NAME_Timidness, max<double>(1.5 * (sc.Number / 100.0), 0.0));
+				break;
+
+			case BOTCFG_TEAM:
+			{
+				// This also accepted team names.
+				uint8_t team = TEAM_NONE;
+				if (sc.CheckNumber())
+				{
+					team = sc.Number;
+				}
+				else
+				{
+					sc.MustGetString();
+					for (unsigned i = 0u; i < Teams.Size(); ++i)
+					{
+						if (sc.Compare(Teams[i].GetName()))
+						{
+							team = i;
+							break;
+						}
+					}
+				}
+				bot.SetInt(NAME_Team, team);
+				break;
+			}
+
+			default:
+				const FName key = sc.String;
+				if (sc.CheckBoolToken())
+				{
+					bot.SetBool(key, sc.Number);
+				}
+				else if (sc.CheckNumber())
+				{
+					bot.SetInt(key, sc.Number);
+				}
+				else if (sc.CheckFloat())
+				{
+					bot.SetDouble(key, sc.Float);
+				}
+				else
+				{
+					sc.MustGetString();
+					bot.SetString(key, sc.String);
+				}
+				break;
+			}
+		}
+
+		if (bot.GetString(NAME_PlayerClass).IsEmpty())
+			bot.SetString(NAME_PlayerClass, "Random");
+		if (!FTeam::IsValid(bot.GetInt(NAME_Team, UINT_MAX)))
+			bot.SetInt(NAME_Team, TEAM_NONE);
+
+		const FName id = bot.GetString(NAME_Name);
+		if (id == NAME_None)
+			sc.ScriptError("No name provided for bot");
+		else if (BotDefinitions.CheckKey(id) != nullptr)
+			sc.ScriptError("Bot %s already exists", id.GetChars());
+		else
+			BotDefinitions[id] = bot;
+	}
 }
 
 CVAR(Int, bot_next_color, 0, 0)

@@ -821,6 +821,9 @@ xx(Morph)
 xx(MorphedMonster)
 xx(Wi_NoAutostartMap)
 
+xx(Imprecision)
+xx(Timidness)
+
 xx(Duration)
 xx(MorphStyle)
 xx(MorphFlash)

@@ -394,6 +394,7 @@ public:
 	static inline TMap<FName, FBotDefinition> BotDefinitions = {};		// Default properties and userinfo to give when spawning a bot. Stored by bot ID.
 
 	static void ParseBotDefinitions();								// Parses the BOTDEF lumps.
+	static void ParseZCajun();										// This is only for backwards compat, it shouldn't be used otherwise.
 	static void SetNamedBots(const FString* args, int argCount);	// Parses the "-bots" arg for the names of the bots.
 	static void SpawnNamedBots();				// Spawns any named bots. Only the host can do this. Triggers on level load.
 	static int CountBots(FLevelLocals* level = nullptr);			// Counts the number of bots in the game.
