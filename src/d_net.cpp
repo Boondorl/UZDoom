@@ -2711,7 +2711,7 @@ void Net_DoCommand(int cmd, TArrayView<uint8_t>& stream, int player)
 		// For demo playback, DEM_DOAUTOSAVE already exists in the demo if the
 		// autosave happened. And if it doesn't, we must not generate it.
 		if (!netgame && !demoplayback && disableautosave < 2 && autosavecount
-			&& players[player].playerstate == PST_LIVE)
+			&& players[player].playerstate == PST_LIVE && !deathmatch)
 		{
 			Net_WriteInt8(DEM_DOAUTOSAVE);
 		}
