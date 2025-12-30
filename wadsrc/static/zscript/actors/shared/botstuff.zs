@@ -307,7 +307,7 @@ class Bot : Thinker native
 				double minRange = GetRangeSquared(GetWeaponInfo(player.ReadyWeapon), 'MinCombatRange', mod: 'Timidness');
 				
 				let weapInfo = target.Player ? GetWeaponInfo(target.Player.ReadyWeapon) : null;
-				double runRange = GetRangeSquared(weapInfo, 'FrightenRange', modDef: evasiveness);
+				double runRange = GetRangeSquared(weapInfo, 'FrightenRange', 256.0, modDef: evasiveness);
 
 				double dist = pawn.Distance3DSquared(target);
 				if ((minRange <= 0.0 || dist > minRange) && (runRange <= 0.0 || dist > runRange))
@@ -320,7 +320,7 @@ class Bot : Thinker native
 			}
 			else
 			{
-				double runRange = GetRangeSquared(Level.GetEntityInfo(Evade.GetClassName()), 'FrightenRange', modDef: evasiveness);
+				double runRange = GetRangeSquared(Level.GetEntityInfo(Evade.GetClassName()), 'FrightenRange', 256.0, modDef: evasiveness);
 				if (runRange <= 0.0 || pawn.Distance3DSquared(Evade) > runRange)
 					Evade = null;
 			}
@@ -338,13 +338,17 @@ class Bot : Thinker native
 			let it = ThinkerIterator.Create("Actor", STAT_DEFAULT);
 			while (mo = Actor(it.Next()))
 			{
-				if ((!mo.bIsMonster && !mo.bMissile)
-					|| ((mo.bIsMonster && pawn.IsFriend(mo)) || (mo.bMissile && mo.Target && (mo.Target == pawn || pawn.IsFriend(mo.Target)))))
+				// Make sure to prioritize projectiles over the target itself. If there's nothing else to
+				// dodge, the target will be chosen to evade if in range.
+				if (mo == target || mo == pawn
+					|| (!mo.bIsMonster && !mo.bMissile)
+					|| (mo.bIsMonster && (mo.Health <= 0 || pawn.IsFriend(mo)))
+					|| (mo.bMissile && mo.Target && (mo.Target == pawn || pawn.IsFriend(mo.Target))))
 				{
 					continue;
 				}
 
-				double runRange = GetRangeSquared(Level.GetEntityInfo(mo.GetClassName()), 'FrightenRange', modDef: evasiveness);
+				double runRange = GetRangeSquared(Level.GetEntityInfo(mo.GetClassName()), 'FrightenRange', 256.0, modDef: evasiveness);
 				if (runRange <= 0.0)
 					continue;
 
@@ -359,7 +363,10 @@ class Bot : Thinker native
 			if (closest)
 			{
 				Evade = closest;
-				SetCoolDown('Evade', EVADE_COOL_DOWN_TICS);
+				int evadeTics = EVADE_COOL_DOWN_TICS;
+				if (target)
+					evadeTics /= 2;
+				SetCoolDown('Evade', evadeTics);
 				NewMoveDirection(Evade, true);
 			}
 		}
@@ -370,9 +377,9 @@ class Bot : Thinker native
 		if (target)
 		{
 			double minRange = GetRangeSquared(GetWeaponInfo(player.ReadyWeapon), 'MinCombatRange', mod: 'Timidness');
-				
+			
 			let weapInfo = target.Player ? GetWeaponInfo(target.Player.ReadyWeapon) : null;
-			double runRange = GetRangeSquared(weapInfo, 'FrightenRange', modDef: evasiveness);
+			double runRange = GetRangeSquared(weapInfo, 'FrightenRange', 256.0, modDef: evasiveness);
 
 			double dist = pawn.Distance3DSquared(target);
 			if ((minRange > 0.0 && dist <= minRange) || (runRange > 0.0 && dist <= runRange))
@@ -770,7 +777,7 @@ class Bot : Thinker native
 		{
 			double turnMulti = 1.0;
 			if (player.AttackDown)
-				turnMulti *= 0.5;
+				turnMulti *= 0.6;
 			if (aimingAtTarget)
 			{
 				if (target.bShadow)
@@ -799,9 +806,11 @@ class Bot : Thinker native
 	virtual void HandleMovement()
 	{
 		Actor goal = GetGoal();
+		let pawn = GetPawn();
 
 		bool running = Evade || goal || GetTarget();
-		if (--GetPawn().MoveCount < 0 || !Move(running))
+		pawn.MoveCount -= running ? 2 : 1;
+		if (pawn.MoveCount < 0 || !Move(running))
 		{
 			bool avoidingPartner = Evade == GetPartner();
 			if (Evade && (!avoidingPartner || !goal))

@@ -338,7 +338,12 @@ bool DBot::TryWalk(bool running, bool doJump, bool doInteract)
 
 void DBot::NewMoveDirection(AActor* goal, bool runAway, bool running, bool doJump, bool doInteract)
 {
-    int baseDir = 0;
+	int turnChance = 7;
+	int facingDir = _player->mo->movedir;
+	if (facingDir == DI_NODIR)
+		facingDir = pr_botnewchasedir() & 7;
+
+	int baseDir = facingDir;
     if (goal != nullptr)
     {
         constexpr double AngToDir = 1.0 / 45.0;
@@ -349,18 +354,16 @@ void DBot::NewMoveDirection(AActor* goal, bool runAway, bool running, bool doJum
 
         baseDir = static_cast<int>(desired * AngToDir);
         if (runAway)
+		{
+			turnChance = 3;
             baseDir = (baseDir + 4) % 8;
-    }
-    else
-    {
-        baseDir = _player->mo->movedir;
-        if (baseDir == DI_NODIR)
-            baseDir = pr_botnewchasedir() & 7;
+			facingDir = (facingDir + 4) % 8;
+		}
     }
 
     // Try and walk straight towards the goal, slowly shifting sides unless it needs to
     // turn around entirely.
-    if (baseDir == _player->mo->movedir && !(pr_botnewchasedir() & 7))
+    if (baseDir == facingDir && !(pr_botnewchasedir() & turnChance))
         baseDir = ((pr_botnewchasedir() & 1) * 2 - 1 + baseDir) % 8;
 
     _player->mo->movedir = baseDir;
