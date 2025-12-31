@@ -408,7 +408,7 @@ class Bot : Thinker native
 		{
 			Evade = partner;
 			SetCoolDown('Evade', 0);
-			NewMoveDirection(Evade, true, false);
+			NewMoveDirection(Evade, true, deathmatch);
 		}
 	}
 
@@ -821,13 +821,13 @@ class Bot : Thinker native
 		Actor goal = GetGoal();
 		let pawn = GetPawn();
 
-		bool running = Evade || goal || GetTarget();
+		bool running = deathmatch || Evade || goal || GetTarget();
 		pawn.MoveCount -= running ? 2 : 1;
 		if (pawn.MoveCount < 0 || !Move(running))
 		{
 			bool avoidingPartner = Evade == GetPartner();
 			if (Evade && (!avoidingPartner || !goal))
-				NewMoveDirection(Evade, true, !avoidingPartner);
+				NewMoveDirection(Evade, true, deathmatch || !avoidingPartner);
 			else
 				NewMoveDirection(goal, running: running);
 		}
