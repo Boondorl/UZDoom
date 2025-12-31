@@ -38,6 +38,8 @@
 #include "teaminfo.h"
 #include "d_net.h"
 #include "events.h"
+#include "i_specialpaths.h"
+#include "i_system.h"
 
 // This needs to be client-sided since it'll be called outside of the server loop.
 static FCRandom pr_botspawn("BotSpawn");

@@ -3742,7 +3742,10 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<FileSys::ResourceN
 
 	EntityDefManager::ParseEntityDefinitions();
 	DBotManager::ParseBotDefinitions();
-	DBotManager::ParseZCajun();
+	// Since these bots were designed to be networked out on creation but the new ones
+	// rely on determinism, never parse these in netgames to avoid desyncs.
+	if (!Args->CheckParm(FArg_host) && !Args->CheckParm(FArg_join))
+		DBotManager::ParseZCajun();
 
 	if (!batchrun)
 	{
