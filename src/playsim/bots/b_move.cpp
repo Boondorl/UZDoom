@@ -285,7 +285,7 @@ bool DBot::CheckMove(const DVector2& pos, bool* jumped, bool* interacted)
 }
 
 // Try and move the bot in its current movedir.
-bool DBot::Move(bool running, bool doJump, bool doInteract)
+bool DBot::Move(bool running, bool doJump, bool doInteract, bool stuck)
 {
 	if (_player->mo->movedir >= DI_NODIR)
 	{
@@ -302,7 +302,7 @@ bool DBot::Move(bool running, bool doJump, bool doInteract)
 		SetButtons(BT_JUMP, true);
 	if (interacted)
 		SetButtons(BT_USE, true);
-	if (!res)
+	if (!res && !stuck)
 		return false;
 
     constexpr double MinForward = 60.0;
@@ -326,9 +326,9 @@ bool DBot::Move(bool running, bool doJump, bool doInteract)
 
 // Similar to Move() but will also set a cool down on the random turning if it could move.
 // Only used when trying to pick a new direction to move.
-bool DBot::TryWalk(bool running, bool doJump, bool doInteract)
+bool DBot::TryWalk(bool running, bool doJump, bool doInteract, bool stuck)
 {
-    if (!Move(running, doJump, doInteract))
+    if (!Move(running, doJump, doInteract, stuck))
         return false;
 
     constexpr int CoolDown = TICRATE / 5;
@@ -398,6 +398,8 @@ void DBot::NewMoveDirection(AActor* goal, bool runAway, bool running, bool doJum
     if (TryWalk(running, doJump, doInteract))
         return;
 
-    // Couldn't move at all.
-    _player->mo->movedir = DI_NODIR;
+    // Couldn't move at all, so pick a random direction to see
+	// if we can wiggle out.
+    _player->mo->movedir = pr_botnewchasedir() & 7;
+	TryWalk(running, doJump, doInteract, true);
 }

@@ -231,7 +231,7 @@ private:
 
 	void NormalizeSpeed(short& cmd, const int* speeds, bool running);	// Ensure that speeds adhere to running properly.
 	void SetAngleCommand(short& cmd, DAngle curAng, DAngle destAng);	// Convert a delta angle into a valid turn command.
-	bool TryWalk(bool running = true, bool doJump = true, bool doInteract = true);				// Same as Move but also sets a turn cool down when moving.
+	bool TryWalk(bool running = true, bool doJump = true, bool doInteract = true, bool stuck = false);				// Same as Move but also sets a turn cool down when moving.
 
 public:
 	static const int DEFAULT_STAT = STAT_BOT; // Needed so the Thinker creator knows what stat to put it in.
@@ -261,7 +261,7 @@ public:
 	double GetJumpHeight() const;
 	bool FakeCheckPosition(const DVector2& pos, FCheckPosition& tm, bool actorsOnly = false); // Same as CheckPosition but prevent picking up items.
 	bool CheckMove(const DVector2& pos, bool* jumped = nullptr, bool* interacted = nullptr);		// Check if a valid movement can be made to the given position. Also jumps if needed if that move is valid.
-	bool Move(bool running = true, bool doJump = true, bool doInteract = true);		// Check to see if a movement is valid in the current moveDir.
+	bool Move(bool running = true, bool doJump = true, bool doInteract = true, bool stuck = false);		// Check to see if a movement is valid in the current moveDir.
 	void NewMoveDirection(AActor* goal = nullptr, bool runAway = false, bool running = true, bool doJump = true, bool doInteract = true); // Attempts to get a new direction to move towards the bot's goal.
 	void SetMove(EBotMoveDirection forward = MDIR_NO_CHANGE, EBotMoveDirection side = MDIR_NO_CHANGE, EBotMoveDirection up = MDIR_NO_CHANGE, bool running = true); // Sets the move commands.
 	void SetButtons(int cmd, bool set);						// Sets the button commands.
