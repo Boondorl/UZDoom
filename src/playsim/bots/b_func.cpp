@@ -168,7 +168,8 @@ bool DBot::IsValidItem(AActor* item)
 				{
 					const int total = basicArmor->IntVar(NAME_Amount);
 
-					// Decide more carefully how to pick up armor in case it's a downgrade.
+					// Decide more carefully how to pick up armor in case it's a downgrade. This isn't perfect but adds a bit more
+					// realism to the bot's logic because of it.
 					if (testItem->IsKindOf(NAME_BasicArmorPickup)
 						&& total * basicArmor->FloatVar(NAME_SavePercent) >= testItem->IntVar(NAME_SaveAmount) * testItem->FloatVar(NAME_SavePercent))
 					{
@@ -241,7 +242,8 @@ AActor* DBot::FindTarget(DAngle fov)
 	{
 		AActor* client = Level->Players[i]->mo;
 		if (Level->PlayerInGame(i) && _player != Level->Players[i]
-			&& Level->Players[i]->health > 0 && !_player->mo->IsTeammate(client))
+			&& Level->Players[i]->health > 0 && Level->Players[i]->mo->reactiontime <= 0
+			&& !_player->mo->IsTeammate(client))
 		{
 			const double dist = _player->mo->Distance3DSquared(client);
 			if (dist < closest

@@ -55,8 +55,8 @@ enum EBotMoveDirection
 
 class Bot : Thinker native
 {
-	const DEF_REACTION_TICS = int(0.25 * TICRATE);
-	const DEF_SIGHT_FOV = 60.0;
+	const DEF_REACTION_TICS = int(0.3 * TICRATE);
+	const DEF_SIGHT_FOV = 80.0;
 	const DEF_ITEM_RANGE = 480.0;
 	const DARKNESS_THRESHOLD = 50;
 	const MIN_RESPAWN_TIME = int(0.5 * TICRATE);
@@ -80,6 +80,8 @@ class Bot : Thinker native
 
 	protected native Vector3 AimPos;
 
+	// Boon TODO: Targets should probably also use a dictionary, that way any custom
+	// logic isn't interfering with how the bots operate.
 	private native Map<Name, int> _coolDowns;
 
 	native clearscope PlayerInfo GetPlayer() const;
@@ -835,7 +837,8 @@ class Bot : Thinker native
 
 	virtual bool TryFire()
 	{
-		if (IsOnCoolDown('Fire'))
+		let pawn = GetPawn();
+		if (pawn.ReactionTime > 0 || IsOnCoolDown('Fire'))
 			return false;
 
 		let player = GetPlayer();
@@ -843,7 +846,6 @@ class Bot : Thinker native
 		if (!target || !player.ReadyWeapon || player.PendingWeapon != WP_NOCHANGE || !IsActorInView(target, Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV)))
 			return false;
 
-		let pawn = GetPawn();
 		Vector3 origPos = pawn.Pos.PlusZ(pawn.ViewHeight - pawn.FloorClip);
 		Vector3 dir = Level.Vec3Diff(origPos, AimPos);
 		double dist = dir.Length();
