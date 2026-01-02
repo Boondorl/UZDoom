@@ -66,7 +66,7 @@ class Bot : Thinker native
 	const EVADE_COOL_DOWN_TICS = int(1.0 * TICRATE);
 	const GOAL_COOL_DOWN_TICS = int(4.0 * TICRATE);
 	const GOAL_REACH_CHECK_TICS = int(1.0 * TICRATE);
-	const BURST_DELAY_TICS = int(0.15 * TICRATE);
+	const BURST_DELAY_TICS = int(0.3 * TICRATE);
 	const PARTNER_WALK_RANGE_SQ = 640.0 * 640.0;
 	const PARTNER_BACK_OFF_RANGE_SQ = 128.0 * 128.0;
 	const MAX_FIRE_TRACKING_RANGE = 256.0;
@@ -276,8 +276,11 @@ class Bot : Thinker native
 
 		let player = GetPlayer();
 		Actor attacker = IsTargetValid(player.Attacker) ? player.Attacker : null;
-		if (!target || (!IsOnCoolDown('Target') && (attacker || (deathmatch && target.Player))) || !IsTargetDamageable(target))
+		if (!target
+			|| (!IsOnCoolDown('Target') && (attacker || (deathmatch && target.Player)))
+			|| !IsTargetDamageable(target))
 		{
+			Actor curTarg = target;
 			if (attacker)
 				target = attacker;
 			else
@@ -288,7 +291,8 @@ class Bot : Thinker native
 				SetTarget(target);
 				SetCoolDown('Target', TARGET_COOL_DOWN_TICS);
 				SetCoolDown('LastSeen', SIGHT_COOL_DOWN_TICS);
-				SetCoolDown('Fire', 0);
+				if (target != curTarg)
+					SetCoolDown('Fire', 0);
 			}
 		}
 
