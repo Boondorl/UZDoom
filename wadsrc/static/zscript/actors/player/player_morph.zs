@@ -380,8 +380,8 @@ extend class PlayerPawn
 		PostUnmorph(alt, false);		// This body is no longer current.
 		alt.PostUnmorph(self, true);	// altmo body is current.
 
-		if (player.Bot)
-			player.Bot.Unmorphed();
+		if (p.Bot)
+			p.Bot.Unmorphed();
 
 		if (exitFlash)
 		{

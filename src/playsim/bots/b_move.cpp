@@ -293,8 +293,12 @@ bool DBot::Move(bool running, bool doJump, bool doInteract, bool stuck)
 		return false;
 	}
 
-    const DVector2 pos = { _player->mo->X() + (_player->mo->radius - 1.0) * xspeed[_player->mo->movedir],
-                            _player->mo->Y() + (_player->mo->radius - 1.0) * yspeed[_player->mo->movedir] };
+	double moveCheck = _player->mo->radius - 1.0;
+	if (moveCheck <= 0.0)
+		moveCheck = 15.0;
+
+    const DVector2 pos = { _player->mo->X() + moveCheck * xspeed[_player->mo->movedir],
+                            _player->mo->Y() + moveCheck * yspeed[_player->mo->movedir] };
 
 	bool jumped = false, interacted = false;
 	const bool res = CheckMove(pos, doJump ? &jumped : nullptr, doInteract ? &interacted : nullptr);

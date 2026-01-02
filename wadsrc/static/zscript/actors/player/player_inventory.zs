@@ -161,7 +161,7 @@ extend class PlayerPawn
 			InvSel = item;
 		}
 
-		if (player.Bot)
+		if (player && player.Bot)
 			player.Bot.AddedInventory(item);
 	}
 
@@ -216,7 +216,7 @@ extend class PlayerPawn
 			PickNewWeapon (NULL);
 		}
 
-		if (player.Bot)
+		if (player && player.Bot)
 			player.Bot.RemovedInventory(item);
 	}
 

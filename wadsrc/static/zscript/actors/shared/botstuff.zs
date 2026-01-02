@@ -426,7 +426,7 @@ class Bot : Thinker native
 		let player = GetPlayer();
 		let pawn = GetPawn();
 		bool isLowHealth = player.Health <= int(0.25 * pawn.GetMaxHealth(true));
-		if (curItem && curItem.bIsHealth && isLowHealth)
+		if (curItem && curItem.bIsHealth && isLowHealth && CanReach(curItem))
 			return;
 
 		Actor target = GetTarget();
