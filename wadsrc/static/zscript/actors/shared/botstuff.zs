@@ -65,6 +65,7 @@ class Bot : Thinker native
 	const TARGET_COOL_DOWN_TICS = int(3.0 * TICRATE);
 	const EVADE_COOL_DOWN_TICS = int(1.0 * TICRATE);
 	const GOAL_COOL_DOWN_TICS = int(4.0 * TICRATE);
+	const GOAL_REACH_CHECK_TICS = int(1.0 * TICRATE);
 	const BURST_DELAY_TICS = int(0.15 * TICRATE);
 	const PARTNER_WALK_RANGE_SQ = 640.0 * 640.0;
 	const PARTNER_BACK_OFF_RANGE_SQ = 128.0 * 128.0;
@@ -417,16 +418,23 @@ class Bot : Thinker native
 	virtual void UpdateGoal()
 	{
 		let curItem = Inventory(GetGoal());
-		if (curItem && !IsValidItem(curItem))
+		if (curItem)
 		{
-			curItem = null;
-			SetGoal(null);
+			if (!IsValidItem(curItem) || (!IsOnCoolDown('GoalCheck') && !CanReach(curItem)))
+			{
+				curItem = null;
+				SetGoal(null);
+			}
+			else if (!IsOnCoolDown('GoalCheck'))
+			{
+				SetCoolDown('GoalCheck', GOAL_REACH_CHECK_TICS);
+			}
 		}
 
 		let player = GetPlayer();
 		let pawn = GetPawn();
 		bool isLowHealth = player.Health <= int(0.25 * pawn.GetMaxHealth(true));
-		if (curItem && curItem.bIsHealth && isLowHealth && CanReach(curItem))
+		if (curItem && curItem.bIsHealth && isLowHealth)
 			return;
 
 		Actor target = GetTarget();
@@ -501,6 +509,7 @@ class Bot : Thinker native
 			{
 				SetGoal(closest);
 				SetCoolDown('Goal', GOAL_COOL_DOWN_TICS);
+				SetCoolDown('GoalCheck', GOAL_REACH_CHECK_TICS);
 				return;
 			}
 		}
