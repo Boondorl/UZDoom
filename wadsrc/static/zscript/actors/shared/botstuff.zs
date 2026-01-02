@@ -449,8 +449,8 @@ class Bot : Thinker native
 			double combatRange = GetRangeSquared(weapInfo, 'MaxCombatRange', mod: 'Confidence');
 
 			double dist = pawn.Distance3DSquared(target);
-			if ((combatRange > 0.0 && dist > combatRange)
-				|| (chaseRange > 0.0 && dist <= chaseRange && CanReach(target)))
+			if (((combatRange > 0.0 && dist > combatRange) || (chaseRange > 0.0 && dist <= chaseRange))
+				&& CanReach(target))
 			{
 				SetGoal(target);
 				SetCoolDown('Goal', 0);
@@ -881,7 +881,7 @@ class Bot : Thinker native
 			return false;
 		}
 
-		if ((minRange > 0.0 && dist <= minRange) || (maxRange > 0.0 && dist > maxRange))
+		if ((minRange > 0.0 && dist <= minRange) || (maxRange > 0.0 && dist > maxRange && Random[BotFire]() > 8))
 			return false;
 
 		if (!(dist ~== 0.0))
