@@ -298,7 +298,7 @@ void DBotManager::SpawnNamedBots()
 	_botNameArgs.Clear();
 }
 
-// BOTDEF parsing
+// Defs parsing
 
 static bool GetEntityDef(FName cls, FName base)
 {
@@ -343,23 +343,34 @@ static bool GetBotDef(FName cls, FName base)
 	return true;
 }
 
+// Boon TODO: Allow passing a title in case there was no valid script position.
+
 class FInheritenceError
 {
 private:
 	FString _error = {};
+	FString _scriptName = {};
+	int _line = -1;
 
 public:
 	FInheritenceError() = default;
 	FInheritenceError(const FString& error) : _error(error) {}
-
-	const char* GetError() const
-	{
-		return _error.GetChars();
-	}
+	FInheritenceError(const FString& error, const FString& scriptName, int line) : _error(error), _scriptName(scriptName), _line(line) {}
 
 	bool HasError() const
 	{
 		return _error.IsNotEmpty();
+	}
+
+	void TryThrowError()
+	{
+		if (HasError())
+		{
+			if (_line < 0 || _scriptName.IsEmpty())
+				I_Error("Script error:\n%s\n", _error.GetChars());
+			else
+				I_Error("Script error, \"%s\" line %d:\n%s\n", _scriptName.GetChars(), _line, _error.GetChars());
+		}
 	}
 };
 
@@ -371,9 +382,14 @@ private:
 	FName _cls = NAME_None;
 	bool (*_nodeAction)(FName, FName) = nullptr;
 	TArray<FName> _children = {};
+	// Script data.
+	int _linePos = -1;
+	FString _scriptName = {};
 
 public:
 	FTreeNode(FName _cls, FName _parent, bool (*_nodeAction)(FName, FName)) : _cls(_cls), _parent(_parent), _nodeAction(_nodeAction) {}
+	FTreeNode(FName _cls, FName _parent, bool (*_nodeAction)(FName, FName), const FString& scriptName, int linePos)
+		: _cls(_cls), _parent(_parent), _nodeAction(_nodeAction), _scriptName(scriptName), _linePos(linePos) {}
 
 	FName GetParent() const
 	{
@@ -400,7 +416,12 @@ public:
 		return _cls == NAME_None || _nodeAction == nullptr;
 	}
 
-	void Validate(FName cls, FName parent, bool (*action)(FName, FName))
+	FInheritenceError ThrowError(const FString& error) const
+	{
+		return { error, _scriptName, _linePos };
+	}
+
+	void Validate(FName cls, FName parent, bool (*action)(FName, FName), const FString& scriptName, int linePos)
 	{
 		if (!IsInvalid())
 			return;
@@ -410,6 +431,8 @@ public:
 			_cls = cls;
 			_parent = parent;
 			_nodeAction = action;
+			_linePos = linePos;
+			_scriptName = scriptName;
 		}
 	}
 
@@ -428,7 +451,7 @@ public:
 
 			bool res = _nodeAction(_cls, _parent);
 			if (!res)
-				return { FStringf("%s failed to inherit from %s.", _cls.GetChars(), _parent.GetChars()) };
+				return ThrowError(FStringf("%s failed to inherit from %s.", _cls.GetChars(), _parent.GetChars()));
 		}
 
 		for (auto& cls : _children)
@@ -470,7 +493,7 @@ public:
 		{
 			// Class that never got defined.
 			if (pair->Value.IsInvalid())
-				return { FStringf("Class %s was inherited from but never defined.", pair->Key.GetChars()) };
+				return pair->Value.ThrowError(FStringf("Class %s was inherited from but never defined.", pair->Key.GetChars()));
 
 			if (pair->Value.CouldPotentiallyLoop())
 			{
@@ -482,7 +505,7 @@ public:
 				{
 					// Recursion detected.
 					if (traversed.Find(parent) < traversed.Size())
-						return { FStringf("Class %s has no root class (inherits recursively).", pair->Key.GetChars()) };
+						return pair->Value.ThrowError(FStringf("Class %s has no root class (inherits recursively).", pair->Key.GetChars()));
 
 					auto node = _nodeList.CheckKey(parent);
 					// Must have been found in a valid path previously.
@@ -522,7 +545,7 @@ public:
 		return {};
 	}
 
-	void InsertNode(FName cls, FName parent, bool (*action)(FName, FName))
+	void InsertNode(FName cls, FName parent, bool (*action)(FName, FName), const FString& scriptName, int linePos)
 	{
 		if (cls == NAME_None)
 			return;
@@ -530,13 +553,16 @@ public:
 		const auto existing = _nodeList.CheckKey(cls);
 		if (existing)
 		{
-			existing->Validate(cls, parent, action);
+			existing->Validate(cls, parent, action, scriptName, linePos);
 			if (parent != NAME_None)
 				_roots.Delete(_roots.Find(parent));
 		}
 		else
 		{
-			_nodeList.Insert(cls, { (action != nullptr ? cls : NAME_None), parent, action });
+			if (action != nullptr)
+				_nodeList.Insert(cls, { cls, parent, action, scriptName, linePos });
+			else
+				_nodeList.Insert(cls, { NAME_None, parent, nullptr });
 		}
 
 		if (parent == NAME_None)
@@ -550,21 +576,28 @@ public:
 			{
 				// Make a temporary root for now. If the actual class is found,
 				// it'll be reorganized.
-				InsertNode(parent, NAME_None, nullptr);
+				InsertNode(parent, NAME_None, nullptr, "", -1);
 				node = _nodeList.CheckKey(parent);
 			}
 
 			node->AddChildNode(cls);
 		}
 	}
+
+	void Clear()
+	{
+		_roots.Clear();
+		_nodeList.Clear();
+	}
 };
 
 void EntityDefManager::ParseEntityDefinitions()
 {
 	EntityInfo.Clear();
+	_entityReplacements.Clear();
 
 	constexpr int NoLump = -1;
-	constexpr char LumpName[] = "ENTDEF";
+	constexpr char LumpName[] = "ENTDEFS";
 	constexpr char Replaces[] = "Replaces";
 	constexpr char Abstract[] = "Abstract";
 
@@ -583,6 +616,7 @@ void EntityDefManager::ParseEntityDefinitions()
 			if (isAbstract)
 				sc.MustGetString();
 
+			const int defLine = sc.GetMessageLine();
 			const FName key = sc.String;
 
 			FName parent = NAME_None;
@@ -616,7 +650,7 @@ void EntityDefManager::ParseEntityDefinitions()
 
 			FEntityProperties props = {};
 			EntityInfo.Insert(key, ParseEntity(sc, props));
-			entTree.InsertNode(key, parent, GetEntityDef);
+			entTree.InsertNode(key, parent, GetEntityDef, sc.ScriptName, defLine);
 			if (replacement != NAME_None)
 				_entityReplacements.Insert(replacement, key);
 
@@ -625,11 +659,9 @@ void EntityDefManager::ParseEntityDefinitions()
 		}
 	}
 
-	// Boon TODO: Error handling definitely needs to be reworked.
 	// Now that we've done an initial pass, start inheriting.
 	FInheritenceError error = entTree.GenerateData();
-	if (error.HasError())
-		I_Error("ENTDEF - %s\n", error.GetError());
+	error.TryThrowError();
 
 	for (auto& def : abstractEnts)
 	{
@@ -641,11 +673,13 @@ void EntityDefManager::ParseEntityDefinitions()
 void DBotManager::ParseBotDefinitions()
 {
 	BotDefinitions.Clear();
+	_botReplacements.Clear();
 
 	constexpr int NoLump = -1;
-	constexpr char LumpName[] = "BOTDEF";
+	constexpr char LumpName[] = "BOTDEFS";
 	constexpr char Replaces[] = "Replaces";
 	constexpr char Abstract[] = "Abstract";
+	constexpr char Clear[] = "ClearBots";
 
 	// TODO: #include support
 
@@ -660,10 +694,20 @@ void DBotManager::ParseBotDefinitions()
 		sc.SetCMode(true);
 		while (sc.GetString())
 		{
+			if (sc.Compare(Clear))
+			{
+				BotDefinitions.Clear();
+				_botReplacements.Clear();
+				abstractBots.Clear();
+				botTree.Clear();
+				continue;
+			}
+
 			const bool isAbstract = sc.Compare(Abstract);
 			if (isAbstract)
 				sc.MustGetString();
 
+			const int defLine = sc.GetMessageLine();
 			const FName key = sc.String;
 
 			FName parent = NAME_None;
@@ -697,7 +741,7 @@ void DBotManager::ParseBotDefinitions()
 
 			FBotDefinition def = {};
 			BotDefinitions.Insert(key, ParseBot(sc, def));
-			botTree.InsertNode(key, parent, GetBotDef);
+			botTree.InsertNode(key, parent, GetBotDef, sc.ScriptName, defLine);
 			if (replacement != NAME_None)
 				_botReplacements.Insert(replacement, key);
 
@@ -706,11 +750,9 @@ void DBotManager::ParseBotDefinitions()
 		}
 	}
 
-	// Boon TODO: Error handling definitely needs to be reworked.
 	// Now that we've done an initial pass, start inheriting.
 	FInheritenceError error = botTree.GenerateData();
-	if (error.HasError())
-		I_Error("BOTDEF - %s\n", error.GetError());
+	error.TryThrowError();
 
 	for (auto& def : abstractBots)
 	{
