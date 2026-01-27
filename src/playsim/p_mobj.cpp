@@ -392,11 +392,9 @@ void AActor::Serialize(FSerializer &arc)
 		A("SpriteOffset", SpriteOffset)
 		("viewpos", ViewPos)
 		A("lightlevel", LightLevel)
-		A("userlights", UserLights)
 		A("WorldOffset", WorldOffset)
 		("modelData", modelData)
 		A("LandingSpeed", LandingSpeed)
-
 		("unmorphtime", UnmorphTime)
 		("morphflags", MorphFlags)
 		("premorphproperties", PremorphProperties)
@@ -408,6 +406,10 @@ void AActor::Serialize(FSerializer &arc)
 		SerializeTerrain(arc, "floorterrain", floorterrain, &def->floorterrain);
 		SerializeArgs(arc, "args", args, def->args, special);
 
+		if (!arc.IsRollback())
+		{
+			arc("userlights", UserLights, def->UserLights);
+		}
 }
 
 #undef A
@@ -509,7 +511,7 @@ DBehavior* AActor::AddBehavior(PClass& type)
 			return nullptr;
 
 		b->Owner = this;
-		b->ObjectFlags |= (ObjectFlags & (OF_ClientSide | OF_Transient));
+		b->ObjectFlags |= (ObjectFlags & OF_TransferrableFlags);
 
 		Behaviors[type.TypeName] = b;
 		Level->AddActorBehavior(*b);

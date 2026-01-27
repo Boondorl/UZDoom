@@ -3271,6 +3271,8 @@ static void Doom_CastSpriteIDToString(FString* a, unsigned int b)
 
 extern DThinker* NextToThink;
 
+void P_MarkRollbackObjects();
+
 static void GC_MarkGameRoots()
 {
 	GC::Mark(staticEventManager.FirstEventHandler);
@@ -3287,6 +3289,7 @@ static void GC_MarkGameRoots()
 
 	// NextToThink must not be freed while thinkers are ticking.
 	GC::Mark(NextToThink);
+	P_MarkRollbackObjects();
 }
 
 static void System_ToggleFullConsole()

@@ -362,6 +362,8 @@ public:
 	}
 } NetEvents;
 
+void P_ClearPredictionData();
+
 void Net_ClearBuffers()
 {
 	CloseNetwork();
@@ -386,7 +388,7 @@ void Net_ClearBuffers()
 			state.Tics[j].Data.SetData(nullptr, 0);
 	}
 
-	bPredictionGuard = false;
+	P_ClearPredictionData();
 	NetBufferLength = 0u;
 	RemoteClient = -1;
 	MaxClients = TicDup = 1u;
@@ -2280,8 +2282,7 @@ void TryRunTics()
 		if (ClientTic > startCommand)
 		{
 			LagState = LAG_PREDICTING;
-			P_UnPredictPlayer();
-			P_PredictPlayer(&players[consoleplayer]);
+			P_PredictClient();
 		}
 
 		// If we actually did have some tics available, make sure the UI
@@ -2290,7 +2291,10 @@ void TryRunTics()
 			P_RunClientSideLogic();
 
 		if (totalTics > 0)
+		{
 			S_UpdateSounds(players[consoleplayer].camera, primaryLevel->LocalWorldTimer - min<int>(primaryLevel->LocalWorldTimer, worldTimer));
+			NetworkEntityManager::VerifyPredictedEntities();
+		}
 
 		return;
 	}
@@ -2303,7 +2307,7 @@ void TryRunTics()
 	LastGameUpdate = EnterTic;
 
 	// Run the available tics.
-	P_UnPredictPlayer();
+	P_UnPredictClient();
 	while (runTics--)
 	{
 		const bool stabilize = ShouldStabilizeTick();
@@ -2326,7 +2330,7 @@ void TryRunTics()
 			break;
 		}
 	}
-	P_PredictPlayer(&players[consoleplayer]);
+	P_PredictClient();
 
 	// These should use the actual tics since they're not actually tied to the gameplay logic.
 	// Make sure it always comes after so the HUD has the correct game state when updating.
@@ -2336,6 +2340,7 @@ void TryRunTics()
 	// Since the level could get reset mid-tick, make sure the smaller of the two values is used
 	// since it should only go up otherwise.
 	S_UpdateSounds(players[consoleplayer].camera, primaryLevel->LocalWorldTimer - min<int>(primaryLevel->LocalWorldTimer, worldTimer));
+	NetworkEntityManager::VerifyPredictedEntities();
 }
 
 void Net_NewClientTic()
