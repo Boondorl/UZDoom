@@ -316,7 +316,7 @@ public:
 	player_t() { angleOffsetTargets.Zero(); }
 	~player_t();
 	player_t &operator= (const player_t &p) = delete;
-	void CopyFrom(player_t &src, bool copyPSP);
+	void CopyFrom(player_t &src);
 
 	void Serialize(FSerializer &arc);
 	size_t PropagateMark();

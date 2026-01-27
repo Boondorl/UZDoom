@@ -111,20 +111,11 @@ CUSTOM_CVAR(Float, fov, 90.f, CVAR_ARCHIVE | CVAR_USERINFO | CVAR_NOINITCALL)
 	p->SetFOV(fov);
 }
 
-static DVector3 LastPredictedPosition;
-static int LastPredictedPortalGroup;
-static int LastPredictedTic;
-
-static TArray<FRandom> PredictionRNG;
-
-static player_t PredictionPlayerBackup;
-static AActor *PredictionActor;
-static TArray<uint8_t> PredictionActorBackupArray;
-
 // Iterate through the Actor's own link nodes, storing their index within the
 // list. This isn't guaranteed to give correct results, but that means someone
 // messed with the world in a way will desync things eventually regardless.
-struct FPredictionPhysicsLink
+// TODO: Add support for TID links.
+struct FPhysicsLinkBackup
 {
 	// Track found link sources to make sure any additional ones are released. We don't want to
 	// accidentally fix linking bugs when doing the relink from unpredicting.
@@ -135,10 +126,9 @@ struct FPredictionPhysicsLink
 	int ThingPos = -1;
 	bool bInSector = false;
 
-	void Backup(const AActor& mo)
+	FPhysicsLinkBackup() = default;
+	FPhysicsLinkBackup(const AActor& mo)
 	{
-		ValidSectors.Clear();
-		TouchingSectorsPos.Clear();
 		for (auto node = mo.touching_sectorlist; node != nullptr; node = node->m_tnext)
 		{
 			int index = 0;
@@ -152,8 +142,6 @@ struct FPredictionPhysicsLink
 			ValidSectors[node->m_sector] = true;
 		}
 
-		ThingPos = -1;
-		bInSector = false;
 		if (mo.Sector != nullptr)
 		{
 			int index = 0;
@@ -170,8 +158,6 @@ struct FPredictionPhysicsLink
 				ThingPos = index - 1;
 		}
 
-		ValidBlockNodes.Clear();
-		BlockmapPos.Clear();
 		for (auto node = mo.BlockNode; node != nullptr; node = node->NextBlock)
 		{
 			int index = 0;
@@ -309,13 +295,138 @@ struct FPredictionPhysicsLink
 			node = node->NextBlock;
 		}
 	}
-} static PredictionPhysicsLinking = {};
+};
 
-struct
+struct FObjectBackup
 {
-	DVector3 Pos = {};
-	int Flags = 0;
-} static PredictionViewPosBackup;
+private:
+	TObjPtr<DObject*> _obj = MakeObjPtr<DObject*>(nullptr);
+public:
+	FObjectBackup() = default;
+	FObjectBackup(DObject& obj)
+	{
+		_obj = &obj;
+	}
+
+	template<class T>
+	T* GetObject()
+	{
+		return dyn_cast<T>(_obj);
+	}
+};
+struct FActorBackup : public FObjectBackup
+{
+private:
+	FPhysicsLinkBackup _link = {};
+	int _statNum = -1;
+	int _tid = INT_MAX;
+public:
+	FActorBackup(AActor& act) : FObjectBackup(act)
+	{
+		_link = { act };
+	}
+
+	void PostBackup()
+	{
+		auto act = GetObject<AActor>();
+		if (act != nullptr)
+		{
+			// TODO: This needs to be handled properly in the rest of the physics code...
+			act->flags &= ~MF_PICKUP;
+			act->flags2 &= ~MF2_PUSHWALL;
+		}
+	}
+
+	void PreRollback()
+	{
+		auto act = GetObject<AActor>();
+		if (act == nullptr)
+			return;
+
+		// These won't relink properly on rollback so we need to keep the old values as
+		// they were. This still needs to be serialized in case the Actor was destroyed so we
+		// can relink it back in properly after it's been recreated.
+		_statNum = act->GetStatNum();
+		_tid = act->tid;
+		act->UnlinkFromWorld(nullptr);
+	}
+
+	void PostRollback()
+	{
+		auto act = GetObject<AActor>();
+		if (act == nullptr)
+			return;
+
+		if (_statNum == -1)
+			act->ChangeStatNum(act->GetStatNum());
+		else
+			act->RollbackStatNum(_statNum);
+
+		if (_tid == INT_MAX)
+		{
+			_tid = act->tid;
+			act->tid = 0;
+			act->SetTID(_tid);
+		}
+		else
+		{
+			act->tid = _tid;
+		}
+
+		act->LinkToWorld(nullptr);
+		// TODO: This might cause issues with emulating undefined behavior regarding things like polyobject collisions? Will need to be
+		// investigated further in case it breaks determinism.
+		_link.Restore(*act);
+
+		act->renderflags &= ~RF_NOINTERPOLATEVIEW;
+		act->flags8 &= ~MF8_RECREATELIGHTS;
+	}
+};
+
+struct FPredictionData
+{
+	bool bResetPrediction = false;
+	int LastPredictedTic = 0;
+
+	TArray<TObjPtr<DObject*>> RollbackObjectRefs = {};	// Try and reuse existing Objects when deserializing.
+	TArray<FObjectBackup> RollbackObjects = {};			// If these Objects no longer exist, they must be recreated instead of left as a null pointer.
+	TArray<FActorBackup> RollbackActors = {};
+	TArray<size_t> RollbackPlayers = {};				// Store by index instead of pointer so it'll never be invalid when deserializing.
+	FLevelLocals* RollbackLevel = nullptr;				// Save this for when opening the reader.
+	FileSys::FCompressedBuffer RollbackData = {};		// Snapshot of all saved Objects.
+
+	struct
+	{
+		DVector3 Pos = { 0.0, 0.0, 0.0 };
+		int PortalGroup = 0;
+		int Tic = -1;
+	} LastPos = {};
+
+	void ResetPos()
+	{
+		LastPos = {};
+	}
+
+	void ClearBackup()
+	{
+		RollbackObjectRefs.Clear();
+		RollbackObjects.Clear();
+		RollbackActors.Clear();
+		RollbackPlayers.Clear();
+		RollbackLevel = nullptr;
+		RollbackData.Clean();
+	}
+
+	void Mark()
+	{
+		// Try and avoid losing references to any Objects being used by a backed up entity, that way
+		// we can avoid pointers getting unnecessarily nulled. The fully rolled back Objects should
+		// also be in here which, if they weren't destroyed manually, allows us to skip the step of
+		// creating a new object should the reference get lost.
+		for (DObject* obj : RollbackObjectRefs)
+			GC::Mark(obj);
+	}
+} static PredictionData = {};
 
 // [GRB] Custom player classes
 TArray<FPlayerClass> PlayerClasses;
@@ -421,7 +532,7 @@ player_t::~player_t()
 	DestroyPSprites();
 }
 
-void player_t::CopyFrom(player_t &p, bool copyPSP)
+void player_t::CopyFrom(player_t &p)
 {
 	mo = p.mo;
 	playerstate = p.playerstate;
@@ -513,12 +624,9 @@ void player_t::CopyFrom(player_t &p, bool copyPSP)
 	SoundClass = p.SoundClass;
 	LastSafePos = p.LastSafePos;
 	angleOffsetTargets = p.angleOffsetTargets;
-	if (copyPSP)
-	{
-		// This needs to transfer ownership completely.
-		psprites = p.psprites;
-		p.psprites = nullptr;
-	}
+	// This needs to transfer ownership completely.
+	psprites = p.psprites;
+	p.psprites = nullptr;
 }
 
 size_t player_t::PropagateMark()
@@ -1543,7 +1651,7 @@ void P_PlayerThink (player_t *player)
 
 	// Moved this to directly after player thinking to get more accurate velocity values. Also takes
 	// 3D vs 2D movement into account now.
-	if (!bPredictionGuard && player->mo != nullptr)
+	if (!NetworkEntityManager::IsPredicting() && player->mo != nullptr)
 	{
 		double spd = (player->mo->flags & MF_NOGRAVITY) ? player->mo->Vel.Length() : player->mo->Vel.XY().Length();
 		player->mo->Level->velocities[player - players].SetVelocity(spd);
@@ -1552,9 +1660,7 @@ void P_PlayerThink (player_t *player)
 
 void P_PredictionLerpReset()
 {
-	LastPredictedPosition = DVector3{};
-	LastPredictedPortalGroup = 0;
-	LastPredictedTic = -1;
+	PredictionData.ResetPos();
 }
 
 void P_LerpCalculate(AActor* pmo, const DVector3& from, DVector3 &result, float scale, float threshold, float minMove)
@@ -1573,59 +1679,105 @@ void P_LerpCalculate(AActor* pmo, const DVector3& from, DVector3 &result, float 
 	result = pmo->Vec3Offset(-diff.X, -diff.Y, -diff.Z);
 }
 
-void P_PredictPlayer (player_t *player)
+void P_MarkRollbackObjects()
 {
-	if (demoplayback || gamestate != GS_LEVEL ||
-		player->mo == NULL ||
-		player != player->mo->Level->GetConsolePlayer() ||
-		(player->mo->ObjectFlags & OF_JustSpawned) ||
-		(player->cheats & CF_PREDICTING))
-	{
+	PredictionData.Mark();
+}
+
+void P_ClearPredictionData()
+{
+	NetworkEntityManager::DisablePrediction();
+	PredictionData.ResetPos();
+	PredictionData.ClearBackup();
+	PredictionData.bResetPrediction = false;
+	PredictionData.LastPredictedTic = 0;
+}
+
+static void P_RollbackObject(DObject* obj, FSerializer& arc)
+{
+	if (!arc.MarkRollbackObject(obj))
 		return;
-	}
 
-	// Avoid memcpying in bad pointers.
-	GC::CheckGC();
-
-	bPredictionGuard = true;
-
-	FRandom::SaveRNGState(PredictionRNG);
-
-	// Save original values for restoration later
-	PredictionPlayerBackup.CopyFrom(*player, false);
-
-	auto act = player->mo;
-	PredictionActor = player->mo;
-	PredictionActorBackupArray.Resize(act->GetClass()->Size);
-	memcpy(PredictionActorBackupArray.Data(), &act->snext, act->GetClass()->Size - ((uint8_t *)&act->snext - (uint8_t *)act));
-
-	// Since this is a DObject it needs to have its fields backed up manually for restore, otherwise any changes
-	// to it will be permanent while predicting. This is now auto-created on pawns to prevent creation spam.
-	if (act->ViewPos != nullptr)
+	auto act = dyn_cast<AActor>(obj);
+	if (act != nullptr)
 	{
-		PredictionViewPosBackup.Pos = act->ViewPos->Offset;
-		PredictionViewPosBackup.Flags = act->ViewPos->Flags;
+		PredictionData.RollbackActors.Push(FActorBackup{ *act });
+		if (act->player != nullptr && act->player->mo == act)
+			PredictionData.RollbackPlayers.Push(act->player - players);
+
+		// TODO: In the future these will be automatically handled by the net owner system, but handle them
+		// manually for now to increase stability.
+		P_RollbackObject(act->ViewPos, arc);
+		P_RollbackObject(act->modelData, arc);
 	}
-
-	PredictionPhysicsLinking.Backup(*act);
-
-	act->flags &= ~MF_PICKUP;
-	act->flags2 &= ~MF2_PUSHWALL;
-	player->cheats |= CF_PREDICTING;
-
-	int maxtic = ClientTic;
-	if (gametic == maxtic || player->playerstate != PST_LIVE)
+	else
 	{
+		PredictionData.RollbackObjects.Push({ *obj });
+	}
+}
+
+static void P_RollbackPlayers(FSerializer& arc)
+{
+	if (!PredictionData.RollbackPlayers.Size() || !arc.BeginArray("players"))
 		return;
+
+	for (auto p : PredictionData.RollbackPlayers)
+	{
+		if (arc.BeginObject(nullptr))
+		{
+			players[p].Serialize(arc);
+			arc.EndObject();
+		}
 	}
+
+	arc.EndArray();
+}
+
+void P_PredictClient()
+{
+	if (gamestate != GS_LEVEL)
+		return;
+
+	player_t* player = &players[consoleplayer];
+	if (!NetworkEntityManager::IsPredicting())
+	{
+		NetworkEntityManager::EnablePrediction();
+		PredictionData.bResetPrediction = true;
+		PredictionData.LastPredictedTic = gametic;
+
+		FDoomSerializer writer = { player->mo->Level };
+		if (writer.OpenWriter(false, true))
+		{
+			FRandom::RollbackRNGState(writer);
+			P_RollbackObject(player->mo, writer);
+			P_RollbackPlayers(writer);
+			TArray<DObject*> fullRollback = {};
+			for (auto& a : PredictionData.RollbackActors)
+				fullRollback.Push(a.GetObject<DObject>());
+			for (auto& o : PredictionData.RollbackObjects)
+				fullRollback.Push(o.GetObject<DObject>());
+			PredictionData.RollbackData = writer.GetCompressedOutput(&PredictionData.RollbackObjectRefs, &fullRollback);
+			PredictionData.RollbackLevel = player->mo->Level;
+			writer.Close();
+
+			for (auto& a : PredictionData.RollbackActors)
+				a.PostBackup();
+			for (auto o : fullRollback)
+				o->ObjectFlags |= OF_Predicting;
+		}
+	}
+
+	player->cheats |= CF_PREDICTING; // This is only here for backwards compat.
+	if (ClientTic <= PredictionData.LastPredictedTic || player->playerstate != PST_LIVE || (player->mo->ObjectFlags & OF_JustSpawned))
+		return;
 
 	// This essentially acts like a mini P_Ticker where only the stuff relevant to the client is actually
 	// called. Call order is preserved.
 	bool rubberband = false, rubberbandLimit = false;
 	DVector3 rubberbandPos = {};
-	const bool canRubberband = LastPredictedTic >= 0 && cl_rubberband_scale > 0.0f && cl_rubberband_scale < 1.0f;
+	const bool canRubberband = PredictionData.bResetPrediction && PredictionData.LastPos.Tic >= 0 && cl_rubberband_scale > 0.0f && cl_rubberband_scale < 1.0f;
 	const double rubberbandThreshold = max<float>(cl_rubberband_minmove, cl_rubberband_threshold);
-	for (int i = gametic; i < maxtic; ++i)
+	for (int i = PredictionData.LastPredictedTic; i < ClientTic; ++i)
 	{
 		// Make sure any portal paths have been cleared from the previous movement.
 		R_ClearInterpolationPath();
@@ -1635,10 +1787,10 @@ void P_PredictPlayer (player_t *player)
 		// Got snagged on something. Start correcting towards the player's final predicted position. We're
 		// being intentionally generous here by not really caring how the player got to that position, only
 		// that they ended up in the same spot on the same tick.
-		if (canRubberband && LastPredictedTic == i)
+		if (canRubberband && PredictionData.LastPos.Tic == i)
 		{
-			DVector3 diff = player->mo->Pos() - LastPredictedPosition;
-			diff += player->mo->Level->Displacements.getOffset(player->mo->Sector->PortalGroup, LastPredictedPortalGroup);
+			DVector3 diff = player->mo->Pos() - PredictionData.LastPos.Pos;
+			diff += player->mo->Level->Displacements.getOffset(player->mo->Sector->PortalGroup, PredictionData.LastPos.PortalGroup);
 			double dist = diff.LengthSquared();
 			if (dist >= EQUAL_EPSILON * EQUAL_EPSILON && dist > rubberbandThreshold * rubberbandThreshold)
 			{
@@ -1662,7 +1814,7 @@ void P_PredictPlayer (player_t *player)
 	if (rubberband)
 	{
 		DPrintf(DMSG_NOTIFY, "Prediction mismatch at (%.3f, %.3f, %.3f)\nExpected: (%.3f, %.3f, %.3f)\nCorrecting to (%.3f, %.3f, %.3f)\n",
-			LastPredictedPosition.X, LastPredictedPosition.Y, LastPredictedPosition.Z,
+			PredictionData.LastPos.Pos.X, PredictionData.LastPos.Pos.Y, PredictionData.LastPos.Pos.Z,
 			rubberbandPos.X, rubberbandPos.Y, rubberbandPos.Z,
 			player->mo->X(), player->mo->Y(), player->mo->Z());
 
@@ -1677,9 +1829,9 @@ void P_PredictPlayer (player_t *player)
 			player->mo->renderflags &= ~RF_NOINTERPOLATEVIEW;
 
 			DVector3 snapPos = {};
-			P_LerpCalculate(player->mo, LastPredictedPosition, snapPos, cl_rubberband_scale, cl_rubberband_threshold, cl_rubberband_minmove);
-			player->mo->PrevPortalGroup = LastPredictedPortalGroup;
-			player->mo->Prev = LastPredictedPosition;
+			P_LerpCalculate(player->mo, PredictionData.LastPos.Pos, snapPos, cl_rubberband_scale, cl_rubberband_threshold, cl_rubberband_minmove);
+			player->mo->PrevPortalGroup = PredictionData.LastPos.PortalGroup;
+			player->mo->Prev = PredictionData.LastPos.Pos;
 			const double zOfs = player->viewz - player->mo->Z();
 			player->mo->SetXYZ(snapPos);
 			player->viewz = snapPos.Z + zOfs;
@@ -1690,83 +1842,41 @@ void P_PredictPlayer (player_t *player)
 		r_NoInterpolate = true;
 	}
 
+	PredictionData.LastPredictedTic = ClientTic;
+	PredictionData.bResetPrediction = false;
+
 	// This is intentionally done after rubberbanding starts since it'll automatically smooth itself towards
 	// the right spot until it reaches it.
-	LastPredictedTic = maxtic;
-	LastPredictedPosition = player->mo->Pos();
-	LastPredictedPortalGroup = player->mo->Level->PointInSector(LastPredictedPosition)->PortalGroup;
+	PredictionData.LastPos.Tic = ClientTic;
+	PredictionData.LastPos.Pos = player->mo->Pos();
+	PredictionData.LastPos.PortalGroup = player->mo->Level->PointInSector(PredictionData.LastPos.Pos)->PortalGroup;
 }
 
-void P_UnPredictPlayer ()
+void P_UnPredictClient()
 {
-	player_t *player = &players[consoleplayer];
+	if (!NetworkEntityManager::IsPredicting())
+		return;
 
-	if (player->cheats & CF_PREDICTING)
+	NetworkEntityManager::DisablePrediction();
+
+	FDoomSerializer reader = { PredictionData.RollbackLevel };
+	if (reader.OpenReader(&PredictionData.RollbackData, true))
 	{
-		unsigned int i;
-		AActor *act = player->mo;
+		for (auto& a : PredictionData.RollbackActors)
+			a.PreRollback();
 
-		if (act != PredictionActor)
-		{
-			// Q: Can this happen? If yes, can we continue?
-		}
+		FRandom::RollbackRNGState(reader);
+		reader.ReadObjectsFrom(PredictionData.RollbackObjectRefs);
+		if (reader.mObjectErrors)
+			I_Error("Failed to rollback game state");
+		P_RollbackPlayers(reader);
+		reader.Close();
 
-		FRandom::RestoreRNGState(PredictionRNG);
-
-		AActor *savedcamera = player->camera;
-
-		auto &actInvSel = act->PointerVar<AActor*>(NAME_InvSel);
-		auto InvSel = actInvSel;
-		int inventorytics = player->inventorytics;
-		const bool settings_controller = player->settings_controller;
-		EFullbrightMode fbmode = player->FullbrightMode;
-		bool forcefb = player->bForceFullbright;
-		FArray attached = *(FArray*)&act->AttachedLights;
-		FArray userLights = *(FArray*)&act->UserLights;
-
-		player->CopyFrom(PredictionPlayerBackup, false);
-
-		player->settings_controller = settings_controller;
-		// Restore the camera instead of using the backup's copy, because spynext/prev
-		// could cause it to change during prediction.
-		player->camera = savedcamera;
-		player->FullbrightMode = fbmode;
-		player->bForceFullbright = forcefb;
-
-		// Unlink from all lists since this data isn't valid for server ticks.
-		act->UnlinkFromWorld(nullptr);
-		memcpy(&act->snext, PredictionActorBackupArray.Data(), PredictionActorBackupArray.Size() - ((uint8_t *)&act->snext - (uint8_t *)act));
-		// Clear stale pointers.
-		act->touching_lineportallist = nullptr;
-		act->touching_rendersectors = act->touching_sectorlist = act->touching_sectorportallist = nullptr;
-		act->sprev = (AActor**)(size_t)0xBeefCafe;
-		act->snext = nullptr;
-		act->BlockNode = nullptr;
-
-		if (act->ViewPos != nullptr)
-		{
-			act->ViewPos->Offset = PredictionViewPosBackup.Pos;
-			act->ViewPos->Flags = PredictionViewPosBackup.Flags;
-		}
-
-		// TODO: This might cause issues with emulating undefined behavior regarding things like polyobject collisions? Will need to be
-		// investigated further in case it breaks determinism.
-		// Make sure it recreates its nodes at its original position, the backup will then handle relinking
-		// those nodes in the correct order.
-		act->LinkToWorld(nullptr);
-		PredictionPhysicsLinking.Restore(*act);
-
-		act->renderflags &= ~RF_NOINTERPOLATEVIEW;
-		act->flags8 &= ~MF8_RECREATELIGHTS;
-		memcpy(&act->AttachedLights, &attached, sizeof(FArray));
-		memcpy(&act->UserLights, &userLights, sizeof(FArray));
-
-		actInvSel = InvSel;
-		player->inventorytics = inventorytics;
-
-		bPredictionGuard = false;
-		GC::CheckGC(); // HACK: See the comment in the bPredictionGuard block of CheckGC
+		for (auto& a : PredictionData.RollbackActors)
+			a.PostRollback();
 	}
+
+	PredictionData.ClearBackup();
 }
 
 void player_t::Serialize(FSerializer &arc)
@@ -1775,21 +1885,29 @@ void player_t::Serialize(FSerializer &arc)
 
 	arc("class", cls)
 		("mo", mo)
-		("camera", camera)
 		("playerstate", playerstate)
 		("cmd", cmd);
 
-	if (arc.isReading())
+	int fbmode = FullbrightMode;
+	if (!arc.IsRollback())
 	{
-		userinfo.Reset(mo->Level->PlayerNum(this));
-		ReadUserInfo(arc, userinfo, skinname);
-	}
-	else
-	{
-		WriteUserInfo(arc, userinfo);
+		arc("camera", camera)
+			("inventorytics", inventorytics)
+			("settings_controller", settings_controller)
+			("fullbrightmode", fbmode)
+			("bforcefullbright", bForceFullbright);
+
+		if (arc.isReading())
+		{
+			userinfo.Reset(mo->Level->PlayerNum(this));
+			ReadUserInfo(arc, userinfo, skinname);
+		}
+		else
+		{
+			WriteUserInfo(arc, userinfo);
+		}
 	}
 
-	int fbmode = FullbrightMode;
 	arc("desiredfov", DesiredFOV)
 		("fov", FOV)
 		("viewz", viewz)
@@ -1800,7 +1918,6 @@ void player_t::Serialize(FSerializer &arc)
 		("vel", Vel)
 		("centering", centering)
 		("health", health)
-		("inventorytics", inventorytics)
 		("fragcount", fragcount)
 		("spreecount", spreecount)
 		("multicount", multicount)
@@ -1822,8 +1939,6 @@ void player_t::Serialize(FSerializer &arc)
 		("extralight", extralight)
 		("fixedcolormap", fixedcolormap)
 		("fixedlightlevel", fixedlightlevel)
-		("fullbrightmode", fbmode)
-		("bforcefullbright", bForceFullbright)
 		("morphTics", morphTics)
 		("morphedplayerclass", MorphedPlayerClass)
 		("morphstyle", MorphStyle)
@@ -1862,7 +1977,6 @@ void player_t::Serialize(FSerializer &arc)
 		("poisontype", poisontype)
 		("poisonpaintype", poisonpaintype)
 		("timefreezer", timefreezer)
-		("settings_controller", settings_controller)
 		("onground", onground)
 		("musinfoactor", MUSINFOactor)
 		("musinfotics", MUSINFOtics)
@@ -1870,20 +1984,23 @@ void player_t::Serialize(FSerializer &arc)
 		("angleoffsettargets", angleOffsetTargets)
 		("lastsafepos", LastSafePos);
 
-	if (arc.isWriting ())
+	if (!arc.IsRollback())
 	{
-		// If the player reloaded because they pressed +use after dying, we
-		// don't want +use to still be down after the game is loaded.
-		oldbuttons = ~0;
-		original_oldbuttons = ~0;
-	}
-	else
-	{
-		FullbrightMode = static_cast<EFullbrightMode>(fbmode);
-	}
-	if (skinname.IsNotEmpty())
-	{
-		userinfo.SkinChanged(skinname.GetChars(), CurrentPlayerClass);
+		if (arc.isWriting())
+		{
+			// If the player reloaded because they pressed +use after dying, we
+			// don't want +use to still be down after the game is loaded.
+			oldbuttons = ~0;
+			original_oldbuttons = ~0;
+		}
+		else
+		{
+			FullbrightMode = static_cast<EFullbrightMode>(fbmode);
+		}
+		if (skinname.IsNotEmpty())
+		{
+			userinfo.SkinChanged(skinname.GetChars(), CurrentPlayerClass);
+		}
 	}
 }
 
