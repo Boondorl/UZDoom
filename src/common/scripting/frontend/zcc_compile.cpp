@@ -1525,21 +1525,25 @@ bool ZCCCompiler::CompileFields(PContainerType *type, TArray<ZCC_VarDeclarator *
 		if (field->Flags & ZCC_ReadOnly) varflags |= VARF_ReadOnly;
 		if (field->Flags & ZCC_Internal) varflags |= VARF_InternalAccess;
 		if (field->Flags & ZCC_Transient) varflags |= VARF_Transient;
+		if (field->Flags & ZCC_NoRollback) varflags |= VARF_NoRollback;
+		const unsigned existingRollback = varflags & VARF_NoRollback;
 		if (mVersion >= MakeVersion(2, 4, 0))
 		{
 			if (type != nullptr)
 			{
 				if (type->ScopeFlags & Scope_UI)
-					varflags |= VARF_UI;
+					varflags |= VARF_UI | VARF_NoRollback;
 				if (type->ScopeFlags & Scope_Play)
 					varflags |= VARF_Play;
 			}
 			if (field->Flags & ZCC_UIFlag)
-				varflags = FScopeBarrier::ChangeSideInFlags(varflags, FScopeBarrier::Side_UI);
+				varflags = FScopeBarrier::ChangeSideInFlags(varflags, FScopeBarrier::Side_UI) | VARF_NoRollback;
 			if (field->Flags & ZCC_Play)
 				varflags = FScopeBarrier::ChangeSideInFlags(varflags, FScopeBarrier::Side_Play);
 			if (field->Flags & (ZCC_ClearScope | ZCC_UnsafeClearScope))
 				varflags = FScopeBarrier::ChangeSideInFlags(varflags, FScopeBarrier::Side_PlainData);
+
+			varflags |= existingRollback;
 		}
 		else
 		{
@@ -1548,7 +1552,7 @@ bool ZCCCompiler::CompileFields(PContainerType *type, TArray<ZCC_VarDeclarator *
 
 		if (field->Flags & ZCC_Native)
 		{
-			varflags |= VARF_Native | VARF_Transient;
+			varflags |= VARF_Native | VARF_Transient | VARF_NoRollback;
 		}
 
 		static int excludescope[] = { ZCC_UIFlag, ZCC_Play, ZCC_ClearScope };
@@ -1565,7 +1569,13 @@ bool ZCCCompiler::CompileFields(PContainerType *type, TArray<ZCC_VarDeclarator *
 		if (fc > 1)
 		{
 			Error(field, "Invalid combination of scope qualifiers %s on field %s", FlagsToString(excludeflags).GetChars(), FName(field->Names->Name).GetChars());
-			varflags &= ~(VARF_UI | VARF_Play); // make plain data
+			varflags &= ~(VARF_UI | VARF_Play | VARF_NoRollback) | existingRollback; // make plain data
+		}
+
+		if (!(varflags & VARF_Native) && (varflags & (VARF_Play | VARF_NoRollback)) == (VARF_Play | VARF_NoRollback))
+		{
+			Error(field, "norollback cannot be used with play-scoped fields");
+			varflags &= ~VARF_NoRollback;
 		}
 
 		if (field->Flags & ZCC_Meta)

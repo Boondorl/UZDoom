@@ -450,8 +450,6 @@ public:
 
 	DThinker *CreateThinker(PClass *cls, int statnum = STAT_DEFAULT)
 	{
-		if (bPredictionGuard)
-			DPrintf(DMSG_WARNING, TEXTCOLOR_RED "Spawned non-client-side Thinker %s while predicting\n", cls->TypeName.GetChars());
 		DThinker *thinker = static_cast<DThinker*>(cls->CreateNew());
 		assert(thinker->IsKindOf(RUNTIME_CLASS(DThinker)));
 		thinker->ObjectFlags |= OF_JustSpawned;
@@ -472,7 +470,7 @@ public:
 	{
 		DThinker* thinker = static_cast<DThinker*>(cls->CreateNew());
 		assert(thinker->IsKindOf(RUNTIME_CLASS(DThinker)));
-		thinker->ObjectFlags |= OF_JustSpawned | OF_ClientSide | OF_Transient;
+		thinker->ObjectFlags |= OF_JustSpawned | OF_ClientSide | OF_Transient | OF_NoRollback;
 		ClientSideThinkers.Link(thinker, statnum);
 		thinker->Level = this;
 		return thinker;
