@@ -655,7 +655,7 @@ static void SendVerificationError(const sockaddr_in& to, const FVerificationErro
 		NetBuffer[5] = (ar->Size() >> 8);
 		NetBuffer[6] = ar->Size();
 		size_t i = 7u;
-		for (const auto& file : *ar)
+		for (auto& file : *ar)
 		{
 			memcpy(&NetBuffer[i], file.GetChars(), file.Len() + 1u);
 			i += file.Len() + 1u;
@@ -1038,7 +1038,10 @@ static FString ReadVerificationError(TArrayView<uint8_t> stream)
 		if (!fileSystem.IsOptionalResource(i))
 		{
 			const FString crc = fileSystem.GetResourceHash(i);
-			files[crc] = fileSystem.GetResourceFileName(i);
+			FString name = fileSystem.GetResourceFileName(i);
+			FixPathSeperator(name);
+			auto a = name.Split('/', FString::TOK_SKIPEMPTY);
+			files[crc] = a.Last();
 		}
 	}
 
