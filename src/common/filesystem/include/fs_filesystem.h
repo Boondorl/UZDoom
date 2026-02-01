@@ -58,8 +58,8 @@ public:
 	void SetMaxIwadNum(int x) { MaxIwadIndex = x; }
 
 	bool InitSingleFile(const char *filename, FileSystemMessageFunc Printf = nullptr);
-	bool InitMultipleFiles (std::vector<std::string>& filenames, LumpFilterInfo* filter = nullptr, FileSystemMessageFunc Printf = nullptr, bool allowduplicates = false);
-	void AddFile (const char *filename, FileReader *wadinfo, LumpFilterInfo* filter, FileSystemMessageFunc Printf);
+	bool InitMultipleFiles (std::vector<std::string>& filenames, std::vector<std::string>& optfilenames, LumpFilterInfo* filter = nullptr, FileSystemMessageFunc Printf = nullptr, bool allowduplicates = false);
+	void AddFile (const char *filename, FileReader *wadinfo, LumpFilterInfo* filter, FileSystemMessageFunc Printf, bool optional);
 	int CheckIfResourceFileLoaded (const char *name) noexcept;
 	void AddAdditionalFile(const char* filename, FileReader* wadinfo = NULL) {}
 
@@ -146,6 +146,7 @@ public:
 	void SetFileNamespace(int lump, int ns);
 	int GetResourceId(int lump) const;				// Returns the RFF index number for this lump
 	const char* GetResourceType(int lump) const;
+	const char* GetResourceHash(int wadNum) const;
 	bool CheckFileName (int lump, const char *name) const;	// [RH] Returns true if the names match
 	unsigned GetFilesInFolder(const char *path, std::vector<FolderEntry> &result, bool atomic) const;
 
@@ -157,6 +158,11 @@ public:
 	int GetNumWads() const
 	{
 		return (int)Files.size();
+	}
+
+	bool IsOptionalResource(int wadnum) const
+	{
+		return wadnum >= 0 && wadnum < (int)Files.size() ? Files[wadnum]->IsOptional() : true;
 	}
 
 	int AddFromBuffer(const char* name, char* data, int size, int id, int flags);

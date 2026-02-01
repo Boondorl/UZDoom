@@ -52,7 +52,7 @@ static constexpr char PATH_SEPARATOR = ':';
 //
 //==========================================================================
 
-bool D_AddFile(std::vector<std::string>& wadfiles, const char* file, bool check, int position, FConfigFile* config, bool optional)
+bool D_AddFile(std::vector<std::string>& wadfiles, const char* file, bool check, int position, FConfigFile* config)
 {
 	if (file == nullptr || *file == '\0')
 	{
@@ -140,7 +140,7 @@ void D_AddWildFile(std::vector<std::string>& wadfiles, const char* value, const 
 
 	if (wadfile != nullptr)
 	{
-		D_AddFile(wadfiles, wadfile, true, -1, config, optional);
+		D_AddFile(wadfiles, wadfile, true, -1, config);
 		return;
 	}
 
@@ -155,7 +155,7 @@ void D_AddWildFile(std::vector<std::string>& wadfiles, const char* value, const 
 	{
 		for(auto& entry : list)
 		{
-			D_AddFile(wadfiles, entry.FilePath.c_str(), true, -1, config, optional);
+			D_AddFile(wadfiles, entry.FilePath.c_str(), true, -1, config);
 			found = true;
 		}
 	}
@@ -211,7 +211,7 @@ void D_AddConfigFiles(std::vector<std::string>& wadfiles, const char* section, c
 //
 //==========================================================================
 
-void D_AddDirectory(std::vector<std::string>& wadfiles, const char* dir, const char *filespec, FConfigFile* config, bool optional)
+void D_AddDirectory(std::vector<std::string>& wadfiles, const char* dir, const char *filespec, FConfigFile* config)
 {
 	FileSys::FileList list;
 	if (FileSys::ScanDirectory(list, dir, "*.wad", true))
@@ -220,7 +220,7 @@ void D_AddDirectory(std::vector<std::string>& wadfiles, const char* dir, const c
 		{
 			if (!entry.isDirectory)
 			{
-				D_AddFile(wadfiles, entry.FilePath.c_str(), true, -1, config, optional);
+				D_AddFile(wadfiles, entry.FilePath.c_str(), true, -1, config);
 			}
 		}
 	}
