@@ -224,10 +224,11 @@ void FileSystem::DeleteAll ()
 bool FileSystem::InitSingleFile(const char* filename, FileSystemMessageFunc Printf)
 {
 	std::vector<std::string> filenames = { filename };
-	return InitMultipleFiles(filenames, nullptr, Printf);
+	std::vector<std::string> empty;
+	return InitMultipleFiles(filenames, empty, nullptr, Printf);
 }
 
-bool FileSystem::InitMultipleFiles (std::vector<std::string>& filenames, LumpFilterInfo* filter, FileSystemMessageFunc Printf, bool allowduplicates)
+bool FileSystem::InitMultipleFiles (std::vector<std::string>& filenames, std::vector<std::string>& optfilenames, LumpFilterInfo* filter, FileSystemMessageFunc Printf, bool allowduplicates)
 {
 	int numfiles;
 
@@ -254,11 +255,33 @@ bool FileSystem::InitMultipleFiles (std::vector<std::string>& filenames, LumpFil
 				}
 			}
 		}
+
+		for (size_t i=0;i<optfilenames.size(); i++)
+		{
+			for (size_t j=i+1;j<optfilenames.size(); j++)
+			{
+				if (optfilenames[i] == optfilenames[j])
+				{
+					optfilenames.erase(optfilenames.begin() + j);
+					j--;
+				}
+			}
+		}
 	}
 
 	for(size_t i=0;i<filenames.size(); i++)
 	{
-		AddFile(filenames[i].c_str(), nullptr, filter, Printf);
+		AddFile(filenames[i].c_str(), nullptr, filter, Printf, false);
+
+		if (i == (unsigned)MaxIwadIndex) MoveLumpsInFolder("after_iwad/");
+		std::string path = "filter/%s";
+		path += Files.back()->GetHash();
+		MoveLumpsInFolder(path.c_str());
+	}
+
+	for(size_t i=0;i<optfilenames.size(); i++)
+	{
+		AddFile(optfilenames[i].c_str(), nullptr, filter, Printf, true);
 
 		if (i == (unsigned)MaxIwadIndex) MoveLumpsInFolder("after_iwad/");
 		std::string path = "filter/%s";
@@ -316,7 +339,7 @@ int FileSystem::AddFromBuffer(const char* name, char* data, int size, int id, in
 // [RH] Removed reload hack
 //==========================================================================
 
-void FileSystem::AddFile (const char *filename, FileReader *filer, LumpFilterInfo* filter, FileSystemMessageFunc Printf)
+void FileSystem::AddFile (const char *filename, FileReader *filer, LumpFilterInfo* filter, FileSystemMessageFunc Printf, bool optional)
 {
 	int startlump;
 	bool isdir = false;
@@ -356,9 +379,9 @@ void FileSystem::AddFile (const char *filename, FileReader *filer, LumpFilterInf
 
 
 	if (!isdir)
-		resfile = FResourceFile::OpenResourceFile(filename, filereader, false, filter, Printf, stringpool);
+		resfile = FResourceFile::OpenResourceFile(filename, filereader, false, filter, Printf, stringpool, optional);
 	else
-		resfile = FResourceFile::OpenDirectory(filename, filter, Printf, stringpool);
+		resfile = FResourceFile::OpenDirectory(filename, filter, Printf, stringpool, optional);
 
 	if (resfile != NULL)
 	{
@@ -385,7 +408,7 @@ void FileSystem::AddFile (const char *filename, FileReader *filer, LumpFilterInf
 				path += ':';
 				path += resfile->getName(i);
 				auto embedded = resfile->GetEntryReader(i, READER_CACHED);
-				AddFile(path.c_str(), &embedded, filter, Printf);
+				AddFile(path.c_str(), &embedded, filter, Printf, optional);
 			}
 		}
 
@@ -1146,6 +1169,20 @@ const char *FileSystem::GetResourceType(int lump) const
 		if (strchr(p, '/')) return "";	// the '.' is part of a directory.
 		return p + 1;
 	}
+}
+
+//==========================================================================
+//
+// GetResourceHash
+//
+//==========================================================================
+
+const char* FileSystem::GetResourceHash(int wadNum) const
+{
+	if ((size_t)wadNum >= Files.size())
+		return nullptr;
+
+	return Files[wadNum]->GetHash();
 }
 
 //==========================================================================
