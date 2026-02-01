@@ -1847,7 +1847,11 @@ FVerificationError Net_VerifyEngine(uint8_t*& stream, size_t& offset)
 	if (error.Error == FVerificationError::VE_FILE_MISSING)
 	{
 		for (auto i : unverified)
-			error.MissingFiles.Push(names[i]);
+		{
+			FixPathSeperator(names[i]);
+			auto ar = names[i].Split('/', FString::TOK_SKIPEMPTY);
+			error.MissingFiles.Push(ar.Last());
+		}
 	}
 	else if (error.Error == FVerificationError::VE_FILE_ORDER)
 	{
