@@ -4095,7 +4095,8 @@ static int D_DoomMain_Internal (void)
 		const FIWADInfo *iwad_info = iwad_man->FindIWAD(allwads, optwads, iwad.GetChars(), basewad.GetChars(), optionalwad.GetChars());
 
 		GetCmdLineFiles(pwads, false); // [RL0] Update with files passed on the launcher extra args
-		GetCmdLineFiles(optwads, true);
+		// For now these need to remain verifiable over the network.
+		GetCmdLineFiles(pwads, true);
 
 		if (!iwad_info) return 0;	// user exited the selection popup via cancel button.
 		if ((iwad_info->flags & GI_SHAREWARE) && pwads.size() > 0)
