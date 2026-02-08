@@ -1879,6 +1879,12 @@ void ParseCVarInfo()
 				cvarflags &= ~CVAR_SERVERINFO;
 				cvarflags &= ~CVAR_USERINFO;
 			}
+			else if (fileSystem.IsOptionalLump(lump))
+			{
+				// For optional files, never network out their values or save them.
+				cvarflags &= ~(CVAR_SERVERINFO | CVAR_USERINFO);
+				cvarflags |= CVAR_CONFIG_ONLY;
+			}
 
 			// Do some sanity checks.
 			// No need to check server-nosave and user-nosave combinations because they

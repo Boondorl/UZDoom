@@ -162,8 +162,9 @@ public:
 
 	bool IsOptionalResource(int wadnum) const
 	{
-		return wadnum >= 0 && wadnum < (int)Files.size() ? Files[wadnum]->IsOptional() : true;
+		return (size_t)wadnum < Files.size() ? Files[wadnum]->IsOptional() : true;
 	}
+	bool IsOptionalLump(int lump) const;
 
 	int AddFromBuffer(const char* name, char* data, int size, int id, int flags);
 	FileReader* GetFileReader(int wadnum);	// Gets a FileReader object to the entire WAD

@@ -1187,6 +1187,17 @@ const char* FileSystem::GetResourceHash(int wadNum) const
 
 //==========================================================================
 //
+// IsOptionalLump
+//
+//==========================================================================
+
+bool FileSystem::IsOptionalLump(int lump) const
+{
+	return (size_t)lump < NumEntries ? FileInfo[lump].resfile->IsOptional() : true;
+}
+
+//==========================================================================
+//
 // GetFileContainer
 //
 //==========================================================================
