@@ -762,8 +762,17 @@ void NetworkEntityManager::SetClientNetworkEntity(DObject* mo, unsigned playNum)
 
 void NetworkEntityManager::AddNetworkEntity(DObject* ent)
 {
-	if (IsPredicting() || ent->IsNetworked() || ent->IsClientSide() || ent->IsPredicted())
+	if (ent->IsNetworked() || ent->IsClientSide())
 		return;
+
+	if (IsPredicting())
+	{
+		// Set a dummy value while predicting so the rest of the networking logic
+		// will still be emulated correctly.
+		if (ent->IsPredicting())
+			ent->SetNetworkID(WorldNetID);
+		return;
+	}
 
 	// Slot 0 is reserved for the world.
 	// Clients go in the first 1 - MAXPLAYERS slots
@@ -784,11 +793,21 @@ void NetworkEntityManager::AddNetworkEntity(DObject* ent)
 
 void NetworkEntityManager::RemoveNetworkEntity(DObject* ent)
 {
-	if (IsPredicting() || !ent->IsNetworked())
+	if (!ent->IsNetworked())
 		return;
 
 	const uint32_t id = ent->GetNetworkID();
 	if (id == WorldNetID)
+	{
+		if (ent->IsPredicting())
+		{
+			RemoveNetworkOwner(ent);
+			ent->ClearNetworkID();
+		}
+		return;
+	}
+
+	if (IsPredicting())
 		return;
 
 	assert(s_netEntities[id] == ent);
@@ -810,17 +829,25 @@ DObject* NetworkEntityManager::GetNetworkEntity(uint32_t id)
 void NetworkEntityManager::AddPredictedEntity(DObject* ent)
 {
 	if (IsPredicting() && !ent->IsClientSide() && !ent->IsPredicted())
+	{
+		ent->ObjectFlags |= OF_Predicting;
 		s_problemEntities.Push(ent);
+	}
 }
 
 void NetworkEntityManager::VerifyPredictedEntities()
 {
 	for (auto e : s_problemEntities)
 	{
-		if (e->ObjectFlags & (OF_EuthanizeMe | OF_Sentinel))
+		if (e->ObjectFlags & OF_EuthanizeMe)
 			continue;
+		if (e->ObjectFlags & OF_Sentinel)
+		{
+			e->ObjectFlags &= ~OF_Predicting;
+			continue;
+		}
 
-		if (e->GetNetworkOwner() != consoleplayer)
+		if (e->GetNetworkOwner() != GetClientID(consoleplayer))
 			DPrintf(DMSG_WARNING, TEXTCOLOR_RED "Spawned non-client-side Object %s while predicting\n", e->GetClass()->TypeName.GetChars());
 		e->SetPredicted(true);
 		s_predictedEntities.Push(e);
@@ -874,13 +901,13 @@ bool NetworkEntityManager::IsPredicting()
 	return s_bClientPredicting;
 }
 
-// Boon TODO: This needs a lot more work for handling prediction
+// Boon TODO: This needs way better safety measures around predicting
 void NetworkEntityManager::SetNetworkOwner(unsigned playNum, DObject* ent)
 {
 	// Objects can only belong to clients that are aware the object exists
 	// in the first place. Client-side objects should automatically be considered
 	// owned by their respective clients.
-	if (!ent->IsPredicted() && (!ent->IsNetworked() || ent->GetNetworkID() == WorldNetID))
+	if (!ent->IsNetworked())
 		return;
 
 	const uint32_t id = GetClientID(playNum);

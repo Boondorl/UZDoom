@@ -215,9 +215,6 @@ DPSprite::DPSprite(player_t *owner, AActor *caller, int id)
 
 	if (Caller->IsKindOf(NAME_Weapon) || Caller->IsKindOf(NAME_PlayerPawn))
 		Flags = (PSPF_ADDWEAPON|PSPF_ADDBOB|PSPF_POWDOUBLE|PSPF_CVARFAST|PSPF_PIVOTPERCENT);
-
-	NetworkEntityManager::AddNetworkEntity(this);
-	NetworkEntityManager::SetNetworkOwner(owner - players, this);
 }
 
 //------------------------------------------------------------------------
@@ -268,6 +265,8 @@ static DPSprite *P_CreatePsprite(player_t *player, AActor *caller, int layer)
 		pspr->baseScale.Y = caller->FloatVar(NAME_WeaponScaleY);
 	}
 
+	NetworkEntityManager::AddNetworkEntity(pspr);
+	NetworkEntityManager::SetNetworkOwner(pspr->Owner - players, pspr);
 	return pspr;
 }
 
