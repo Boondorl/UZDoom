@@ -786,13 +786,17 @@ void G_BuildTiccmd (usercmd_t *cmd)
 	}
 	if (SendItemUse == (const AActor *)1)
 	{
+		Net_StartPredictingEvent();
 		Net_WriteInt8 (DEM_INVUSEALL);
+		P_AddPredictedEvent(Net_StopPredictingEvent());
 		SendItemUse = NULL;
 	}
 	else if (SendItemUse != NULL)
 	{
+		Net_StartPredictingEvent();
 		Net_WriteInt8 (DEM_INVUSE);
 		Net_WriteInt32 (SendItemUse->InventoryID);
+		P_AddPredictedEvent(Net_StopPredictingEvent());
 		SendItemUse = NULL;
 	}
 	if (SendItemDrop != NULL)
@@ -804,13 +808,17 @@ void G_BuildTiccmd (usercmd_t *cmd)
 	}
 	if (SendWeaponSlot != WST_NONE)
 	{
+		Net_StartPredictingEvent();
 		Net_WriteInt8(DEM_WEAPSELECT);
 		Net_WriteInt8(SendWeaponSlot);
+		P_AddPredictedEvent(Net_StopPredictingEvent());
 		SendWeaponSlot = WST_NONE;
 	}
 	if (WantsFlechetteItem)
 	{
+		Net_StartPredictingEvent();
 		Net_WriteInt8(DEM_USEFLECHETTE);
+		P_AddPredictedEvent(Net_StopPredictingEvent());
 		WantsFlechetteItem = false;
 	}
 
@@ -1160,6 +1168,7 @@ static void D_CheckCutsceneAdvance()
 void G_Ticker ()
 {
 	gamestate_t	oldgamestate;
+	P_UpdateNewestTic(gametic);
 
 	// do player reborns if needed
 	// TODO: These should really be moved to queues.

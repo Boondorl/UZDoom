@@ -72,6 +72,8 @@ CVAR(Bool, sv_singleplayerrespawn, false, CVAR_SERVERINFO | CVAR_CHEAT)
 CVAR(Float, snd_footstepvolume, 1.f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 // Variables for prediction
+// Compatibility for older mods that won't play well with the new prediction logic.
+CVAR(Bool, sv_enhancedprediction, true, CVAR_SERVERINFO | CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 CVAR(Bool, cl_predict_specials, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 // Deprecated
 CVAR(Bool, cl_noprediction, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -304,11 +306,14 @@ struct FObjectBackup
 private:
 	TObjPtr<DObject*> _obj = MakeObjPtr<DObject*>(nullptr);
 public:
-	FObjectBackup() = default;
 	FObjectBackup(DObject& obj)
 	{
 		_obj = &obj;
 	}
+
+	virtual void PostBackup() { GetObject<DObject>()->ObjectFlags |= OF_Predicting; }
+	virtual void PreRollback() {}
+	virtual void PostRollback() {}
 
 	template<class T>
 	T* GetObject()
@@ -316,20 +321,50 @@ public:
 		return dyn_cast<T>(_obj);
 	}
 };
-struct FActorBackup : public FObjectBackup
+struct FThinkerBackup : public FObjectBackup
+{
+private:
+	int _statNum = -1;
+public:
+	FThinkerBackup(DThinker& th) : FObjectBackup(th) {}
+	void PreRollback() override
+	{
+		auto th = GetObject<DThinker>();
+		if (th == nullptr)
+			return;
+
+		// These won't relink properly on rollback so we need to keep the old values as
+		// they were. This still needs to be serialized in case the Thinker was destroyed so we
+		// can relink it back in properly after it's been recreated.
+		_statNum = th->GetStatNum();
+	}
+
+	void PostRollback() override
+	{
+		auto th = GetObject<DThinker>();
+		if (th == nullptr)
+			return;
+
+		if (_statNum == -1)
+			th->ChangeStatNum(th->GetStatNum());
+		else
+			th->RollbackStatNum(_statNum);
+	}
+};
+struct FActorBackup : public FThinkerBackup
 {
 private:
 	FPhysicsLinkBackup _link = {};
-	int _statNum = -1;
 	int _tid = INT_MAX;
 public:
-	FActorBackup(AActor& act) : FObjectBackup(act)
+	FActorBackup(AActor& act) : FThinkerBackup(act)
 	{
 		_link = { act };
 	}
 
 	void PostBackup()
 	{
+		FObjectBackup::PostBackup();
 		auto act = GetObject<AActor>();
 		if (act != nullptr)
 		{
@@ -341,6 +376,7 @@ public:
 
 	void PreRollback()
 	{
+		FThinkerBackup::PreRollback();
 		auto act = GetObject<AActor>();
 		if (act == nullptr)
 			return;
@@ -348,21 +384,16 @@ public:
 		// These won't relink properly on rollback so we need to keep the old values as
 		// they were. This still needs to be serialized in case the Actor was destroyed so we
 		// can relink it back in properly after it's been recreated.
-		_statNum = act->GetStatNum();
 		_tid = act->tid;
 		act->UnlinkFromWorld(nullptr);
 	}
 
 	void PostRollback()
 	{
+		FThinkerBackup::PostRollback();
 		auto act = GetObject<AActor>();
 		if (act == nullptr)
 			return;
-
-		if (_statNum == -1)
-			act->ChangeStatNum(act->GetStatNum());
-		else
-			act->RollbackStatNum(_statNum);
 
 		if (_tid == INT_MAX)
 		{
@@ -385,17 +416,58 @@ public:
 	}
 };
 
+struct FPredictedNetEvent
+{
+private:
+	int _tic = -1;
+	EDemoCommand _cmd = DEM_BAD;
+	TArray<uint8_t> _data = {};
+public:
+	FPredictedNetEvent(TArrayView<uint8_t> data)
+	{
+		_tic = ClientTic;
+		_cmd = static_cast<EDemoCommand>(data[0]);
+		_data.Reserve(data.Size() - 1u);
+		for (size_t i = 1u; i < data.Size(); ++i)
+			_data[i - 1u] = data[i];
+	}
+
+	bool IsTic(int tic) const
+	{
+		return _tic == tic;
+	}
+
+	bool IsOutdated() const
+	{
+		return gametic > _tic;
+	}
+
+	EDemoCommand GetEventType() const
+	{
+		return _cmd;
+	}
+
+	TArrayView<uint8_t> GetEventData() const
+	{
+		return { _data.Data(), _data.Size() };
+	}
+};
+
 struct FPredictionData
 {
 	bool bResetPrediction = false;
 	int LastPredictedTic = 0;
+	int HighestPredictedTic = -1; // Boon TODO: This needs to be reset on command reset
 
 	TArray<TObjPtr<DObject*>> RollbackObjectRefs = {};	// Try and reuse existing Objects when deserializing.
 	TArray<FObjectBackup> RollbackObjects = {};			// If these Objects no longer exist, they must be recreated instead of left as a null pointer.
+	TArray<FThinkerBackup> RollbackThinkers = {};
 	TArray<FActorBackup> RollbackActors = {};
 	TArray<size_t> RollbackPlayers = {};				// Store by index instead of pointer so it'll never be invalid when deserializing.
 	FLevelLocals* RollbackLevel = nullptr;				// Save this for when opening the reader.
 	FileSys::FCompressedBuffer RollbackData = {};		// Snapshot of all saved Objects.
+
+	TArray<FPredictedNetEvent> PredictedEvents = {};	// Certain net events like weapon swapping should be allowed for playback.
 
 	struct
 	{
@@ -413,6 +485,7 @@ struct FPredictionData
 	{
 		RollbackObjectRefs.Clear();
 		RollbackObjects.Clear();
+		RollbackThinkers.Clear();
 		RollbackActors.Clear();
 		RollbackPlayers.Clear();
 		RollbackLevel = nullptr;
@@ -1523,6 +1596,9 @@ DEFINE_ACTION_FUNCTION(APlayerPawn, CheckMusicChange)
 
 void P_CheckEnvironment(player_t *player)
 {
+	if (player->mo->IsPredicting())
+		return;
+
 	if (player->mo->Vel.Z <= -player->mo->FloatVar(NAME_FallingScreamMinSpeed) &&
 		player->mo->Vel.Z >= -player->mo->FloatVar(NAME_FallingScreamMaxSpeed) && player->mo->alternative == nullptr &&
 		player->mo->waterlevel == 0)
@@ -1556,7 +1632,8 @@ void P_CheckUse(player_t *player)
 		if (!player->usedown)
 		{
 			player->usedown = true;
-			if (!P_TalkFacing(player->mo))
+			// Prediction TODO: Make these prediction safe.
+			if (!player->mo->IsPredicting() && !P_TalkFacing(player->mo))
 			{
 				P_UseLines(player);
 			}
@@ -1657,7 +1734,7 @@ void P_PlayerThink (player_t *player)
 		return;
 	}
 
-	if (debugfile && !(player->cheats & CF_PREDICTING))
+	if (debugfile && !player->mo->IsPredicting())
 	{
 		fprintf (debugfile, "tic %d for pl %d: (%f, %f, %f, %f) b:%02x p:%d y:%d f:%d s:%d u:%d\n",
 			gametic, (int)(player-players), player->mo->X(), player->mo->Y(), player->mo->Z(),
@@ -1730,6 +1807,49 @@ void P_ClearPredictionData()
 	PredictionData.ClearBackup();
 	PredictionData.bResetPrediction = false;
 	PredictionData.LastPredictedTic = 0;
+	PredictionData.HighestPredictedTic = -1;
+	PredictionData.PredictedEvents.Clear();
+}
+
+void P_AddPredictedEvent(TArrayView<uint8_t> data)
+{
+	if (sv_enhancedprediction && data.Size())
+		PredictionData.PredictedEvents.Push({ data });
+}
+
+static void P_ClearOutdatedEvents()
+{
+	if (!PredictionData.PredictedEvents.Size())
+		return;
+
+	for (int64_t i = PredictionData.PredictedEvents.Size() - 1; i >= 0; --i)
+	{
+		if (PredictionData.PredictedEvents[i].IsOutdated())
+			PredictionData.PredictedEvents.Delete(i);
+	}
+}
+
+static void P_PredictEvents(int tic)
+{
+	for (const auto& ev : PredictionData.PredictedEvents)
+	{
+		if (!ev.IsTic(tic))
+			continue;
+
+		auto data = ev.GetEventData();
+		Net_DoCommand(ev.GetEventType(), data, consoleplayer);
+	}
+}
+
+static void GetRollbackObjectReferences(TArray<FObjectBackup*>& backup)
+{
+	backup.Clear();
+	for (auto& o : PredictionData.RollbackObjects)
+		backup.Push(&o);
+	for (auto& t : PredictionData.RollbackThinkers)
+		backup.Push(&t);
+	for (auto& a : PredictionData.RollbackActors)
+		backup.Push(&a);
 }
 
 static void P_RollbackObject(DObject* obj, FSerializer& arc)
@@ -1737,21 +1857,24 @@ static void P_RollbackObject(DObject* obj, FSerializer& arc)
 	if (!arc.MarkRollbackObject(obj))
 		return;
 
-	auto act = dyn_cast<AActor>(obj);
-	if (act != nullptr)
+	auto th = dyn_cast<DThinker>(obj);
+	if (th != nullptr)
 	{
-		PredictionData.RollbackActors.Push(FActorBackup{ *act });
-		if (act->player != nullptr && act->player->mo == act)
-			PredictionData.RollbackPlayers.Push(act->player - players);
-
-		// TODO: In the future these will be automatically handled by the net owner system, but handle them
-		// manually for now to increase stability.
-		P_RollbackObject(act->ViewPos, arc);
-		P_RollbackObject(act->modelData, arc);
+		auto act = dyn_cast<AActor>(th);
+		if (act != nullptr)
+		{
+			const unsigned i = PredictionData.RollbackActors.Push({ *act });
+			if (act->player != nullptr && act->player->mo == act)
+				PredictionData.RollbackPlayers.Push(act->player - players);
+		}
+		else
+		{
+			const unsigned i = PredictionData.RollbackThinkers.Push({ *th });
+		}
 	}
 	else
 	{
-		PredictionData.RollbackObjects.Push({ *obj });
+		const unsigned i = PredictionData.RollbackObjects.Push({ *obj });
 	}
 }
 
@@ -1776,6 +1899,13 @@ static void GetOwnedThinkerList(TMap<int, TArray<DThinker*>>& thinkers)
 {
 	thinkers.Clear();
 
+	if (!sv_enhancedprediction)
+	{
+		// If disabled, only predict the player itself like the old logic.
+		thinkers[players[consoleplayer].mo->GetStatNum()].Push(players[consoleplayer].mo);
+		return;
+	}
+
 	auto view = NetworkEntityManager::GetOwnedNetworkEntities(consoleplayer);
 	for (auto obj : view)
 	{
@@ -1783,6 +1913,11 @@ static void GetOwnedThinkerList(TMap<int, TArray<DThinker*>>& thinkers)
 		if (thinker != nullptr)
 			thinkers[thinker->GetStatNum()].Push(thinker);
 	}
+}
+
+void P_UpdateNewestTic(int tic)
+{
+	NetworkEntityManager::SetNewTic(tic > PredictionData.HighestPredictedTic);
 }
 
 void P_PredictClient()
@@ -1796,45 +1931,60 @@ void P_PredictClient()
 		NetworkEntityManager::EnablePrediction();
 		PredictionData.bResetPrediction = true;
 		PredictionData.LastPredictedTic = gametic;
+		P_ClearOutdatedEvents();
 
 		FDoomSerializer writer = { player->mo->Level };
 		if (writer.OpenWriter(false, true))
 		{
 			FRandom::RollbackRNGState(writer);
-			P_RollbackObject(player->mo, writer);
+			if (sv_enhancedprediction)
+			{
+				// Boon TODO: Player data seems to be broken here (wrong player owner?)
+				auto owned = NetworkEntityManager::GetOwnedNetworkEntities(consoleplayer);
+				for (auto obj : owned)
+					P_RollbackObject(obj, writer);
+			}
+			else
+			{
+				// Only rollback what's absolutely necessary if using the classic prediction.
+				P_RollbackObject(player->mo, writer);
+				P_RollbackObject(player->mo->ViewPos, writer);
+				P_RollbackObject(player->mo->modelData, writer);
+			}
 			P_RollbackPlayers(writer);
 			TArray<DObject*> fullRollback = {};
-			for (auto& a : PredictionData.RollbackActors)
-				fullRollback.Push(a.GetObject<DObject>());
-			for (auto& o : PredictionData.RollbackObjects)
-				fullRollback.Push(o.GetObject<DObject>());
+			TArray<FObjectBackup*> backups = {};
+			GetRollbackObjectReferences(backups);
+			for (auto o : backups)
+				fullRollback.Push(o->GetObject<DObject>());
 			PredictionData.RollbackData = writer.GetCompressedOutput(&PredictionData.RollbackObjectRefs, &fullRollback);
 			PredictionData.RollbackLevel = player->mo->Level;
 			writer.Close();
 
-			for (auto& a : PredictionData.RollbackActors)
-				a.PostBackup();
-			for (auto o : fullRollback)
-				o->ObjectFlags |= OF_Predicting;
+			for (auto o : backups)
+				o->PostBackup();
 		}
 	}
 
 	player->cheats |= CF_PREDICTING; // This is only here for backwards compat.
+	// Since the player has some networking setting up to do when just spawned, don't predict until the server properly handles it.
 	if (ClientTic <= PredictionData.LastPredictedTic || player->playerstate != PST_LIVE || (player->mo->ObjectFlags & OF_JustSpawned))
 		return;
 
 	// This essentially acts like a mini P_Ticker where only the stuff relevant to the client is actually
 	// called. Call order is preserved.
+	TMap<int, TArray<DThinker*>> toTick = {};
 	bool rubberband = false, rubberbandLimit = false;
 	DVector3 rubberbandPos = {};
 	const bool canRubberband = PredictionData.bResetPrediction && PredictionData.LastPos.Tic >= 0 && cl_rubberband_scale > 0.0f && cl_rubberband_scale < 1.0f;
 	const double rubberbandThreshold = max<float>(cl_rubberband_minmove, cl_rubberband_threshold);
 	for (int i = PredictionData.LastPredictedTic; i < ClientTic; ++i)
 	{
+		P_UpdateNewestTic(i);
+
 		// Make sure any portal paths have been cleared from the previous movement.
 		R_ClearInterpolationPath();
 		r_NoInterpolate = false;
-		player->mo->renderflags &= ~RF_NOINTERPOLATEVIEW;
 
 		// Got snagged on something. Start correcting towards the player's final predicted position. We're
 		// being intentionally generous here by not really caring how the player got to that position, only
@@ -1852,15 +2002,53 @@ void P_PredictClient()
 			}
 		}
 
+		P_PredictEvents(i);
 		player->oldbuttons = player->cmd.buttons;
 		player->cmd = LocalCmds[i % LOCALCMDTICS];
 		if (paused)
 			continue;
 
-		player->mo->ClearInterpolation();
-		player->mo->ClearFOVInterpolation();
+		if (sv_enhancedprediction)
+			DPSprite::NewTick();
+
+		GetOwnedThinkerList(toTick);
+		TMap<int, TArray<DThinker*>>::Iterator it = { toTick };
+		TMap<int, TArray<DThinker*>>::Pair* pair = nullptr;
+		while (it.NextPair(pair))
+		{
+			auto& arr = pair->Value;
+			for (auto th : arr)
+			{
+				auto act = dyn_cast<AActor>(th);
+				if (act != nullptr)
+				{
+					act->renderflags &= ~RF_NOINTERPOLATEVIEW;
+					act->ClearInterpolation();
+					act->ClearFOVInterpolation();
+				}
+			}
+		}
+
 		P_PlayerThink(player);
-		player->mo->CallTick();
+
+		it.Reset();
+		while (it.NextPair(pair))
+		{
+			auto& arr = pair->Value;
+			for (auto th : arr)
+			{
+				if (th->ObjectFlags & OF_EuthanizeMe)
+					continue;
+
+				if (th->ObjectFlags & OF_JustSpawned)
+					th->CallPostBeginPlay();
+				if (!(th->ObjectFlags & OF_EuthanizeMe))
+				{
+					th->CallTick();
+					th->ObjectFlags &= ~OF_JustSpawned;
+				}
+			}
+		}
 	}
 
 	if (rubberband)
@@ -1896,6 +2084,7 @@ void P_PredictClient()
 
 	PredictionData.LastPredictedTic = ClientTic;
 	PredictionData.bResetPrediction = false;
+	PredictionData.HighestPredictedTic = ClientTic - 1;
 
 	// This is intentionally done after rubberbanding starts since it'll automatically smooth itself towards
 	// the right spot until it reaches it.
@@ -1914,8 +2103,10 @@ void P_UnPredictClient()
 	FDoomSerializer reader = { PredictionData.RollbackLevel };
 	if (reader.OpenReader(&PredictionData.RollbackData, true))
 	{
-		for (auto& a : PredictionData.RollbackActors)
-			a.PreRollback();
+		TArray<FObjectBackup*> backups = {};
+		GetRollbackObjectReferences(backups);
+		for (auto o : backups)
+			o->PreRollback();
 
 		FRandom::RollbackRNGState(reader);
 		reader.ReadObjectsFrom(PredictionData.RollbackObjectRefs);
@@ -1924,8 +2115,8 @@ void P_UnPredictClient()
 		P_RollbackPlayers(reader);
 		reader.Close();
 
-		for (auto& a : PredictionData.RollbackActors)
-			a.PostRollback();
+		for (auto o : backups)
+			o->PostRollback();
 	}
 
 	PredictionData.ClearBackup();

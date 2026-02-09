@@ -473,6 +473,7 @@ class NetworkEntityManager final
 {
 private:
 	inline static bool s_bClientPredicting = false;
+	inline static bool s_bNewTic = false;
 	inline static TArray<DObject*> s_netEntities = {};
 	inline static TArray<uint32_t> s_openNetIDs = {};
 	inline static TArray<DObject*> s_problemEntities = {};
@@ -512,6 +513,9 @@ public:
 	static void SetTempOwner(uint32_t id, DObject* ent);
 	static void SetTempTransfer(unsigned playNum, uint32_t id);
 	static void TransferTempOwners();
+
+	static void SetNewTic(bool newTic);
+	static bool IsNewTic();
 };
 
 // This is the only method aside from calling CreateNew that should be used for creating DObjects

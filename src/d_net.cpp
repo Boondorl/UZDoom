@@ -238,6 +238,7 @@ private:
 	size_t CurrentSize = 0;
 	size_t MaxSize = 256;
 	int CurrentClientTic = 0;
+	int64_t _predictionOffset = -1;
 
 	// Make more room for special Command.
 	void GetMoreBytes(size_t newSize)
@@ -289,6 +290,31 @@ public:
 		CurrentClientTic = tic;
 		CurrentStream = Streams[tic % BACKUPTICS].Stream;
 		CurrentSize = 0;
+	}
+
+	void StartPredicting()
+	{
+		if (_predictionOffset >= 0)
+			StopPredicting();
+		if (CurrentStream != nullptr)
+			_predictionOffset = CurrentSize;
+	}
+
+	TArrayView<uint8_t> StopPredicting()
+	{
+		TArrayView<uint8_t> data = { nullptr, 0u };
+		if (_predictionOffset >= 0)
+		{
+			if (CurrentStream != nullptr)
+			{
+				auto head = Streams[CurrentClientTic % BACKUPTICS].Stream + _predictionOffset;
+				ptrdiff_t size = CurrentStream - head;
+				if (size > 0)
+					data = { head, (unsigned)size };
+			}
+			_predictionOffset = -1;
+		}
+		return data;
 	}
 
 	NetEventData& operator<<(uint8_t it)
@@ -2341,6 +2367,16 @@ void TryRunTics()
 	// since it should only go up otherwise.
 	S_UpdateSounds(players[consoleplayer].camera, primaryLevel->LocalWorldTimer - min<int>(primaryLevel->LocalWorldTimer, worldTimer));
 	NetworkEntityManager::VerifyPredictedEntities();
+}
+
+void Net_StartPredictingEvent()
+{
+	NetEvents.StartPredicting();
+}
+
+TArrayView<uint8_t> Net_StopPredictingEvent()
+{
+	return NetEvents.StopPredicting();
 }
 
 void Net_NewClientTic()

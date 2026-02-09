@@ -532,7 +532,7 @@ bool	P_TeleportMove(AActor* thing, const DVector3 &pos, bool telefrag, bool modi
 		if ((StompAlwaysFrags && !(th->flags6 & MF6_NOTELEFRAG)) || (th->flags7 & MF7_ALWAYSTELEFRAG))
 		{
 			// Don't actually damage if predicting a teleport
-			if (thing->player == NULL || !(thing->player->cheats & CF_PREDICTING))
+			if (!thing->IsPredicting())
 				P_DamageMobj(th, thing, thing, TELEFRAG_DAMAGE, NAME_Telefrag, DMG_THRUSTLESS);
 			continue;
 		}
@@ -1475,7 +1475,7 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 		if (!P_CanCollideWith(tm.thing, thing)) return true;
 	}
 
-	if (tm.thing->player == NULL || !(tm.thing->player->cheats & CF_PREDICTING))
+	if (!tm.thing->IsPredicting())
 	{
 		// touchy object is alive, toucher is solid
 		if (thing->flags6 & MF6_TOUCHY && tm.thing->flags & MF_SOLID && thing->health > 0 &&
@@ -1518,7 +1518,7 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 	}
 
 	// [ED850] Player Prediction ends here. There is nothing else they could/should do.
-	if (tm.thing->player != NULL && (tm.thing->player->cheats & CF_PREDICTING))
+	if (tm.thing->IsPredicting())
 	{
 		solid = (thing->flags & MF_SOLID) &&
 			!(thing->flags & MF_NOCLIP) &&
@@ -2039,7 +2039,7 @@ AActor *P_CheckOnmobj(AActor *thing)
 
 	// Make sure we don't double call a collision with it.
 	if (!good && onmobj != nullptr && onmobj != thing->BlockingMobj.ForceGet()
-		&& (thing->player == nullptr || !(thing->player->cheats & CF_PREDICTING)))
+		&& !thing->IsPredicting())
 	{
 		P_CollidedWith(thing, onmobj);
 	}
@@ -2340,7 +2340,7 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 		AActor *BlockingMobj = thing->BlockingMobj.ForceGet();
 		// This gets called regardless of whether or not the following checks allow the thing to pass. This is because a player
 		// could step on top of an enemy but we still want it to register as a collision.
-		if (BlockingMobj != nullptr && (thing->player == nullptr || !(thing->player->cheats & CF_PREDICTING)))
+		if (BlockingMobj != nullptr && !thing->IsPredicting())
 			P_CollidedWith(thing, BlockingMobj);
 
 		// Solid wall or thing
@@ -2622,7 +2622,7 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 				if (!P_CheckPosition(thing, pos.XY(), true))	// check if some actor blocks us on the other side. (No line checks, because of the mess that'd create.)
 				{
 					auto blocking = thing->BlockingMobj.ForceGet();
-					if (blocking != nullptr && (thing->player == nullptr || !(thing->player->cheats && CF_PREDICTING)))
+					if (blocking != nullptr && !thing->IsPredicting())
 						P_CollidedWith(thing, blocking);
 
 					thing->SetXYZ(oldthingpos);
@@ -2712,7 +2712,7 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 			oldside = P_PointOnLineSide(spec.Oldrefpos, ld);
 			if (side != oldside && ld->special && !(thing->flags6 & MF6_NOTRIGGER))
 			{
-				if (thing->player && (thing->player->cheats & CF_PREDICTING))
+				if (thing->IsPredicting())
 				{
 					P_PredictLine(ld, thing, oldside, SPAC_Cross);
 				}
@@ -2743,7 +2743,7 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 	}
 
 	// [RH] Don't activate anything if just predicting
-	if (thing->player && (thing->player->cheats & CF_PREDICTING))
+	if (thing->IsPredicting())
 	{
 		thing->flags6 &= ~MF6_INTRYMOVE;
 		return true;
@@ -2805,7 +2805,7 @@ pushline:
 	thing->SetZ(oldz);
 
 	// [RH] Don't activate anything if just predicting
-	if (thing->player && (thing->player->cheats & CF_PREDICTING))
+	if (thing->IsPredicting())
 	{
 		return false;
 	}
@@ -3014,7 +3014,7 @@ void FSlide::HitSlideLine(line_t* ld)
 		{
 			tmmove.X = -tmmove.X / 2;
 			tmmove.Y /= 2; // absorb half the velocity
-			if (slidemo->player && slidemo->health > 0 && !(slidemo->player->cheats & CF_PREDICTING))
+			if (slidemo->player && slidemo->health > 0 && !slidemo->IsPredicting())
 			{
 				S_Sound(slidemo, CHAN_VOICE, 0, "*grunt", 1, ATTN_IDLE); // oooff!//   ^
 			}
@@ -3030,7 +3030,7 @@ void FSlide::HitSlideLine(line_t* ld)
 		{
 			tmmove.X /= 2; // absorb half the velocity
 			tmmove.Y = -tmmove.Y / 2;
-			if (slidemo->player && slidemo->health > 0 && !(slidemo->player->cheats & CF_PREDICTING))
+			if (slidemo->player && slidemo->health > 0 && !slidemo->IsPredicting())
 			{
 				S_Sound(slidemo, CHAN_VOICE, 0, "*grunt", 1, ATTN_IDLE); // oooff!
 			}
@@ -3062,7 +3062,7 @@ void FSlide::HitSlideLine(line_t* ld)
 	{
 		moveangle = ::deltaangle(deltaangle, lineangle);
 		movelen /= 2; // absorb
-		if (slidemo->player && slidemo->health > 0 && !(slidemo->player->cheats & CF_PREDICTING))
+		if (slidemo->player && slidemo->health > 0 && !slidemo->IsPredicting())
 		{
 			S_Sound(slidemo, CHAN_VOICE, 0, "*grunt", 1, ATTN_IDLE); // oooff!
 		}

@@ -394,6 +394,8 @@ static float CalcPitch(int pitchmask, float defpitch, float defpitchmax)
 //
 //==========================================================================
 
+#include "dobject.h"
+
 FSoundChan *SoundEngine::StartSound(int type, const void *source,
 	const FVector3 *pt, int channel, EChanFlags flags, FSoundID sound_id, float volume, float attenuation,
 	FRolloffInfo *forcedrolloff, float spitch, float startTime)
@@ -408,6 +410,8 @@ FSoundChan *SoundEngine::StartSound(int type, const void *source,
 
 	if (!isValidSoundId(sound_id) || volume <= 0 || nosfx || !SoundEnabled() || blockNewSounds)
 		return NULL;
+	if (!NetworkEntityManager::IsNewTic())
+		return nullptr;
 
 	// prevent crashes.
 	if (type == SOURCE_Unattached && pt == nullptr) type = SOURCE_None;
@@ -981,7 +985,7 @@ void SoundEngine::StopAllChannels ()
 
 void SoundEngine::RelinkSound (int sourcetype, const void *from, const void *to, const FVector3 *optpos)
 {
-	if (from == NULL)
+	if (from == NULL || !NetworkEntityManager::IsNewTic())
 		return;
 
 	FSoundChan *chan = Channels;
@@ -1019,6 +1023,9 @@ void SoundEngine::RelinkSound (int sourcetype, const void *from, const void *to,
 
 void SoundEngine::ChangeSoundVolume(int sourcetype, const void *source, int channel, double dvolume)
 {
+	if (!NetworkEntityManager::IsNewTic())
+		return;
+
 	float volume = float(dvolume);
 	// don't let volume get out of bounds
 	if (volume < 0.0)
@@ -1071,6 +1078,9 @@ void SoundEngine::ChangeSoundPitch(int sourcetype, const void *source, int chann
 
 void SoundEngine::SetPitch(FSoundChan *chan, float pitch)
 {
+	if (!NetworkEntityManager::IsNewTic())
+		return;
+
 	assert(chan != nullptr);
 	GSnd->ChannelPitch(chan, max(0.0001f, pitch));
 	chan->Pitch = pitch;
@@ -1416,7 +1426,7 @@ void SoundEngine::ChannelVirtualChanged(FISoundChannel *ichan, bool is_virtual)
 
 void SoundEngine::StopChannel(FSoundChan *chan)
 {
-	if (chan == NULL)
+	if (chan == NULL || !NetworkEntityManager::IsNewTic())
 		return;
 
 	if (chan->SysChannel != NULL)

@@ -811,6 +811,7 @@ class Object native
 	native play void EnableNetworking(bool enable);
 	native clearscope uint GetNetworkID() const;
 	native clearscope bool IsClientSide() const;
+	native clearscope bool IsPredicting() const;
 
 	native virtualscope void Destroy();
 

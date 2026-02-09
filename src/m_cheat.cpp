@@ -211,7 +211,8 @@ void cht_DoCheat (player_t *player, int cheat)
 			msg = GStrings.GetString("TXT_CHASECAM_ON");
 		else
 			msg = GStrings.GetString("TXT_CHASECAM_OFF");
-		R_ResetViewInterpolation ();
+		if (NetworkEntityManager::IsNewTic())
+			R_ResetViewInterpolation();
 		break;
 
 	case CHT_CHAINSAW:
@@ -529,7 +530,10 @@ void cht_DoCheat (player_t *player, int cheat)
 		return;
 
 	if (player == &players[consoleplayer])
-		Printf ("%s\n", msg);
+	{
+		if (NetworkEntityManager::IsNewTic())
+			Printf("%s\n", msg);
+	}
 	else if (cheat != CHT_CHASECAM)
 	{
 		FString message = GStrings.GetString("TXT_X_CHEATS");

@@ -850,8 +850,8 @@ inline int GetTics(AActor* actor, FState * newstate)
 
 bool AActor::SetState (FState *newstate, bool nofunction)
 {
-	if (debugfile && player && (player->cheats & CF_PREDICTING))
-		fprintf (debugfile, "for pl %d: SetState while predicting!\n", Level->PlayerNum(player));
+	if (debugfile && NetworkEntityManager::IsPredicting() && !IsPredicting())
+		fprintf (debugfile, "for actor %s: SetState while predicting!\n", GetClass()->TypeName.GetChars());
 	
 	int statelooplimit = 300000;
 	auto oldstate = state;
@@ -2851,7 +2851,7 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 		// if in a walking frame, stop moving
 		// killough 10/98:
 		// Don't affect main player when voodoo dolls stop:
-		if (player && player->mo == mo && !(player->cheats & CF_PREDICTING))
+		if (player && player->mo == mo)
 		{
 			PlayIdle (player->mo);
 		}
@@ -3019,7 +3019,7 @@ static void P_ZMovement (AActor *mo, double oldfloorz)
 //
 	if (mo->Z() <= mo->floorz)
 	{	// Hit the floor
-		if ((!mo->player || !(mo->player->cheats & CF_PREDICTING)) &&
+		if (!mo->IsPredicting() &&
 			mo->Sector->SecActTarget != NULL &&
 			mo->Sector->floorplane.ZatPoint(mo) == mo->floorz)
 		{ // [RH] Let the sector do something to the actor
@@ -3132,7 +3132,7 @@ static void P_ZMovement (AActor *mo, double oldfloorz)
 
 	if (mo->Top() > mo->ceilingz)
 	{ // hit the ceiling
-		if ((!mo->player || !(mo->player->cheats & CF_PREDICTING)) &&
+		if (!mo->IsPredicting() &&
 			mo->Sector->SecActTarget != NULL &&
 			mo->Sector->ceilingplane.ZatPoint(mo) == mo->ceilingz)
 		{ // [RH] Let the sector do something to the actor
@@ -3186,7 +3186,7 @@ static void P_ZMovement (AActor *mo, double oldfloorz)
 
 void P_CheckFakeFloorTriggers (AActor *mo, double oldz, bool oldz_has_viewheight)
 {
-	if (mo->player && (mo->player->cheats & CF_PREDICTING))
+	if (mo->IsPredicting())
 	{
 		return;
 	}
@@ -3308,7 +3308,7 @@ static void PlayerLandedOnThing (AActor *mo, AActor *onmobj)
 {
 	PlayerSquatView(mo, onmobj);
 
-	if (mo->player->cheats & CF_PREDICTING)
+	if (mo->IsPredicting())
 		return;
 
 	P_FallingDamage (mo);
@@ -4584,21 +4584,20 @@ void AActor::Tick ()
 	{
 		if (player)
 			player->crossingPortal = false;
-		if (!player || !(player->cheats & CF_PREDICTING))
+		// Handle powerup effects here so that the order is controlled
+		// by the order in the inventory, not the order in the thinker table
+		AActor *item = Inventory;
+		while (item != NULL)
 		{
-			// Handle powerup effects here so that the order is controlled
-			// by the order in the inventory, not the order in the thinker table
-			AActor *item = Inventory;
-			
-			while (item != NULL)
+			if (!(item->IsPredicting() ^ IsPredicting()))
 			{
 				IFVIRTUALPTRNAME(item, NAME_Inventory, DoEffect)
 				{
 					VMValue params[1] = { item };
 					VMCall(func, params, 1, nullptr, 0);
 				}
-				item = item->Inventory;
 			}
+			item = item->Inventory;
 		}
 
 		if (flags & MF_UNMORPHED)
@@ -4931,9 +4930,9 @@ void AActor::Tick ()
 			return;
 		}
 		// [ZZ] trigger hit floor/hit ceiling actions from XY movement
-		if (BlockingFloor && BlockingFloor != oldBlockingFloor && (!player || !(player->cheats & CF_PREDICTING)) && BlockingFloor->SecActTarget)
+		if (BlockingFloor && BlockingFloor != oldBlockingFloor && !IsPredicting() && BlockingFloor->SecActTarget)
 			BlockingFloor->TriggerSectorActions(this, SECSPAC_HitFloor);
-		if (BlockingCeiling && BlockingCeiling != oldBlockingCeiling && (!player || !(player->cheats & CF_PREDICTING)) && BlockingCeiling->SecActTarget)
+		if (BlockingCeiling && BlockingCeiling != oldBlockingCeiling && !IsPredicting() && BlockingCeiling->SecActTarget)
 			BlockingCeiling->TriggerSectorActions(this, SECSPAC_HitCeiling);
 		if (Vel.X == 0 && Vel.Y == 0) // Actors at rest
 		{
@@ -4990,7 +4989,7 @@ void AActor::Tick ()
 						|| ((onmo->activationtype & THINGSPEC_MissileTrigger) && (flags & MF_MISSILE))
 						) && (Level->maptime > onmo->lastbump)) // Leave the bumper enough time to go away
 					{
-						if (player == NULL || !(player->cheats & CF_PREDICTING))
+						if (!IsPredicting())
 						{
 							if (P_ActivateThingSpecial(onmo, this))
 								onmo->lastbump = Level->maptime + TICRATE;
@@ -5033,14 +5032,8 @@ void AActor::Tick ()
 
 		UpdateWaterLevel ();
 
-		// [RH] Don't advance if predicting a player
-		if (player && (player->cheats & CF_PREDICTING))
-		{
-			return;
-		}
-
 		// Check for poison damage, but only once per PoisonPeriod tics (or once per second if none).
-		if (PoisonDurationReceived && (Level->time % (PoisonPeriodReceived ? PoisonPeriodReceived : TICRATE) == 0))
+		if (PoisonDurationReceived && !IsPredicting() && (Level->time % (PoisonPeriodReceived ? PoisonPeriodReceived : TICRATE) == 0))
 		{
 			P_DamageMobj(this, NULL, Poisoner, PoisonDamageReceived, PoisonDamageTypeReceived != NAME_None ? PoisonDamageTypeReceived : (FName)NAME_Poison, 0);
 
@@ -5052,24 +5045,27 @@ void AActor::Tick ()
 		}
 	}
 
-	if (Sector->Flags & SECF_KILLMONSTERS && Z() == floorz && player == nullptr && (flags & MF_SHOOTABLE) &&
-	    !(flags & MF_FLOAT))
+	if (!IsPredicting())
 	{
-		P_DamageMobj(this, nullptr, nullptr, TELEFRAG_DAMAGE, NAME_InstantDeath);
-		// must have been removed
-		if (ObjectFlags & OF_EuthanizeMe)
-			return;
-	}
-	//[inkoalawetrust] Genericized level damage handling that makes sector, 3D floor, and TERRAIN flat damage affect
-	//monsters and other NPCs too.
-	P_ActorOnSpecial3DFloor(
-		this); // 3D floors must be checked separately to see if their control sector allows non-player damage
-	if (checkForSpecialSector(this, Sector))
-	{
-		P_ActorInSpecialSector(this, Sector);
-		if (!isAbove(Sector->floorplane.ZatPoint(this)) ||
-		    waterlevel) // Actor must be touching the floor for TERRAIN flats.
-			P_ActorOnSpecialFlat(this, P_GetThingFloorType(this));
+		if (Sector->Flags & SECF_KILLMONSTERS && Z() == floorz && player == nullptr && (flags & MF_SHOOTABLE) &&
+			!(flags & MF_FLOAT))
+		{
+			P_DamageMobj(this, nullptr, nullptr, TELEFRAG_DAMAGE, NAME_InstantDeath);
+			// must have been removed
+			if (ObjectFlags & OF_EuthanizeMe)
+				return;
+		}
+		//[inkoalawetrust] Genericized level damage handling that makes sector, 3D floor, and TERRAIN flat damage affect
+		//monsters and other NPCs too.
+		P_ActorOnSpecial3DFloor(
+			this); // 3D floors must be checked separately to see if their control sector allows non-player damage
+		if (checkForSpecialSector(this, Sector))
+		{
+			P_ActorInSpecialSector(this, Sector);
+			if (!isAbove(Sector->floorplane.ZatPoint(this)) ||
+				waterlevel) // Actor must be touching the floor for TERRAIN flats.
+				P_ActorOnSpecialFlat(this, P_GetThingFloorType(this));
+		}
 	}
 
 	assert (state != NULL);
@@ -5100,7 +5096,7 @@ void AActor::Tick ()
 		CalcBones(false);
 	}
 
-	if (tics == -1 || state->GetCanRaise())
+	if ((tics == -1 || state->GetCanRaise()) && !IsPredicting())
 	{
 		int respawn_monsters = G_SkillProperty(SKILLP_Respawn);
 		// check for nightmare respawn
@@ -7333,7 +7329,7 @@ enum HitWaterFlags
 
 bool P_HitWater (AActor * thing, sector_t * sec, const DVector3 &pos, bool checkabove, bool alert, bool force, int flags)
 {
-	if (thing->player && (thing->player->cheats & CF_PREDICTING))
+	if (thing->IsPredicting())
 		return false;
 
 	AActor *mo = NULL;

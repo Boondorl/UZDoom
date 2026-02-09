@@ -164,8 +164,10 @@ CCMD (fly)
 	if (CheckCheatmode ())
 		return;
 
+	Net_StartPredictingEvent();
 	Net_WriteInt8 (DEM_GENERICCHEAT);
 	Net_WriteInt8 (CHT_FLY);
+	P_AddPredictedEvent(Net_StopPredictingEvent());
 }
 
 /*
@@ -180,8 +182,10 @@ CCMD (noclip)
 	if (CheckCheatmode ())
 		return;
 
+	Net_StartPredictingEvent();
 	Net_WriteInt8 (DEM_GENERICCHEAT);
 	Net_WriteInt8 (CHT_NOCLIP);
+	P_AddPredictedEvent(Net_StopPredictingEvent());
 }
 
 CCMD (noclip2)
@@ -189,8 +193,10 @@ CCMD (noclip2)
 	if (CheckCheatmode())
 		return;
 
+	Net_StartPredictingEvent();
 	Net_WriteInt8 (DEM_GENERICCHEAT);
 	Net_WriteInt8 (CHT_NOCLIP2);
+	P_AddPredictedEvent(Net_StopPredictingEvent());
 }
 
 CCMD (powerup)
@@ -207,6 +213,7 @@ CCMD (morphme)
 	if (CheckCheatmode ())
 		return;
 
+	// Boon TODO: Predict me
 	if (argv.argc() == 1)
 	{
 		Net_WriteInt8 (DEM_GENERICCHEAT);
@@ -266,8 +273,10 @@ CCMD (chase)
 		if (gamestate != GS_LEVEL || (!(dmflags2 & DF2_CHASECAM) && deathmatch && CheckCheatmode ()))
 			return;
 
+		Net_StartPredictingEvent();
 		Net_WriteInt8 (DEM_GENERICCHEAT);
 		Net_WriteInt8 (CHT_CHASECAM);
+		P_AddPredictedEvent(Net_StopPredictingEvent());
 	}
 }
 

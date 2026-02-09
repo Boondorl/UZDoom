@@ -178,7 +178,8 @@ class PlayerPawn : Actor
 			if (health > 0) Height = FullHeight;
 		}
 
-		if (player && bWeaponLevel2Ended && !(player.cheats & CF_PREDICTING))
+		// Boon TODO: This needs a prediction check on the weapon
+		if (player && bWeaponLevel2Ended)
 		{
 			bWeaponLevel2Ended = false;
 			if (player.ReadyWeapon != NULL && player.ReadyWeapon.bPowered_Up)
@@ -1388,7 +1389,7 @@ class PlayerPawn : Actor
 				Thrust(sidemove, a);
 			}
 
-			if (!(player.cheats & CF_PREDICTING) && (forwardmove != 0 || sidemove != 0))
+			if (forwardmove != 0 || sidemove != 0)
 			{
 				PlayRunning ();
 			}
@@ -1501,7 +1502,7 @@ class PlayerPawn : Actor
 				Vel.Z += jumpvelz;
 				bOnMobj = false;
 				player.jumpTics = -1;
-				if (!(player.cheats & CF_PREDICTING)) A_StartSound("*jump", CHAN_BODY);
+				if (!IsPredicting()) A_StartSound("*jump", CHAN_BODY);
 			}
 		}
 	}
@@ -1535,14 +1536,15 @@ class PlayerPawn : Actor
 				{
 					bFly = true;
 					bNoGravity = true;
-					if ((Vel.Z <= -39) && !(player.cheats & CF_PREDICTING))
+					if ((Vel.Z <= -39) && !IsPredicting())
 					{ // Stop falling scream
 						A_StopSound(CHAN_VOICE);
 					}
 				}
 			}
-			else if (cmd.upmove > 0 && !(player.cheats & CF_PREDICTING))
+			else if (cmd.upmove > 0)
 			{
+				// Boon TODO: Needs a prediction check on the item
 				let fly = FindInventory("ArtiFly");
 				if (fly != NULL)
 				{
@@ -1719,7 +1721,7 @@ class PlayerPawn : Actor
 				player.jumpTics = 0;
 			}
 		}
-		if (Alternative && !(player.cheats & CF_PREDICTING))
+		if (Alternative)
 		{
 			MorphPlayerThink ();
 		}
@@ -1729,15 +1731,19 @@ class PlayerPawn : Actor
 		CalcHeight ();
 		if (bMakeFootsteps) MakeFootsteps();
 
-		if (!(player.cheats & CF_PREDICTING))
+		CheckEnvironment();
+		player.mo.CheckUse();
+		if (!IsPredicting() || sv_enhancedprediction)
 		{
-			CheckEnvironment();
+			// Boon TODO: Unmorphing should always be prediction safe.
 			// Note that after this point the PlayerPawn may have changed due to getting unmorphed or getting its skull popped so 'self' is no longer safe to use.
 			// This also must not read mo into a local variable because several functions in this block can change the attached PlayerPawn.
-			player.mo.CheckUse();
 			player.mo.CheckUndoMorph();
 			// Cycle psprites.
 			player.mo.TickPSprites();
+		}
+		if (!IsPredicting())
+		{
 			// Other Counters
 			if (player.damagecount)	player.damagecount--;
 			if (player.bonuscount) player.bonuscount--;

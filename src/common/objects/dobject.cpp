@@ -666,6 +666,17 @@ void DObject::CheckIfSerialized () const
 	}
 }
 
+static int IsPredicting(DObject* self)
+{
+	return self->IsPredicting();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DObject, IsPredicting, IsPredicting)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	ACTION_RETURN_BOOL(self->IsPredicting());
+}
+
 DEFINE_ACTION_FUNCTION(DObject, MSTime)
 {
 	ACTION_RETURN_INT((uint32_t)I_msTime());
@@ -809,7 +820,8 @@ void NetworkEntityManager::VerifyPredictedEntities()
 		if (e->ObjectFlags & (OF_EuthanizeMe | OF_Sentinel))
 			continue;
 
-		DPrintf(DMSG_WARNING, TEXTCOLOR_RED "Spawned non-client-side Object %s while predicting\n", e->GetClass()->TypeName.GetChars());
+		if (e->GetNetworkOwner() != consoleplayer)
+			DPrintf(DMSG_WARNING, TEXTCOLOR_RED "Spawned non-client-side Object %s while predicting\n", e->GetClass()->TypeName.GetChars());
 		e->SetPredicted(true);
 		s_predictedEntities.Push(e);
 	}
@@ -862,12 +874,13 @@ bool NetworkEntityManager::IsPredicting()
 	return s_bClientPredicting;
 }
 
+// Boon TODO: This needs a lot more work for handling prediction
 void NetworkEntityManager::SetNetworkOwner(unsigned playNum, DObject* ent)
 {
 	// Objects can only belong to clients that are aware the object exists
 	// in the first place. Client-side objects should automatically be considered
 	// owned by their respective clients.
-	if (!ent->IsNetworked() || ent->GetNetworkID() == WorldNetID)
+	if (!ent->IsPredicted() && (!ent->IsNetworked() || ent->GetNetworkID() == WorldNetID))
 		return;
 
 	const uint32_t id = GetClientID(playNum);
@@ -964,6 +977,16 @@ void NetworkEntityManager::TransferTempOwners()
 	s_tempOwnedEntities.Clear();
 }
 
+void NetworkEntityManager::SetNewTic(bool newTic)
+{
+	s_bNewTic = newTic;
+}
+
+bool NetworkEntityManager::IsNewTic()
+{
+	return s_bNewTic;
+}
+
 //==========================================================================
 //
 //
@@ -997,6 +1020,7 @@ void DObject::RemoveFromNetwork()
 {
 	NetworkEntityManager::RemoveNetworkEntity(this);
 	NetworkEntityManager::RemovePredictedEntity(this);
+	NetworkEntityManager::RemoveNetworkOwner(this);
 }
 
 static unsigned int GetNetworkID(DObject* const self)
