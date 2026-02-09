@@ -1307,6 +1307,9 @@ double GetFriction(const sector_t *self, int plane, double *pMoveFac)
 
  bool sector_t::TriggerSectorActions(AActor *thing, int activation)
  {
+	 if (thing != nullptr && thing->IsPredicting())
+		 return false;
+
 	 AActor *act = SecActTarget;
 	 bool res = false;
 

@@ -1552,7 +1552,8 @@ void P_FallingDamage (AActor *actor)
 			damage = TELEFRAG_DAMAGE - 1;
 		}
 	}
-	P_DamageMobj (actor, NULL, NULL, damage, NAME_Falling);
+	if (!actor->IsPredicting())
+		P_DamageMobj (actor, NULL, NULL, damage, NAME_Falling);
 }
 
 //----------------------------------------------------------------------------
@@ -1604,9 +1605,6 @@ DEFINE_ACTION_FUNCTION(APlayerPawn, CheckMusicChange)
 
 void P_CheckEnvironment(player_t *player)
 {
-	if (player->mo->IsPredicting())
-		return;
-
 	if (player->mo->Vel.Z <= -player->mo->FloatVar(NAME_FallingScreamMinSpeed) &&
 		player->mo->Vel.Z >= -player->mo->FloatVar(NAME_FallingScreamMaxSpeed) && player->mo->alternative == nullptr &&
 		player->mo->waterlevel == 0)

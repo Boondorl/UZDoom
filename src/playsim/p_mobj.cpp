@@ -3019,8 +3019,7 @@ static void P_ZMovement (AActor *mo, double oldfloorz)
 //
 	if (mo->Z() <= mo->floorz)
 	{	// Hit the floor
-		if (!mo->IsPredicting() &&
-			mo->Sector->SecActTarget != NULL &&
+		if (mo->Sector->SecActTarget != NULL &&
 			mo->Sector->floorplane.ZatPoint(mo) == mo->floorz)
 		{ // [RH] Let the sector do something to the actor
 			mo->Sector->TriggerSectorActions(mo, SECSPAC_HitFloor);
@@ -3132,8 +3131,7 @@ static void P_ZMovement (AActor *mo, double oldfloorz)
 
 	if (mo->Top() > mo->ceilingz)
 	{ // hit the ceiling
-		if (!mo->IsPredicting() &&
-			mo->Sector->SecActTarget != NULL &&
+		if (mo->Sector->SecActTarget != NULL &&
 			mo->Sector->ceilingplane.ZatPoint(mo) == mo->ceilingz)
 		{ // [RH] Let the sector do something to the actor
 			mo->Sector->TriggerSectorActions (mo, SECSPAC_HitCeiling);
@@ -3186,10 +3184,6 @@ static void P_ZMovement (AActor *mo, double oldfloorz)
 
 void P_CheckFakeFloorTriggers (AActor *mo, double oldz, bool oldz_has_viewheight)
 {
-	if (mo->IsPredicting())
-	{
-		return;
-	}
 	sector_t *sec = mo->Sector;
 	assert (sec != NULL);
 	if (sec == NULL)
@@ -3307,9 +3301,6 @@ static void PlayerSquatView(AActor *self, AActor *onmobj)
 static void PlayerLandedOnThing (AActor *mo, AActor *onmobj)
 {
 	PlayerSquatView(mo, onmobj);
-
-	if (mo->IsPredicting())
-		return;
 
 	P_FallingDamage (mo);
 
@@ -4548,6 +4539,7 @@ void AActor::Tick ()
 	if (!isFrozen())
 		TickBehaviors();
 
+	const bool predicting = IsPredicting();
 	if (flags5 & MF5_NOINTERACTION)
 	{
 		// only do the minimally necessary things here to save time:
@@ -4592,7 +4584,7 @@ void AActor::Tick ()
 		AActor *item = Inventory;
 		while (item != NULL)
 		{
-			if (!(item->IsPredicting() ^ IsPredicting()))
+			if (!(item->IsPredicting() ^ predicting))
 			{
 				IFVIRTUALPTRNAME(item, NAME_Inventory, DoEffect)
 				{
@@ -4624,36 +4616,39 @@ void AActor::Tick ()
 			return;
 		}
 
-		if (effects & FX_ROCKET) 
+		if (!predicting)
 		{
-			if (++smokecounter == 4)
+			if (effects & FX_ROCKET)
 			{
-				// add some smoke behind the rocket 
-				smokecounter = 0;
-				AActor *th = Spawn(Level, "RocketSmokeTrail", Vec3Offset(-Vel), ALLOW_REPLACE);
-				if (th)
+				if (++smokecounter == 4)
 				{
-					th->tics -= pr_rockettrail()&3;
-					if (th->tics < 1) th->tics = 1;
-					if (!(cl_rockettrails & 2)) th->renderflags |= RF_INVISIBLE;
+					// add some smoke behind the rocket 
+					smokecounter = 0;
+					AActor* th = Spawn(Level, "RocketSmokeTrail", Vec3Offset(-Vel), ALLOW_REPLACE);
+					if (th)
+					{
+						th->tics -= pr_rockettrail() & 3;
+						if (th->tics < 1) th->tics = 1;
+						if (!(cl_rockettrails & 2)) th->renderflags |= RF_INVISIBLE;
+					}
 				}
 			}
-		}
-		else if (effects & FX_GRENADE) 
-		{
-			if (++smokecounter == 8)
+			else if (effects & FX_GRENADE)
 			{
-				smokecounter = 0;
-				DAngle moveangle = Vel.Angle();
-				double xo = -moveangle.Cos() * radius * 2 + pr_rockettrail() / 64.;
-				double yo = -moveangle.Sin() * radius * 2 + pr_rockettrail() / 64.;
-				double zo = -Height * Vel.Z / 8. + Height * (2 / 3.);
-				AActor * th = Spawn(Level, "GrenadeSmokeTrail", Vec3Offset(xo, yo, zo), ALLOW_REPLACE);
-				if (th)
+				if (++smokecounter == 8)
 				{
-					th->tics -= pr_rockettrail()&3;
-					if (th->tics < 1) th->tics = 1;
-					if (!(cl_rockettrails & 2)) th->renderflags |= RF_INVISIBLE;
+					smokecounter = 0;
+					DAngle moveangle = Vel.Angle();
+					double xo = -moveangle.Cos() * radius * 2 + pr_rockettrail() / 64.;
+					double yo = -moveangle.Sin() * radius * 2 + pr_rockettrail() / 64.;
+					double zo = -Height * Vel.Z / 8. + Height * (2 / 3.);
+					AActor* th = Spawn(Level, "GrenadeSmokeTrail", Vec3Offset(xo, yo, zo), ALLOW_REPLACE);
+					if (th)
+					{
+						th->tics -= pr_rockettrail() & 3;
+						if (th->tics < 1) th->tics = 1;
+						if (!(cl_rockettrails & 2)) th->renderflags |= RF_INVISIBLE;
+					}
 				}
 			}
 		}
@@ -4933,9 +4928,9 @@ void AActor::Tick ()
 			return;
 		}
 		// [ZZ] trigger hit floor/hit ceiling actions from XY movement
-		if (BlockingFloor && BlockingFloor != oldBlockingFloor && !IsPredicting() && BlockingFloor->SecActTarget)
+		if (BlockingFloor && BlockingFloor != oldBlockingFloor && BlockingFloor->SecActTarget)
 			BlockingFloor->TriggerSectorActions(this, SECSPAC_HitFloor);
-		if (BlockingCeiling && BlockingCeiling != oldBlockingCeiling && !IsPredicting() && BlockingCeiling->SecActTarget)
+		if (BlockingCeiling && BlockingCeiling != oldBlockingCeiling && BlockingCeiling->SecActTarget)
 			BlockingCeiling->TriggerSectorActions(this, SECSPAC_HitCeiling);
 		if (Vel.X == 0 && Vel.Y == 0) // Actors at rest
 		{
@@ -4992,15 +4987,12 @@ void AActor::Tick ()
 						|| ((onmo->activationtype & THINGSPEC_MissileTrigger) && (flags & MF_MISSILE))
 						) && (Level->maptime > onmo->lastbump)) // Leave the bumper enough time to go away
 					{
-						if (!IsPredicting())
-						{
-							if (P_ActivateThingSpecial(onmo, this))
-								onmo->lastbump = Level->maptime + TICRATE;
-						}
+						if (P_ActivateThingSpecial(onmo, this))
+							onmo->lastbump = Level->maptime + TICRATE;
 					}
 					if (Vel.Z != 0 && (BounceFlags & BOUNCE_Actors))
 					{
-						if (flags & MF_MISSILE)
+						if ((flags & MF_MISSILE) && !predicting)
 							P_DoMissileDamage(this, onmo);
 
 						// If the bouncer is a missile and has hit the other actor it needs to be exploded here
@@ -5036,7 +5028,7 @@ void AActor::Tick ()
 		UpdateWaterLevel ();
 
 		// Check for poison damage, but only once per PoisonPeriod tics (or once per second if none).
-		if (PoisonDurationReceived && !IsPredicting() && (Level->time % (PoisonPeriodReceived ? PoisonPeriodReceived : TICRATE) == 0))
+		if (PoisonDurationReceived && !predicting && (Level->time % (PoisonPeriodReceived ? PoisonPeriodReceived : TICRATE) == 0))
 		{
 			P_DamageMobj(this, NULL, Poisoner, PoisonDamageReceived, PoisonDamageTypeReceived != NAME_None ? PoisonDamageTypeReceived : (FName)NAME_Poison, 0);
 
@@ -5048,7 +5040,7 @@ void AActor::Tick ()
 		}
 	}
 
-	if (!IsPredicting())
+	if (!predicting)
 	{
 		if (Sector->Flags & SECF_KILLMONSTERS && Z() == floorz && player == nullptr && (flags & MF_SHOOTABLE) &&
 			!(flags & MF_FLOAT))
@@ -5099,7 +5091,7 @@ void AActor::Tick ()
 		CalcBones(false);
 	}
 
-	if ((tics == -1 || state->GetCanRaise()) && !IsPredicting())
+	if ((tics == -1 || state->GetCanRaise()) && !predicting)
 	{
 		int respawn_monsters = G_SkillProperty(SKILLP_Respawn);
 		// check for nightmare respawn
@@ -7332,9 +7324,6 @@ enum HitWaterFlags
 
 bool P_HitWater (AActor * thing, sector_t * sec, const DVector3 &pos, bool checkabove, bool alert, bool force, int flags)
 {
-	if (thing->IsPredicting())
-		return false;
-
 	AActor *mo = NULL;
 	FSplashDef *splash;
 	int terrainnum;
@@ -7407,6 +7396,7 @@ foundone:
 	const bool dealDamageOnLand = thing->player
 		&& Terrains[terrainnum].DamageOnLand
 		&& Terrains[terrainnum].DamageAmount
+		&& !thing->IsPredicting()
 		&& (thing->Level->time & Terrains[terrainnum].DamageTimeMask);
 	if (dealDamageOnLand)
 		P_DamageMobj(thing, nullptr, nullptr, Terrains[terrainnum].DamageAmount, Terrains[terrainnum].DamageMOD);
@@ -7427,7 +7417,7 @@ foundone:
 	if (flags & THW_SMALL || thing->Mass < 10)
 		smallsplash = true;
 
-	if (!(thing->flags3 & MF3_DONTSPLASH))
+	if (!(thing->flags3 & MF3_DONTSPLASH) && !thing->IsPredicting())
 	{
 		if (smallsplash && splash->SmallSplash)
 		{

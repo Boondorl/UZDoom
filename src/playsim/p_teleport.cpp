@@ -80,7 +80,7 @@ DEFINE_ACTION_FUNCTION(AActor, SpawnTeleportFog)
 
 bool P_Teleport (AActor *thing, DVector3 pos, DAngle angle, int flags)
 {
-	bool predicting = thing->IsPredicting();
+	const bool predicting = thing->IsPredicting();
 
 	DVector3 old;
 	double aboveFloor;
@@ -386,7 +386,6 @@ bool FLevelLocals::EV_Teleport (int tid, int tag, line_t *line, int side, AActor
 	{ // Teleport function called with an invalid actor
 		return false;
 	}
-	bool predicting = thing->IsPredicting();
 	if (thing->flags2 & MF2_NOTELEPORT)
 	{
 		return false;
@@ -447,7 +446,7 @@ bool FLevelLocals::EV_Teleport (int tid, int tag, line_t *line, int side, AActor
 				thing->Vel.Y = vy*c + vx*s;
 			}
 		}
-		if (vx == 0 && vy == 0 && thing->player != NULL && thing->player->mo == thing && !predicting)
+		if (vx == 0 && vy == 0 && thing->player != NULL && thing->player->mo == thing)
 		{
 			PlayIdle (thing->player->mo);
 		}

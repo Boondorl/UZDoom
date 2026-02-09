@@ -151,6 +151,9 @@ bool P_CanCollideWith(AActor *tmthing, AActor *thing)
 
 void P_CollidedWith(AActor* const collider, AActor* const collidee)
 {
+	if (collider->IsPredicting())
+		return;
+
 	{
 		IFVIRTUALPTR(collider, AActor, CollidedWith)
 		{
@@ -1475,38 +1478,38 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 		if (!P_CanCollideWith(tm.thing, thing)) return true;
 	}
 
-	if (!tm.thing->IsPredicting())
+	// touchy object is alive, toucher is solid
+	if (thing->flags6 & MF6_TOUCHY && tm.thing->flags & MF_SOLID && thing->health > 0 &&
+		// Thing is an armed mine or a sentient thing
+		(thing->flags6 & MF6_ARMED || thing->IsSentient()) &&
+		// either different classes or players
+		(thing->player || thing->GetClass() != tm.thing->GetClass()) &&
+		// or different species if DONTHARMSPECIES
+		(!(thing->flags6 & MF6_DONTHARMSPECIES) || thing->GetSpecies() != tm.thing->GetSpecies()) &&
+		// touches vertically
+		topz >= tm.thing->Z() && tm.thing->Top() >= thing->Z() &&
+		// prevents lost souls from exploding when fired by pain elementals
+		(thing->master != tm.thing && tm.thing->master != thing))
+		// Difference with MBF: MBF hardcodes the LS/PE check and lets actors of the same species
+		// but different classes trigger the touchiness, but that seems less straightforwards.
 	{
-		// touchy object is alive, toucher is solid
-		if (thing->flags6 & MF6_TOUCHY && tm.thing->flags & MF_SOLID && thing->health > 0 &&
-			// Thing is an armed mine or a sentient thing
-			(thing->flags6 & MF6_ARMED || thing->IsSentient()) &&
-			// either different classes or players
-			(thing->player || thing->GetClass() != tm.thing->GetClass()) &&
-			// or different species if DONTHARMSPECIES
-			(!(thing->flags6 & MF6_DONTHARMSPECIES) || thing->GetSpecies() != tm.thing->GetSpecies()) &&
-			// touches vertically
-			topz >= tm.thing->Z() && tm.thing->Top() >= thing->Z() &&
-			// prevents lost souls from exploding when fired by pain elementals
-			(thing->master != tm.thing && tm.thing->master != thing))
-			// Difference with MBF: MBF hardcodes the LS/PE check and lets actors of the same species
-			// but different classes trigger the touchiness, but that seems less straightforwards.
+		if (!tm.thing->IsPredicting())
 		{
 			thing->flags6 &= ~MF6_ARMED; // Disarm
 			P_DamageMobj(thing, NULL, NULL, thing->health, NAME_None, DMG_FORCED);  // kill object
-			return true;
 		}
+		return true;
+	}
 
-		// Check for MF6_BUMPSPECIAL
-		// By default, only players can activate things by bumping into them
-		if ((thing->flags6 & MF6_BUMPSPECIAL) && ((tm.thing->player != NULL)
-			|| ((thing->activationtype & THINGSPEC_MonsterTrigger) && (tm.thing->flags3 & MF3_ISMONSTER))
-			|| ((thing->activationtype & THINGSPEC_MissileTrigger) && (tm.thing->flags & MF_MISSILE))
-			) && (thing->Level->maptime > thing->lastbump)) // Leave the bumper enough time to go away
-		{
-			if (P_ActivateThingSpecial(thing, tm.thing))
-				thing->lastbump = thing->Level->maptime + TICRATE;
-		}
+	// Check for MF6_BUMPSPECIAL
+	// By default, only players can activate things by bumping into them
+	if ((thing->flags6 & MF6_BUMPSPECIAL) && ((tm.thing->player != NULL)
+		|| ((thing->activationtype & THINGSPEC_MonsterTrigger) && (tm.thing->flags3 & MF3_ISMONSTER))
+		|| ((thing->activationtype & THINGSPEC_MissileTrigger) && (tm.thing->flags & MF_MISSILE))
+		) && (thing->Level->maptime > thing->lastbump)) // Leave the bumper enough time to go away
+	{
+		if (P_ActivateThingSpecial(thing, tm.thing))
+			thing->lastbump = thing->Level->maptime + TICRATE;
 	}
 
 	// Check for skulls slamming into things
@@ -1517,32 +1520,25 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 		return res;
 	}
 
-	// [ED850] Player Prediction ends here. There is nothing else they could/should do.
-	if (tm.thing->IsPredicting())
-	{
-		solid = (thing->flags & MF_SOLID) &&
-			!(thing->flags & MF_NOCLIP) &&
-			((tm.thing->flags & MF_SOLID) || (tm.thing->flags6 & MF6_BLOCKEDBYSOLIDACTORS));
-
-		return !solid || unblocking;
-	}
-
 	// Check for blasted thing running into another
 	if ((tm.thing->flags2 & MF2_BLASTED) && (thing->flags & MF_SHOOTABLE))
 	{
 		if (!(thing->flags2 & MF2_BOSS) && (thing->flags3 & MF3_ISMONSTER) && !(thing->flags3 & MF3_DONTBLAST))
 		{
 			// ideally this should take the mass factor into account
-			thing->Vel += tm.thing->Vel.XY();
-			if (fabs(thing->Vel.X) + fabs(thing->Vel.Y) > 3.)
+			if (!tm.thing->IsPredicting())
 			{
-				int newdam;
-				damage = (tm.thing->Mass / 100) + 1;
-				newdam = P_DamageMobj(thing, tm.thing, tm.thing, damage, tm.thing->DamageType);
-				P_TraceBleed(newdam > 0 ? newdam : damage, thing, tm.thing);
-				damage = (thing->Mass / 100) + 1;
-				newdam = P_DamageMobj(tm.thing, thing, thing, damage >> 2, tm.thing->DamageType);
-				P_TraceBleed(newdam > 0 ? newdam : damage, tm.thing, thing);
+				thing->Vel += tm.thing->Vel.XY();
+				if (fabs(thing->Vel.X) + fabs(thing->Vel.Y) > 3.)
+				{
+					int newdam;
+					damage = (tm.thing->Mass / 100) + 1;
+					newdam = P_DamageMobj(thing, tm.thing, tm.thing, damage, tm.thing->DamageType);
+					P_TraceBleed(newdam > 0 ? newdam : damage, thing, tm.thing);
+					damage = (thing->Mass / 100) + 1;
+					newdam = P_DamageMobj(tm.thing, thing, thing, damage >> 2, tm.thing->DamageType);
+					P_TraceBleed(newdam > 0 ? newdam : damage, tm.thing, thing);
+				}
 			}
 			return false;
 		}
@@ -1651,14 +1647,17 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 				if (check == NULL || !*check)
 				{
 					tm.LastRipped[thing] = true;
-					P_DoMissileDamage(tm.thing, thing);
-					if (thing->flags2 & MF2_PUSHABLE
-						&& !(tm.thing->flags2 & MF2_CANNOTPUSH))
-					{ // Push thing
-						if (thing->lastpush != tm.PushTime)
-						{
-							thing->Vel += tm.thing->Vel.XY() * thing->pushfactor;
-							thing->lastpush = tm.PushTime;
+					if (!tm.thing->IsPredicting())
+					{
+						P_DoMissileDamage(tm.thing, thing);
+						if (thing->flags2 & MF2_PUSHABLE
+							&& !(tm.thing->flags2 & MF2_CANNOTPUSH))
+						{ // Push thing
+							if (thing->lastpush != tm.PushTime)
+							{
+								thing->Vel += tm.thing->Vel.XY() * thing->pushfactor;
+								thing->lastpush = tm.PushTime;
+							}
 						}
 					}
 				}
@@ -1667,7 +1666,8 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 			}
 		}
 
-		P_DoMissileDamage(tm.thing, thing);
+		if (!tm.thing->IsPredicting())
+			P_DoMissileDamage(tm.thing, thing);
 
 		if ((thing->flags7 & MF7_THRUREFLECT) && (thing->flags2 & MF2_REFLECTIVE) && (tm.thing->flags & MF_MISSILE))
 		{
@@ -1680,7 +1680,7 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 		}
 		return false;		// don't traverse any more
 	}
-	if (thing->flags2 & MF2_PUSHABLE && !(tm.thing->flags2 & MF2_CANNOTPUSH))
+	if (thing->flags2 & MF2_PUSHABLE && !(tm.thing->flags2 & MF2_CANNOTPUSH) && !tm.thing->IsPredicting())
 	{ // Push thing
 
 		if (thing->lastpush != tm.PushTime)
@@ -2038,11 +2038,8 @@ AActor *P_CheckOnmobj(AActor *thing)
 	good = P_TestMobjZ(thing, false, &onmobj);
 
 	// Make sure we don't double call a collision with it.
-	if (!good && onmobj != nullptr && onmobj != thing->BlockingMobj.ForceGet()
-		&& !thing->IsPredicting())
-	{
+	if (!good && onmobj != nullptr && onmobj != thing->BlockingMobj.ForceGet())
 		P_CollidedWith(thing, onmobj);
-	}
 
 	thing->SetZ(oldz);
 	return good ? NULL : onmobj;
@@ -2340,7 +2337,7 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 		AActor *BlockingMobj = thing->BlockingMobj.ForceGet();
 		// This gets called regardless of whether or not the following checks allow the thing to pass. This is because a player
 		// could step on top of an enemy but we still want it to register as a collision.
-		if (BlockingMobj != nullptr && !thing->IsPredicting())
+		if (BlockingMobj != nullptr)
 			P_CollidedWith(thing, BlockingMobj);
 
 		// Solid wall or thing
@@ -2622,7 +2619,7 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 				if (!P_CheckPosition(thing, pos.XY(), true))	// check if some actor blocks us on the other side. (No line checks, because of the mess that'd create.)
 				{
 					auto blocking = thing->BlockingMobj.ForceGet();
-					if (blocking != nullptr && !thing->IsPredicting())
+					if (blocking != nullptr)
 						P_CollidedWith(thing, blocking);
 
 					thing->SetXYZ(oldthingpos);
@@ -2742,13 +2739,6 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 		}
 	}
 
-	// [RH] Don't activate anything if just predicting
-	if (thing->IsPredicting())
-	{
-		thing->flags6 &= ~MF6_INTRYMOVE;
-		return true;
-	}
-
 	// [RH] Check for crossing fake floor/ceiling
 	newsec = thing->Sector;
 	if (newsec->heightsec && oldsec->heightsec && newsec->SecActTarget)
@@ -2804,13 +2794,7 @@ pushline:
 	thing->flags6 &= ~MF6_INTRYMOVE;
 	thing->SetZ(oldz);
 
-	// [RH] Don't activate anything if just predicting
-	if (thing->IsPredicting())
-	{
-		return false;
-	}
-
-	if (!(thing->flags&(MF_TELEPORT | MF_NOCLIP)))
+	if (!(thing->flags&(MF_TELEPORT | MF_NOCLIP)) && !thing->IsPredicting())
 	{
 		int numSpecHitTemp;
 
@@ -3014,7 +2998,7 @@ void FSlide::HitSlideLine(line_t* ld)
 		{
 			tmmove.X = -tmmove.X / 2;
 			tmmove.Y /= 2; // absorb half the velocity
-			if (slidemo->player && slidemo->health > 0 && !slidemo->IsPredicting())
+			if (slidemo->player && slidemo->health > 0)
 			{
 				S_Sound(slidemo, CHAN_VOICE, 0, "*grunt", 1, ATTN_IDLE); // oooff!//   ^
 			}
@@ -3030,7 +3014,7 @@ void FSlide::HitSlideLine(line_t* ld)
 		{
 			tmmove.X /= 2; // absorb half the velocity
 			tmmove.Y = -tmmove.Y / 2;
-			if (slidemo->player && slidemo->health > 0 && !slidemo->IsPredicting())
+			if (slidemo->player && slidemo->health > 0)
 			{
 				S_Sound(slidemo, CHAN_VOICE, 0, "*grunt", 1, ATTN_IDLE); // oooff!
 			}
@@ -3062,7 +3046,7 @@ void FSlide::HitSlideLine(line_t* ld)
 	{
 		moveangle = ::deltaangle(deltaangle, lineangle);
 		movelen /= 2; // absorb
-		if (slidemo->player && slidemo->health > 0 && !slidemo->IsPredicting())
+		if (slidemo->player && slidemo->health > 0)
 		{
 			S_Sound(slidemo, CHAN_VOICE, 0, "*grunt", 1, ATTN_IDLE); // oooff!
 		}
@@ -7239,6 +7223,9 @@ static void SpawnDeepSplash(AActor *t1, const FTraceResults &trace, AActor *puff
 
 int P_ActivateThingSpecial(AActor * thing, AActor * trigger, bool death)
 {
+	if (trigger != nullptr && trigger->IsPredicting())
+		return false;
+
 	bool res = false;
 
 	// Target switching mechanism

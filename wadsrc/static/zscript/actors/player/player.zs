@@ -1501,7 +1501,7 @@ class PlayerPawn : Actor
 				Vel.Z += jumpvelz;
 				bOnMobj = false;
 				player.jumpTics = -1;
-				if (!IsPredicting()) A_StartSound("*jump", CHAN_BODY);
+				A_StartSound("*jump", CHAN_BODY);
 			}
 		}
 	}
@@ -1535,7 +1535,7 @@ class PlayerPawn : Actor
 				{
 					bFly = true;
 					bNoGravity = true;
-					if ((Vel.Z <= -39) && !IsPredicting())
+					if (Vel.Z <= -39)
 					{ // Stop falling scream
 						A_StopSound(CHAN_VOICE);
 					}

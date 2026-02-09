@@ -89,7 +89,7 @@ void P_TouchSpecialThing (AActor *special, AActor *toucher)
 
 	// Dead thing touching.
 	// Can happen with a sliding player corpse.
-	if (toucher->health <= 0)
+	if (toucher->health <= 0 || toucher->IsPredicting())
 		return;
 
 	//Added by MC: Finished with this destination.
