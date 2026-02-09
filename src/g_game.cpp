@@ -1411,7 +1411,7 @@ void FLevelLocals::PlayerReborn (int player)
 	p->oldbuttons = ~0, p->attackdown = true; p->usedown = true;	// don't do anything immediately
 	p->original_oldbuttons = ~0;
 	p->playerstate = PST_LIVE;
-	NetworkEntityManager::SetClientNetworkEntity(p->mo, p - players);
+	NetworkEntityManager::SetClientNetworkEntity(p->mo, player);
 
 	if (gamestate != GS_TITLELEVEL)
 	{

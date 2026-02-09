@@ -204,9 +204,6 @@ class PlayerPawn : Actor
 
 	override void BeginPlay()
 	{
-		// Force create this since players can predict.
-		SetViewPos((0.0, 0.0, 0.0));
-
 		Super.BeginPlay ();
 		ChangeStatNum (STAT_PLAYER);
 		FullHeight = Height;
@@ -221,6 +218,8 @@ class PlayerPawn : Actor
 
 	override void PostBeginPlay()
 	{
+		// Force create this since players can predict.
+		SetViewPos((0.0, 0.0, 0.0));
 		Super.PostBeginPlay();
 		WeaponSlots.SetupWeaponSlots(self);
 

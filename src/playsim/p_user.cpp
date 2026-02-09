@@ -313,7 +313,14 @@ public:
 
 	virtual void PostBackup() { GetObject<DObject>()->ObjectFlags |= OF_Predicting; }
 	virtual void PreRollback() {}
-	virtual void PostRollback() {}
+	// Boon TODO: This has to be swapped to a position within the map. The pointer _must_ be refetched
+	// for purposes of e.g. relinking.
+	virtual void PostRollback()
+	{
+		auto obj = GetObject<DObject>();
+		if (obj != nullptr)
+			obj->ObjectFlags &= ~OF_Predicting;
+	}
 
 	template<class T>
 	T* GetObject()
@@ -341,6 +348,7 @@ public:
 
 	void PostRollback() override
 	{
+		FObjectBackup::PostRollback();
 		auto th = GetObject<DThinker>();
 		if (th == nullptr)
 			return;
@@ -1863,18 +1871,18 @@ static void P_RollbackObject(DObject* obj, FSerializer& arc)
 		auto act = dyn_cast<AActor>(th);
 		if (act != nullptr)
 		{
-			const unsigned i = PredictionData.RollbackActors.Push({ *act });
+			PredictionData.RollbackActors.Push({ *act });
 			if (act->player != nullptr && act->player->mo == act)
 				PredictionData.RollbackPlayers.Push(act->player - players);
 		}
 		else
 		{
-			const unsigned i = PredictionData.RollbackThinkers.Push({ *th });
+			PredictionData.RollbackThinkers.Push({ *th });
 		}
 	}
 	else
 	{
-		const unsigned i = PredictionData.RollbackObjects.Push({ *obj });
+		PredictionData.RollbackObjects.Push({ *obj });
 	}
 }
 
