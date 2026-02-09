@@ -1927,14 +1927,11 @@ void player_t::Serialize(FSerializer &arc)
 		("playerstate", playerstate)
 		("cmd", cmd);
 
-	int fbmode = FullbrightMode;
 	if (!arc.IsRollback())
 	{
 		arc("camera", camera)
 			("inventorytics", inventorytics)
-			("settings_controller", settings_controller)
-			("fullbrightmode", fbmode)
-			("bforcefullbright", bForceFullbright);
+			("settings_controller", settings_controller);
 
 		if (arc.isReading())
 		{
@@ -1946,7 +1943,13 @@ void player_t::Serialize(FSerializer &arc)
 			WriteUserInfo(arc, userinfo);
 		}
 	}
+	else
+	{
+		arc("attackdown", attackdown)
+			("usedown", usedown);
+	}
 
+	int fbmode = FullbrightMode;
 	arc("desiredfov", DesiredFOV)
 		("fov", FOV)
 		("viewz", viewz)
@@ -1965,7 +1968,6 @@ void player_t::Serialize(FSerializer &arc)
 		("pendingweapon", PendingWeapon)
 		("cheats", cheats)
 		("refire", refire)
-		("inconsistant", inconsistant)
 		("killcount", killcount)
 		("itemcount", itemcount)
 		("secretcount", secretcount)
@@ -1978,6 +1980,8 @@ void player_t::Serialize(FSerializer &arc)
 		("extralight", extralight)
 		("fixedcolormap", fixedcolormap)
 		("fixedlightlevel", fixedlightlevel)
+		("fullbrightmode", fbmode)
+		("bforcefullbright", bForceFullbright)
 		("morphTics", morphTics)
 		("morphedplayerclass", MorphedPlayerClass)
 		("morphstyle", MorphStyle)
@@ -2010,6 +2014,7 @@ void player_t::Serialize(FSerializer &arc)
 		("crouchfactor", crouchfactor)
 		("crouching", crouching)
 		("crouchdir", crouchdir)
+		("crouchoffset", crouchoffset)
 		("crouchviewdelta", crouchviewdelta)
 		("original_cmd", original_cmd)
 		("original_oldbuttons", original_oldbuttons)
@@ -2020,7 +2025,8 @@ void player_t::Serialize(FSerializer &arc)
 		("musinfoactor", MUSINFOactor)
 		("musinfotics", MUSINFOtics)
 		("soundclass", SoundClass)
-		("angleoffsettargets", angleOffsetTargets);
+		("angleoffsettargets", angleOffsetTargets)
+		("lastdamagetype", LastDamageType);
 		// Uses a slightly different name since the type was changed, otherwise it would
 		// error out on loading older saves.
 		LastSafePos.Serialize(arc, "safepos");
