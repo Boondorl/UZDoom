@@ -295,9 +295,11 @@ class Sigil : Weapon
 		if (player == null || player.ReadyWeapon == null)
 			return;
 
-		DamageMobj (self, null, 1*4, 'Sigil', DMG_NO_ARMOR);
 		A_StartSound ("weapons/sigilcharge", CHAN_WEAPON);
+		if (IsPredicting())
+			return;
 
+		DamageMobj (self, null, 1*4, 'Sigil', DMG_NO_ARMOR);
 		BulletSlope (t, ALF_PORTALRESTRICT);
 		if (t.linetarget != null)
 		{
@@ -333,7 +335,8 @@ class Sigil : Weapon
 		if (player == null || player.ReadyWeapon == null)
 			return;
 
-		DamageMobj (self, null, 2*4, 'Sigil', DMG_NO_ARMOR);
+		if (!IsPredicting())
+			DamageMobj (self, null, 2*4, 'Sigil', DMG_NO_ARMOR);
 		A_StartSound ("weapons/sigilcharge", CHAN_WEAPON);
 		SpawnPlayerMissile ("SpectralLightningH1");
 	}
@@ -349,7 +352,8 @@ class Sigil : Weapon
 		if (player == null || player.ReadyWeapon == null)
 			return;
 
-		DamageMobj (self, null, 3*4, 'Sigil', DMG_NO_ARMOR);
+		if (!IsPredicting())
+			DamageMobj (self, null, 3*4, 'Sigil', DMG_NO_ARMOR);
 		A_StartSound ("weapons/sigilcharge", CHAN_WEAPON);
 
 		angle -= 90.;
@@ -378,7 +382,8 @@ class Sigil : Weapon
 		if (player == null || player.ReadyWeapon == null)
 			return;
 
-		DamageMobj (self, null, 4*4, 'Sigil', DMG_NO_ARMOR);
+		if (!IsPredicting())
+			DamageMobj (self, null, 4*4, 'Sigil', DMG_NO_ARMOR);
 		A_StartSound ("weapons/sigilcharge", CHAN_WEAPON);
 
 		BulletSlope (t, ALF_PORTALRESTRICT);
@@ -411,7 +416,8 @@ class Sigil : Weapon
 		if (player == null || player.ReadyWeapon == null)
 			return;
 
-		DamageMobj (self, null, 5*4, 'Sigil', DMG_NO_ARMOR);
+		if (!IsPredicting())
+			DamageMobj (self, null, 5*4, 'Sigil', DMG_NO_ARMOR);
 		A_StartSound ("weapons/sigilcharge", CHAN_WEAPON);
 
 		SpawnPlayerMissile ("SpectralLightningBigBall1");

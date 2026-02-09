@@ -4648,7 +4648,8 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 	DAngle pitch, int damage, FName damageType, PClassActor *pufftype, int flags, FTranslatedLineTarget*victim, int *actualdamage, 
 	double sz, double offsetforward, double offsetside)
 {
-	if (t1->Level->localEventManager->WorldHitscanPreFired(t1, angle, distance, pitch, damage, damageType, pufftype, flags, sz, offsetforward, offsetside))
+	if (!t1->IsPredicting()
+		&& t1->Level->localEventManager->WorldHitscanPreFired(t1, angle, distance, pitch, damage, damageType, pufftype, flags, sz, offsetforward, offsetside))
 	{
 		return nullptr;
 	}
@@ -4710,7 +4711,7 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 	// [MC] To prevent possible mod breakage, this flag is pretty much necessary.
 	// Somewhere, someone is relying on these to spawn on actors and move through them.
 
-	if ((puffDefaults->flags7 & MF7_ALLOWTHRUFLAGS))
+	if (puffDefaults != nullptr && (puffDefaults->flags7 & MF7_ALLOWTHRUFLAGS))
 	{
 		TData.ThruSpecies = (puffDefaults && (puffDefaults->flags6 & MF6_THRUSPECIES));
 		TData.ThruActors = (puffDefaults && (puffDefaults->flags2 & MF2_THRUACTORS));
@@ -4745,7 +4746,7 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 	}
 
 	uint32_t tflags = TRACE_NoSky | TRACE_Impact;
-	if (nointeract || (puffDefaults && puffDefaults->flags6 & MF6_NOTRIGGER)) tflags &= ~TRACE_Impact;
+	if (t1->IsPredicting() || nointeract || (puffDefaults && puffDefaults->flags6 & MF6_NOTRIGGER)) tflags &= ~TRACE_Impact;
 	if (spawnSky)
 	{
 		tflags &= ~TRACE_NoSky;
@@ -4791,7 +4792,7 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 		// [MC] LAF_NOINTERACT guarantees puff spawning and returns it directly to the calling function.
 		// No damage caused, no sounds played, no blood splatters.
 
-		if (nointeract || (puffDefaults && puffDefaults->flags3 & MF3_ALWAYSPUFF))
+		if (!t1->IsPredicting() && (nointeract || (puffDefaults && puffDefaults->flags3 & MF3_ALWAYSPUFF)))
 		{ // Spawn the puff anyway
 			puffpos = trace.HitPos;
 			puff = P_SpawnPuff(t1, pufftype, puffpos, trace.SrcAngleFromTarget, trace.SrcAngleFromTarget, 2, puffFlags);
@@ -4810,6 +4811,9 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 	{
 		if (trace.HitType != TRACE_HitActor)
 		{
+			if (victim != NULL) victim->unlinked = trace.unlinked;
+			if (t1->IsPredicting())
+				return nullptr;
 
 			if (trace.HitType == TRACE_HasHitSky || (trace.HitType == TRACE_HitWall
 				&& trace.Line->special == Line_Horizon && spawnSky))
@@ -4818,7 +4822,6 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 			}
 
 			P_GeometryLineAttack(trace, t1, damage, damageType);
-			if (victim != NULL) victim->unlinked = trace.unlinked;
 
 			// position a bit closer for puffs
 			if (nointeract || trace.HitType != TRACE_HitWall || ((trace.Line->special != Line_Horizon) || spawnSky))
@@ -4870,6 +4873,17 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 		}
 		else
 		{
+			if (victim != NULL)
+			{
+				victim->linetarget = trace.Actor;
+				victim->attackAngleFromSource = trace.SrcAngleFromTarget;
+				// With arbitrary portals this cannot be calculated so using the actual attack angle is the only option.
+				victim->angleFromSource = trace.unlinked ? victim->attackAngleFromSource : t1->AngleTo(trace.Actor);
+				victim->unlinked = trace.unlinked;
+			}
+			if (t1->IsPredicting())
+				return nullptr;
+
 			// Hit a thing, so it could be either a puff or blood
 			DVector3 bleedpos = trace.HitPos;
 			puffpos = bleedpos;
@@ -4892,14 +4906,6 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 
 				// We must pass the unreplaced puff type here 
 				puff = P_SpawnPuff(t1, pufftype, bleedpos, trace.SrcAngleFromTarget, trace.SrcAngleFromTarget - DAngle::fromDeg(90), 2, puffFlags | PF_HITTHING, trace.Actor);
-			}
-			if (victim != NULL)
-			{
-				victim->linetarget = trace.Actor;
-				victim->attackAngleFromSource = trace.SrcAngleFromTarget;
-				// With arbitrary portals this cannot be calculated so using the actual attack angle is the only option.
-				victim->angleFromSource = trace.unlinked ? victim->attackAngleFromSource : t1->AngleTo(trace.Actor);
-				victim->unlinked = trace.unlinked;
 			}
 			if (nointeract)
 			{
@@ -5422,6 +5428,8 @@ static ETraceStatus ProcessRailHit(FTraceResults &res, void *userdata)
 void P_RailAttack(FRailParams *p)
 {
 	AActor *source = p->source;
+	if (source->IsPredicting())
+		return;
 
 	PClassActor *puffclass = p->puff;
 	if (puffclass == NULL)
@@ -6217,7 +6225,7 @@ int P_GetRadiusDamage(AActor *self, AActor *thing, int damage, double distance, 
 int P_RadiusAttack(AActor *bombspot, AActor *bombsource, int bombdamage, double bombdistance, FName bombmod,
 	int flags, double fulldamagedistance, FName species)
 {
-	if (bombdistance <= 0.0)
+	if (bombdistance <= 0.0 || (bombsource != nullptr && bombsource->IsPredicting()))
 		return 0;
 	fulldamagedistance = clamp<double>(fulldamagedistance, 0.0, bombdistance - 1.0);
 

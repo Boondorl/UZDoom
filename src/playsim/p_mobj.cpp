@@ -3753,9 +3753,12 @@ bool AActor::Slam (AActor *thing)
 	{
 		if (!(flags2 & MF2_DORMANT))
 		{
-			int dam = GetMissileDamage (7, 1);
-			int newdam = P_DamageMobj (thing, this, this, dam, NAME_Melee);
-			P_TraceBleed (newdam > 0 ? newdam : dam, thing, this);
+			if (!IsPredicting())
+			{
+				int dam = GetMissileDamage(7, 1);
+				int newdam = P_DamageMobj(thing, this, this, dam, NAME_Melee);
+				P_TraceBleed(newdam > 0 ? newdam : dam, thing, this);
+			}
 			// The charging monster may have died by the target's actions here.
 			if (health > 0)
 			{
@@ -7947,7 +7950,7 @@ DEFINE_ACTION_FUNCTION(AActor, SpawnMissileZAimed)
 AActor *P_SpawnMissileAngleZSpeed (AActor *source, double z,
 	PClassActor *type, DAngle angle, double vz, double speed, AActor *owner, bool checkspawn)
 {
-	if (source == nullptr || type == nullptr)
+	if (source == nullptr || type == nullptr || source->IsPredicting())
 	{
 		return nullptr;
 	}
@@ -7992,6 +7995,9 @@ DEFINE_ACTION_FUNCTION(AActor, SpawnMissileAngleZSpeed)
 
 AActor *P_SpawnSubMissile(AActor *source, PClassActor *type, AActor *target)
 {
+	if (source != nullptr && source->IsPredicting())
+		return nullptr;
+
 	AActor *other = Spawn(source->Level, type, source->Pos(), ALLOW_REPLACE);
 
 	if (source == nullptr || type == nullptr)
@@ -8044,7 +8050,7 @@ AActor *P_SpawnPlayerMissile (AActor *source, double x, double y, double z,
 							  PClassActor *type, DAngle angle, FTranslatedLineTarget *pLineTarget, AActor **pMissileActor,
 							  bool nofreeaim, bool noautoaim, int aimflags)
 {
-	if (source == nullptr || type == nullptr)
+	if (source == nullptr || type == nullptr || source->IsPredicting())
 	{
 		return nullptr;
 	}
@@ -8145,7 +8151,7 @@ DEFINE_ACTION_FUNCTION(AActor, SpawnPlayerMissile)
 	PARAM_BOOL(nofreeaim);
 	PARAM_BOOL(noautoaim);
 	PARAM_INT(aimflags);
-	AActor *missileactor;
+	AActor *missileactor = nullptr;
 	if (angle == DAngle::fromDeg(1e37)) angle = self->Angles.Yaw;
 	AActor *misl = P_SpawnPlayerMissile(self, x, y, z, type, angle, lt, &missileactor, nofreeaim, noautoaim, aimflags);
 	if (numret > 0) ret[0].SetObject(misl);

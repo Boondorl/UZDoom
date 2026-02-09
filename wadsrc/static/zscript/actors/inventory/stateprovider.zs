@@ -325,7 +325,7 @@ class StateProvider : Inventory
 		}
 		else
 		{
-			if (lifesteal > 0 && !(t.linetarget.bDontDrain))
+			if (lifesteal > 0 && !(t.linetarget.bDontDrain) && !IsPredicting())
 			{
 				if (flags & CPF_STEALARMOR)
 				{

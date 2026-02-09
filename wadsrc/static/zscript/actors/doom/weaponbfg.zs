@@ -227,7 +227,7 @@ extend class Actor
 		if (vrange == 0) vrange = 32.;
 
 		// [RH] Don't crash if no target
-		if (!target) return;
+		if (!target || target.IsPredicting()) return;
 
 		// [XA] Set the originator of the rays to the projectile (self) if
 		//      the new flag is set, else set it to the player (target)

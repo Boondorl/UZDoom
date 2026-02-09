@@ -162,6 +162,8 @@ extend class Actor
 			return;
 		if (bInCombat)
 			return;
+		if (target && target.IsPredicting())
+			return;
 		bInCombat = true;
 
 		self.target = target;
@@ -414,6 +416,9 @@ extend class Actor
 			}
 		}
 
+		if (IsPredicting())
+			return false, null;
+
 		let mo = Spawn(missile, Vec3Angle(distance, Angle, -Floorclip + GetBobOffset() + zheight), ALLOW_REPLACE);
 
 		int flags = (transfer_translation ? SXF_TRANSFERTRANSLATION : 0) + (useammo ? SXF_SETMASTER : 0);
@@ -516,6 +521,9 @@ extend class Actor
 				return true, null;
 			}
 		}
+
+		if (IsPredicting())
+			return false, null;
 
 		let bo = Spawn(missile, pos + (0, 0, (-Floorclip + GetBobOffset() + zheight + 35 + (player? player.crouchoffset : 0.))), ALLOW_REPLACE);
 		if (bo)
