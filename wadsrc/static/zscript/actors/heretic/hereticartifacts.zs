@@ -96,7 +96,7 @@ Class ArtiTomeOfPower : PowerupGiver
 			// Attempt to undo chicken.
 			if (!Owner.Unmorph(Owner, MRF_UNDOBYTOMEOFPOWER))
 			{
-				if (!(mStyle & MRF_FAILNOTELEFRAG))
+				if (!(mStyle & MRF_FAILNOTELEFRAG) && !IsPredicting())
 					Owner.DamageMobj(null, null, TELEFRAG_DAMAGE, 'Telefrag');
 			}
 			else if (Owner.player)
@@ -169,8 +169,11 @@ Class ArtiTimeBomb : Inventory
 	
 	override bool Use (bool pickup)
 	{
-		Actor mo = Spawn("ActivatedTimeBomb", Owner.Vec3Angle(24., Owner.angle, - Owner.Floorclip), ALLOW_REPLACE);
-		if (mo != null) mo.target = Owner;
+		if (!IsPredicting())
+		{
+			Actor mo = Spawn("ActivatedTimeBomb", Owner.Vec3Angle(24., Owner.angle, - Owner.Floorclip), ALLOW_REPLACE);
+			if (mo != null) mo.target = Owner;
+		}
 		return true;
 	}
 	

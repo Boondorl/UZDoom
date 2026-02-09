@@ -158,6 +158,9 @@ class TeleporterBeacon : Inventory
 
 	override bool Use (bool pickup)
 	{
+		if (IsPredicting())
+			return false;
+			
 		// Increase the amount by one so that when DropInventory decrements it,
 		// the actor will have the same number of beacons that he started with.
 		// When we return to UseInventory, it will take care of decrementing

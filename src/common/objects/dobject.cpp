@@ -902,6 +902,7 @@ bool NetworkEntityManager::IsPredicting()
 }
 
 // Boon TODO: This needs way better safety measures around predicting
+// Boon TODO: This breaks when activing powerup givers
 void NetworkEntityManager::SetNetworkOwner(unsigned playNum, DObject* ent)
 {
 	// Objects can only belong to clients that are aware the object exists

@@ -444,7 +444,7 @@ class DegninOre : Inventory
 	
 	override bool Use (bool pickup)
 	{
-		if (pickup)
+		if (pickup || IsPredicting())
 		{
 			return false;
 		}

@@ -298,6 +298,9 @@ class ArtiPoisonBag1 : ArtiPoisonBag
 	
 	override bool Use (bool pickup)
 	{
+		if (IsPredicting())
+			return true;
+
 		Actor mo = Spawn("PoisonBag", Owner.Vec3Offset(
 			16 * cos(Owner.angle),
 			24 * sin(Owner.angle),
@@ -324,6 +327,9 @@ class ArtiPoisonBag2 : ArtiPoisonBag
 	
 	override bool Use (bool pickup)
 	{
+		if (IsPredicting())
+			return true;
+
 		Actor mo = Spawn("FireBomb", Owner.Vec3Offset(
 			16 * cos(Owner.angle),
 			24 * sin(Owner.angle),
@@ -350,6 +356,9 @@ class ArtiPoisonBag3 : ArtiPoisonBag
 	
 	override bool Use (bool pickup)
 	{
+		if (IsPredicting())
+			return true;
+
 		Actor mo = Spawn("ThrowingBomb", Owner.Pos + (0,0,35. - Owner.Floorclip + (Owner.player? Owner.player.crouchoffset : 0)), ALLOW_REPLACE);
 		if (mo)
 		{
@@ -429,6 +438,9 @@ class ArtiPoisonBagShooter : ArtiPoisonBag
 		Class<Actor> missiletype = MissileName;
 		if (missiletype != null)
 		{
+			if (IsPredicting())
+				return true;
+
 			Actor mo = Owner.SpawnPlayerMissile(missiletype);
 			if (mo != null)
 			{

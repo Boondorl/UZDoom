@@ -10435,6 +10435,8 @@ static DLevelScript *P_GetScriptGoing (FLevelLocals *l, AActor *who, line_t *whe
 	const bool clientside = IsClientSideScript(*code);
 	if (clientside && ShouldIgnoreClientSideScript(who))
 		return nullptr;
+	if (!clientside && NetworkEntityManager::IsPredicting())
+		return nullptr;
 
 	DACSThinker *controller = clientside ? l->ClientSideACSThinker : l->ACSThinker;
 	DLevelScript **running;

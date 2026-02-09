@@ -54,7 +54,7 @@ class ArtiHealingRadius : Inventory
 
 		for (int i = 0; i < MAXPLAYERS; ++i)
 		{
-			if (!playeringame[i])
+			if (!playeringame[i] || (i != consoleplayer && IsPredicting()))
 			{
 				continue;
 			}
@@ -98,7 +98,8 @@ class ArtiHealingRadius : Inventory
 
 				default:
 				//case NAME_Health:
-					gotsome = mo.GiveBody (random[HealRadius](50, 99));
+					if (!IsPredicting())
+						gotsome = mo.GiveBody (random[HealRadius](50, 99));
 					break;
 				}
 				if (gotsome)

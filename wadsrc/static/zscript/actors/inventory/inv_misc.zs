@@ -155,7 +155,7 @@ class PuzzleItem : Inventory
 
 	override bool Use (bool pickup)
 	{
-		if (Owner == NULL) return false;
+		if (Owner == NULL || IsPredicting()) return false;
 		if (Owner.UsePuzzleItem (PuzzleItemNumber))
 		{
 			return true;
