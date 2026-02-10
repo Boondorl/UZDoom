@@ -1911,8 +1911,19 @@ void P_UnPredictClient()
 		P_RollbackPlayers(reader);
 		reader.Close();
 
+		TArray<DObject*> fullRollback = {};
 		for (auto& a : PredictionData.RollbackActors)
+		{
 			a.PostRollback();
+			fullRollback.Push(a.GetObject<DObject>());
+		}
+		for (auto& o : PredictionData.RollbackObjects)
+			fullRollback.Push(o.GetObject<DObject>());
+		for (auto o : fullRollback)
+		{
+			if (o != nullptr)
+				o->ObjectFlags &= ~OF_Predicting;
+		}
 	}
 
 	PredictionData.ClearBackup();
