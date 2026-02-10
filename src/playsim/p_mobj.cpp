@@ -8040,6 +8040,9 @@ AActor *P_SpawnPlayerMissile (AActor *source, double x, double y, double z,
 							  PClassActor *type, DAngle angle, FTranslatedLineTarget *pLineTarget, AActor **pMissileActor,
 							  bool nofreeaim, bool noautoaim, int aimflags)
 {
+	if (pMissileActor != nullptr)
+		*pMissileActor = nullptr;
+
 	if (source == nullptr || type == nullptr)
 	{
 		return nullptr;
