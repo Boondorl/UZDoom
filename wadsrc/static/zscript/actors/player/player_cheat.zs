@@ -99,6 +99,11 @@ extend class PlayerPawn
 					if (ammoitem == NULL)
 					{
 						ammoitem = Inventory(Spawn (ammotype));
+						if (ammoitem.SpawnState && !ammoitem.SpawnState.ValidateSpriteFrame())
+						{
+							ammoitem.Destroy();
+							continue;
+						}
 						ammoitem.AttachToOwner (self);
 						ammoitem.Amount = ammoitem.MaxAmount;
 					}

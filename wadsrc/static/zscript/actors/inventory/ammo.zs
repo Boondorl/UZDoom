@@ -271,6 +271,12 @@ class BackpackItem : Inventory
 				if (ammoitem == NULL)
 				{ // The player did not have the ammoitem. Add it.
 					ammoitem = Ammo(Spawn(ammotype));
+					if (ammoitem.SpawnState && !ammoitem.SpawnState.ValidateSpriteFrame())
+					{
+						// Only give ammo that actually can be used in the given game.
+						ammoitem.Destroy();
+						continue;
+					}
 					ammoitem.Amount = bDepleted ? 0 : amount;
 					if (ammoitem.BackpackMaxAmount > ammoitem.MaxAmount)
 					{
