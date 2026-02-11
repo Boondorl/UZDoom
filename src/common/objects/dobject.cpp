@@ -324,7 +324,7 @@ void DObject::Destroy ()
 
 static void NativeDestroy(DObject* self)
 {
-	if (NetworkEntityManager::IsPredicting() && !self->IsClientSide() && !self->IsPredicted())
+	if (NetworkEntityManager::IsPredicting() && !self->IsClientSide() && !self->IsPredicting())
 		DPrintf(DMSG_WARNING, TEXTCOLOR_RED "Destroyed non-client-side Object %s while predicting\n", self->GetClass()->TypeName.GetChars());
 	if (!(self->ObjectFlags & OF_EuthanizeMe))
 		self->Destroy();
@@ -635,22 +635,30 @@ void DObject::Serialize(FSerializer &arc)
 	SerializeFlag("travelling", OF_Travelling);
 	SerializeFlag("transient", OF_Transient);	// This is needed for rollbacks.
 	SerializeFlag("norollback", OF_NoRollback);
-	if (!arc.IsRollback())
-		arc("networkowner", _networkOwner);
+	arc("networkowner", _networkOwner);
+	if (arc.IsRollback())
+		arc("networkid", _networkID);
 		
 	ObjectFlags |= OF_SerialSuccess;
 
-	if (arc.isReading() && !arc.IsRollback())
+	if (arc.isReading())
 	{
-		if (ObjectFlags & OF_Networked)
+		if (!arc.IsRollback())
 		{
-			ClearNetworkID();
-			EnableNetworking(true);
+			if (ObjectFlags & OF_Networked)
+			{
+				ClearNetworkID();
+				EnableNetworking(true);
+			}
+			// This will get fixed during level load since it's not guaranteed clients will actually occupy
+			// the same slot number. Once clients get their real slot, they'll transfer all their owned
+			// Objects.
+			NetworkEntityManager::SetTempOwner(_networkOwner, this);
 		}
-		// This will get fixed during level load since it's not guaranteed clients will actually occupy
-		// the same slot number. Once clients get their real slot, they'll transfer all their owned
-		// Objects.
-		NetworkEntityManager::SetTempOwner(_networkOwner, this);
+		else
+		{
+			NetworkEntityManager::RollbackEntity(this);
+		}
 	}
 }
 
@@ -799,6 +807,8 @@ void NetworkEntityManager::RemoveNetworkEntity(DObject* ent)
 	const uint32_t id = ent->GetNetworkID();
 	if (id == WorldNetID)
 	{
+		// Dummy Object the client is predicting, so just remove it from
+		// the lists.
 		if (ent->IsPredicting())
 		{
 			RemoveNetworkOwner(ent);
@@ -807,12 +817,12 @@ void NetworkEntityManager::RemoveNetworkEntity(DObject* ent)
 		return;
 	}
 
-	if (IsPredicting())
+	if (IsPredicting() && !ent->IsPredicting())
 		return;
 
 	assert(s_netEntities[id] == ent);
 	RemoveNetworkOwner(ent);
-	if (id >= NetIDStart)
+	if (id >= NetIDStart && !IsPredicting())
 		s_openNetIDs.Push(id);
 	s_netEntities[id] = nullptr;
 	ent->ClearNetworkID();
@@ -841,7 +851,7 @@ void NetworkEntityManager::VerifyPredictedEntities()
 	{
 		if (e->ObjectFlags & OF_EuthanizeMe)
 			continue;
-		if (e->ObjectFlags & OF_Sentinel)
+		if (e->ObjectFlags & (OF_Sentinel | OF_ClientSide))
 		{
 			e->ObjectFlags &= ~OF_Predicting;
 			continue;
@@ -954,6 +964,27 @@ TArrayView<DObject*> NetworkEntityManager::GetOwnedNetworkEntities(unsigned play
 	return { ents->Data(), ents->Size() };
 }
 
+// For predicted Objects that were destroyed while predicting, they need to be
+// reinserted back into the lists as though they never left.
+void NetworkEntityManager::RollbackEntity(DObject* ent)
+{
+	uint32_t id = ent->GetNetworkID();
+	if (id != WorldNetID)
+	{
+		assert(s_netEntities[id] == ent || s_netEntities[id] == nullptr);
+		s_netEntities[id] = ent;
+	}
+
+	id = ent->GetNetworkOwner();
+	if (id != WorldNetID)
+	{
+		// Boon TODO: This also needs its position in the list stored
+		auto& ar = s_ownedEntities[id];
+		if (ar.Find(ent) >= ar.Size())
+			ar.Push(ent);
+	}
+}
+
 void NetworkEntityManager::SetTempOwner(uint32_t id, DObject* ent)
 {
 	if (id != WorldNetID)
@@ -1019,12 +1050,12 @@ bool NetworkEntityManager::IsUnpredictedTic()
 
 bool NetworkEntityManager::CanPredict(DObject* ent, bool checkTic)
 {
-	if (ent == nullptr)
+	if (ent == nullptr || ent->IsClientSide())
 		return true;
 	// Note: This is dangerous and should only be done with client-side features (e.g. audio)!
-	if (checkTic && !IsUnpredictedTic() && (ent->GetNetworkOwner() == GetClientID(consoleplayer) || ent->IsClientSide()))
+	if (checkTic && !IsUnpredictedTic() && ent->GetNetworkOwner() == GetClientID(consoleplayer))
 		return false;
-	return !IsPredicting() || ent->IsPredicting() || ent->IsClientSide();
+	return !IsPredicting() || ent->IsPredicting();
 }
 
 //==========================================================================

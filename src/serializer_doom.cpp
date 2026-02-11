@@ -48,12 +48,16 @@
 //==========================================================================
 //
 // we must explicitly delete all thinkers in the array which did not get linked into the thinker lists.
-// Otherwise these objects may survive a level deletion and point to incorrect data.
+// Otherwise these objects may survive a level deletion and point to incorrect data. For rolled back
+// data, this should be relinked properly afterwards.
 //
 //==========================================================================
 
 void FDoomSerializer::CloseReaderCustom()
 {
+	if (IsRollback())
+		return;
+
 	for (auto obj : r->mDObjects)
 	{
 		auto think = dyn_cast<DThinker>(obj);

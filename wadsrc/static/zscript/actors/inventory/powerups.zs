@@ -76,7 +76,7 @@ class PowerupGiver : Inventory
 		{
 			return true;
 		}
-		power.GoAwayAndDie ();
+		power.Destroy ();
 		return false;
 	}
 }

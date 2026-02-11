@@ -433,7 +433,9 @@ private:
 public:
 	FPredictedNetEvent(TArrayView<uint8_t> data)
 	{
-		_tic = ClientTic;
+		// Boon TODO: Need a new method for calculating this, this simply won't predict correctly
+		// on e.g. item usage vs instant input
+		_tic = ClientTic - 1;
 		_cmd = static_cast<EDemoCommand>(data[0]);
 		_data.Reserve(data.Size() - 1u);
 		for (size_t i = 1u; i < data.Size(); ++i)
@@ -1945,7 +1947,6 @@ void P_PredictClient()
 			FRandom::RollbackRNGState(writer);
 			if (sv_enhancedprediction)
 			{
-				// Boon TODO: Player data seems to be broken here (wrong player owner?)
 				auto owned = NetworkEntityManager::GetOwnedNetworkEntities(consoleplayer);
 				for (auto obj : owned)
 					P_RollbackObject(obj, writer);

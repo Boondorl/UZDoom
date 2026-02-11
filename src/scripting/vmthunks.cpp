@@ -2768,7 +2768,18 @@ DEFINE_ACTION_FUNCTION(DObject, S_ChangeMusic)
 
 static void SetNetworkOwner(DObject* self, player_t* player)
 {
-	if (self->GetNetworkID() < NetworkEntityManager::NetIDStart)
+	if (self->ObjectFlags & OF_EuthanizeMe)
+		return;
+
+	if (!self->IsNetworked())
+	{
+		if (player != nullptr)
+			Printf(TEXTCOLOR_RED "Objects must be networked before they can be assigned network owners\n");
+		return;
+	}
+
+	if (self->GetNetworkID() < NetworkEntityManager::NetIDStart
+		&& self->GetNetworkID() >= NetworkEntityManager::ClientNetIDStart)
 	{
 		Printf(TEXTCOLOR_RED "Players cannot assign their network owners\n");
 		return;
@@ -2787,6 +2798,8 @@ static void SetNetworkOwner(DObject* self, player_t* player)
 		TArray<DObject*> ents = {};
 
 		auto actor = dyn_cast<AActor>(self);
+		if (actor->modelData != nullptr)
+			ents.Push(actor->modelData);
 		if (actor->alternative != nullptr && actor->alternative->GetNetworkOwner() == owner)
 			ents.Push(actor->alternative);
 		if (actor->ViewPos != nullptr && actor->ViewPos->GetNetworkID() == owner)

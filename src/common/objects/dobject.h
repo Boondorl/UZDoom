@@ -510,6 +510,7 @@ public:
 	static void RemoveNetworkOwner(DObject* ent);
 	static TArrayView<DObject*> GetOwnedNetworkEntities(unsigned playNum);
 
+	static void RollbackEntity(DObject* ent);
 	static void SetTempOwner(uint32_t id, DObject* ent);
 	static void SetTempTransfer(unsigned playNum, uint32_t id);
 	static void TransferTempOwners();
