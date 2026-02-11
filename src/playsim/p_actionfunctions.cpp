@@ -1615,6 +1615,9 @@ DEFINE_ACTION_FUNCTION(AActor, A_SpawnParticle)
 	PARAM_FLOAT	(fadestep)	
 	PARAM_FLOAT (sizestep)	
 
+	if (!NetworkEntityManager::CanPredict(self, true))
+		return 0;
+
 	startalpha = clamp(startalpha, 0., 1.);
 	if (fadestep > 0) fadestep = clamp(fadestep, 0., 1.);
 	size = fabs(size);
@@ -1675,6 +1678,9 @@ DEFINE_ACTION_FUNCTION(AActor, A_SpawnParticleEx)
 	PARAM_FLOAT	(rollvel)	
 	PARAM_FLOAT	(rollacc)
 	PARAM_FLOAT (fadeoutstep)
+
+	if (!NetworkEntityManager::CanPredict(self, true))
+		return 0;
 
 	startalpha = clamp(startalpha, 0., 1.);
 	fadestep = clamp(fadestep, -1.0, 1.0);
