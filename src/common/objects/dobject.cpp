@@ -784,7 +784,7 @@ void NetworkEntityManager::VerifyPredictedEntities()
 {
 	for (auto e : s_problemEntities)
 	{
-		if (e->ObjectFlags & (OF_EuthanizeMe | OF_Sentinel))
+		if (e->ObjectFlags & (OF_EuthanizeMe | OF_Sentinel | OF_ClientSide))
 			continue;
 
 		DPrintf(DMSG_WARNING, TEXTCOLOR_RED "Spawned non-client-side Object %s while predicting\n", e->GetClass()->TypeName.GetChars());
