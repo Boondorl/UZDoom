@@ -289,6 +289,7 @@ public:
 	void InitData();
 	void Clear();
 	void Shutdown();
+	virtual bool CanPredictSound(int type, const void* source) const;
 
 	void StopAllChannels(void);
 	void SetPitch(FSoundChan* chan, float dpitch);

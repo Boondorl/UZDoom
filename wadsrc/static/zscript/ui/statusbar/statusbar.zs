@@ -270,7 +270,16 @@ class BaseStatusBar : StatusBarCore native
 	native virtual clearscope void ReceivedWeapon (Weapon weapn);
 	native virtual clearscope void SetMugShotState (String state_name, bool wait_till_done=false, bool reset=false);
 
-	clearscope virtual void FlashItem (class<Inventory> itemtype) { artiflashTick = 4; itemflashFade = 0.75; }
+	clearscope virtual void FlashItem (class<Inventory> itemtype)
+	{
+		// Boon TODO: sv_enhancedprediction check (build into this function?)
+		if (LevelLocals.IsUnpredictedTic())
+		{
+			artiflashTick = 4;
+			itemflashFade = 0.75;
+		}
+	}
+
 	virtual void AttachToPlayer (PlayerInfo player) { CPlayer = player; UpdateScreenGeometry(); }
 	virtual void FlashCrosshair () { CrosshairSize = XHAIRPICKUPSIZE; }
 	virtual void NewGame () { if (CPlayer != null) AttachToPlayer(CPlayer); }

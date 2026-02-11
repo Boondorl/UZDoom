@@ -514,8 +514,9 @@ public:
 	static void SetTempTransfer(unsigned playNum, uint32_t id);
 	static void TransferTempOwners();
 
-	static void SetNewTic(bool newTic);
-	static bool IsNewTic();
+	static void SetUnpredictedTic(bool newTic);
+	static bool IsUnpredictedTic();
+	static bool CanPredict(DObject* ent, bool checkTic);
 };
 
 // This is the only method aside from calling CreateNew that should be used for creating DObjects

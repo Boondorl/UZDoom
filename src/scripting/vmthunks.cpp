@@ -2669,6 +2669,17 @@ DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, setFrozen, setFrozen)
 	return 0;
 }
 
+static int IsUnpredictedTic()
+{
+	return NetworkEntityManager::IsUnpredictedTic();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, IsUnpredictedTic, IsUnpredictedTic)
+{
+	PARAM_PROLOGUE;
+	ACTION_RETURN_BOOL(NetworkEntityManager::IsUnpredictedTic());
+}
+
 static DThinker* CreateThinker(FLevelLocals* self, PClass* type, int statnum)
 {
 	if (type->IsDescendantOf(NAME_Actor))

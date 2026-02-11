@@ -902,7 +902,9 @@ bool NetworkEntityManager::IsPredicting()
 }
 
 // Boon TODO: This needs way better safety measures around predicting
-// Boon TODO: This breaks when activing powerup givers
+// Boon TODO: This needs a new flag at this point to know which entities
+// are currently being predicted. There's just too many places in the engine
+// where it's obvious that truly predicted objects will need this
 void NetworkEntityManager::SetNetworkOwner(unsigned playNum, DObject* ent)
 {
 	// Objects can only belong to clients that are aware the object exists
@@ -1005,14 +1007,24 @@ void NetworkEntityManager::TransferTempOwners()
 	s_tempOwnedEntities.Clear();
 }
 
-void NetworkEntityManager::SetNewTic(bool newTic)
+void NetworkEntityManager::SetUnpredictedTic(bool newTic)
 {
 	s_bNewTic = newTic;
 }
 
-bool NetworkEntityManager::IsNewTic()
+bool NetworkEntityManager::IsUnpredictedTic()
 {
 	return s_bNewTic;
+}
+
+bool NetworkEntityManager::CanPredict(DObject* ent, bool checkTic)
+{
+	if (ent == nullptr)
+		return true;
+	// Note: This is dangerous and should only be done with client-side features (e.g. audio)!
+	if (checkTic && !IsUnpredictedTic() && (ent->GetNetworkOwner() == GetClientID(consoleplayer) || ent->IsClientSide()))
+		return false;
+	return !IsPredicting() || ent->IsPredicting() || ent->IsClientSide();
 }
 
 //==========================================================================

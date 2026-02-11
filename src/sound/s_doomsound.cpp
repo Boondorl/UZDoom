@@ -70,6 +70,7 @@ class DoomSoundEngine : public SoundEngine
 {
 	// client specific parts of the sound engine go in this class.
 
+	bool CanPredictSound(int type, const void* source) const override;
 	void CalcPosVel(int type, const void* source, const float pt[3], int channum, int chanflags, FSoundID soundid, FVector3* pos, FVector3* vel, FSoundChan *) override;
 	bool ValidatePosVel(int sourcetype, const void* source, const FVector3& pos, const FVector3& vel);
 	TArray<uint8_t> ReadSound(int lumpnum);
@@ -873,6 +874,17 @@ static FSerializer &Serialize(FSerializer &arc, const char *key, FSoundChan &cha
 		arc.EndObject();
 	}
 	return arc;
+}
+
+//==========================================================================
+//
+// CanPredictSound
+//
+//==========================================================================
+
+bool DoomSoundEngine::CanPredictSound(int type, const void* source) const
+{
+	return type != SOURCE_Actor || NetworkEntityManager::CanPredict((DObject*)source, true);
 }
 
 //==========================================================================

@@ -672,6 +672,7 @@ struct LevelLocals native
 	native clearscope VisualThinker SpawnClientSideVisualThinker(Class<VisualThinker> type);
 
 	clearscope native static bool WorldPaused(bool checkLag = false);
+	native clearscope static bool IsUnpredictedTic();
 }
 
 // a few values of this need to be readable by the play code.

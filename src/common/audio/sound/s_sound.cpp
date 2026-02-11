@@ -192,6 +192,17 @@ void SoundEngine::UnloadSound (sfxinfo_t *sfx)
 
 //==========================================================================
 //
+// CanPredictSound
+//
+//==========================================================================
+
+bool SoundEngine::CanPredictSound(int type, const void* source) const
+{
+	return true;
+}
+
+//==========================================================================
+//
 // S_GetChannel
 //
 // Returns a free channel for the system sound interface.
@@ -410,7 +421,7 @@ FSoundChan *SoundEngine::StartSound(int type, const void *source,
 
 	if (!isValidSoundId(sound_id) || volume <= 0 || nosfx || !SoundEnabled() || blockNewSounds)
 		return NULL;
-	if (!NetworkEntityManager::IsNewTic())
+	if (!CanPredictSound(type, source))
 		return nullptr;
 
 	// prevent crashes.
@@ -985,7 +996,7 @@ void SoundEngine::StopAllChannels ()
 
 void SoundEngine::RelinkSound (int sourcetype, const void *from, const void *to, const FVector3 *optpos)
 {
-	if (from == NULL || !NetworkEntityManager::IsNewTic())
+	if (from == NULL || !CanPredictSound(sourcetype, from))
 		return;
 
 	FSoundChan *chan = Channels;
@@ -1023,7 +1034,7 @@ void SoundEngine::RelinkSound (int sourcetype, const void *from, const void *to,
 
 void SoundEngine::ChangeSoundVolume(int sourcetype, const void *source, int channel, double dvolume)
 {
-	if (!NetworkEntityManager::IsNewTic())
+	if (!CanPredictSound(sourcetype, source))
 		return;
 
 	float volume = float(dvolume);
@@ -1078,7 +1089,7 @@ void SoundEngine::ChangeSoundPitch(int sourcetype, const void *source, int chann
 
 void SoundEngine::SetPitch(FSoundChan *chan, float pitch)
 {
-	if (!NetworkEntityManager::IsNewTic())
+	if (!CanPredictSound(chan->SourceType, chan->Source))
 		return;
 
 	assert(chan != nullptr);
@@ -1426,7 +1437,7 @@ void SoundEngine::ChannelVirtualChanged(FISoundChannel *ichan, bool is_virtual)
 
 void SoundEngine::StopChannel(FSoundChan *chan)
 {
-	if (chan == NULL || !NetworkEntityManager::IsNewTic())
+	if (chan == NULL || !CanPredictSound(chan->SourceType, chan->Source))
 		return;
 
 	if (chan->SysChannel != NULL)

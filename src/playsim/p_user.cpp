@@ -1923,7 +1923,7 @@ static void GetOwnedThinkerList(TMap<int, TArray<DThinker*>>& thinkers)
 
 void P_UpdateNewestTic(int tic)
 {
-	NetworkEntityManager::SetNewTic(tic > PredictionData.HighestPredictedTic);
+	NetworkEntityManager::SetUnpredictedTic(tic > PredictionData.HighestPredictedTic);
 }
 
 void P_PredictClient()

@@ -211,7 +211,7 @@ void cht_DoCheat (player_t *player, int cheat)
 			msg = GStrings.GetString("TXT_CHASECAM_ON");
 		else
 			msg = GStrings.GetString("TXT_CHASECAM_OFF");
-		if (NetworkEntityManager::IsNewTic())
+		if (NetworkEntityManager::IsUnpredictedTic())
 			R_ResetViewInterpolation();
 		break;
 
@@ -531,7 +531,8 @@ void cht_DoCheat (player_t *player, int cheat)
 
 	if (player == &players[consoleplayer])
 	{
-		if (NetworkEntityManager::IsNewTic())
+		// Boon TODO: Add prediction check for unpredicted events
+		if (NetworkEntityManager::IsUnpredictedTic())
 			Printf("%s\n", msg);
 	}
 	else if (cheat != CHT_CHASECAM)
