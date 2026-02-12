@@ -74,7 +74,7 @@ void P_SetupPsprites (player_t* curplayer, bool startweaponup);
 //
 void	P_FallingDamage (AActor *ent);
 void	P_PlayerThink (player_t *player);
-void	P_AddPredictedEvent(TArrayView<uint8_t> data);
+void	P_AddPredictedEvent(TArrayView<uint8_t> data, int tic);
 void	P_UpdateNewestTic(int tic);
 void	P_PredictClient ();
 void	P_UnPredictClient ();

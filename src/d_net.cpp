@@ -238,6 +238,7 @@ private:
 	size_t CurrentSize = 0;
 	size_t MaxSize = 256;
 	int CurrentClientTic = 0;
+	int CurrentLocalTic = 0;
 	int64_t _predictionOffset = -1;
 
 	// Make more room for special Command.
@@ -274,6 +275,7 @@ public:
 
 	void ResetStream()
 	{
+		CurrentLocalTic = ClientTic;
 		CurrentClientTic = ClientTic / TicDup;
 		CurrentStream = Streams[CurrentClientTic % BACKUPTICS].Stream;
 		CurrentSize = 0;
@@ -281,6 +283,7 @@ public:
 
 	void NewClientTic()
 	{
+		CurrentLocalTic = ClientTic;
 		const int tic = ClientTic / TicDup;
 		if (CurrentClientTic == tic)
 			return;
@@ -300,9 +303,8 @@ public:
 			_predictionOffset = CurrentSize;
 	}
 
-	TArrayView<uint8_t> StopPredicting()
+	void StopPredicting()
 	{
-		TArrayView<uint8_t> data = { nullptr, 0u };
 		if (_predictionOffset >= 0)
 		{
 			if (CurrentStream != nullptr)
@@ -310,11 +312,10 @@ public:
 				auto head = Streams[CurrentClientTic % BACKUPTICS].Stream + _predictionOffset;
 				ptrdiff_t size = CurrentStream - head;
 				if (size > 0)
-					data = { head, (unsigned)size };
+					P_AddPredictedEvent({ head, (unsigned)size }, CurrentLocalTic);
 			}
 			_predictionOffset = -1;
 		}
-		return data;
 	}
 
 	NetEventData& operator<<(uint8_t it)
@@ -2374,9 +2375,9 @@ void Net_StartPredictingEvent()
 	NetEvents.StartPredicting();
 }
 
-TArrayView<uint8_t> Net_StopPredictingEvent()
+void Net_StopPredictingEvent()
 {
-	return NetEvents.StopPredicting();
+	NetEvents.StopPredicting();
 }
 
 void Net_NewClientTic()

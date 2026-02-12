@@ -133,7 +133,7 @@ void TryRunTics (void);
 
 // [RH] Functions for making and using special "ticcmds"
 void Net_StartPredictingEvent();
-TArrayView<uint8_t> Net_StopPredictingEvent();
+void Net_StopPredictingEvent();
 void Net_NewClientTic();
 void Net_Initialize();
 void Net_WriteInt8(uint8_t);

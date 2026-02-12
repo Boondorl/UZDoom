@@ -167,7 +167,7 @@ CCMD (fly)
 	Net_StartPredictingEvent();
 	Net_WriteInt8 (DEM_GENERICCHEAT);
 	Net_WriteInt8 (CHT_FLY);
-	P_AddPredictedEvent(Net_StopPredictingEvent());
+	Net_StopPredictingEvent();
 }
 
 /*
@@ -185,7 +185,7 @@ CCMD (noclip)
 	Net_StartPredictingEvent();
 	Net_WriteInt8 (DEM_GENERICCHEAT);
 	Net_WriteInt8 (CHT_NOCLIP);
-	P_AddPredictedEvent(Net_StopPredictingEvent());
+	Net_StopPredictingEvent();
 }
 
 CCMD (noclip2)
@@ -196,7 +196,7 @@ CCMD (noclip2)
 	Net_StartPredictingEvent();
 	Net_WriteInt8 (DEM_GENERICCHEAT);
 	Net_WriteInt8 (CHT_NOCLIP2);
-	P_AddPredictedEvent(Net_StopPredictingEvent());
+	Net_StopPredictingEvent();
 }
 
 CCMD (powerup)
@@ -276,7 +276,7 @@ CCMD (chase)
 		Net_StartPredictingEvent();
 		Net_WriteInt8 (DEM_GENERICCHEAT);
 		Net_WriteInt8 (CHT_CHASECAM);
-		P_AddPredictedEvent(Net_StopPredictingEvent());
+		Net_StopPredictingEvent();
 	}
 }
 

@@ -431,11 +431,8 @@ private:
 	EDemoCommand _cmd = DEM_BAD;
 	TArray<uint8_t> _data = {};
 public:
-	FPredictedNetEvent(TArrayView<uint8_t> data)
+	FPredictedNetEvent(TArrayView<uint8_t> data, int tic) : _tic(tic)
 	{
-		// Boon TODO: Need a new method for calculating this, this simply won't predict correctly
-		// on e.g. item usage vs instant input
-		_tic = ClientTic - 1;
 		_cmd = static_cast<EDemoCommand>(data[0]);
 		_data.Reserve(data.Size() - 1u);
 		for (size_t i = 1u; i < data.Size(); ++i)
@@ -1819,10 +1816,10 @@ void P_ClearPredictionData()
 	PredictionData.PredictedEvents.Clear();
 }
 
-void P_AddPredictedEvent(TArrayView<uint8_t> data)
+void P_AddPredictedEvent(TArrayView<uint8_t> data, int tic)
 {
 	if (sv_enhancedprediction && data.Size())
-		PredictionData.PredictedEvents.Push({ data });
+		PredictionData.PredictedEvents.Push({ data, tic });
 }
 
 static void P_ClearOutdatedEvents()
