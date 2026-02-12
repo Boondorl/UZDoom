@@ -472,7 +472,7 @@ struct FPredictionData
 	TArray<FActorBackup> RollbackActors = {};
 	TArray<size_t> RollbackPlayers = {};				// Store by index instead of pointer so it'll never be invalid when deserializing.
 	FLevelLocals* RollbackLevel = nullptr;				// Save this for when opening the reader.
-	FileSys::FCompressedBuffer RollbackData = {};		// Snapshot of all saved Objects.
+	std::string RollbackData;		// Snapshot of all saved Objects.
 
 	TArray<FPredictedNetEvent> PredictedEvents = {};	// Certain net events like weapon swapping should be allowed for playback.
 
@@ -496,7 +496,7 @@ struct FPredictionData
 		RollbackActors.Clear();
 		RollbackPlayers.Clear();
 		RollbackLevel = nullptr;
-		RollbackData.Clean();
+		RollbackData = "";
 	}
 
 	void Mark()
@@ -1961,7 +1961,7 @@ void P_PredictClient()
 			GetRollbackObjectReferences(backups);
 			for (auto o : backups)
 				fullRollback.Push(o->GetObject<DObject>());
-			PredictionData.RollbackData = writer.GetCompressedOutput(&PredictionData.RollbackObjectRefs, &fullRollback);
+			PredictionData.RollbackData.assign(writer.GetOutput(nullptr, &PredictionData.RollbackObjectRefs, &fullRollback));
 			PredictionData.RollbackLevel = player->mo->Level;
 			writer.Close();
 
@@ -2105,7 +2105,7 @@ void P_UnPredictClient()
 	NetworkEntityManager::DisablePrediction();
 
 	FDoomSerializer reader = { PredictionData.RollbackLevel };
-	if (reader.OpenReader(&PredictionData.RollbackData, true))
+	if (reader.OpenReader(PredictionData.RollbackData.c_str(), PredictionData.RollbackData.size(), true))
 	{
 		TArray<FObjectBackup*> backups = {};
 		GetRollbackObjectReferences(backups);
