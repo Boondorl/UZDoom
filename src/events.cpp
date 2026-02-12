@@ -376,11 +376,13 @@ bool EventManager::UnregisterHandler(DStaticEventHandler *handler, bool destroyi
 	return true;
 }
 
-bool EventManager::SendNetworkEvent(FString name, int arg1, int arg2, int arg3, bool manual)
+bool EventManager::SendNetworkEvent(FString name, int arg1, int arg2, int arg3, bool manual, bool predicted)
 {
 	if (gamestate != GS_LEVEL && gamestate != GS_TITLELEVEL)
 		return false;
 
+	if (predicted)
+		Net_StartPredictingEvent();
 	Net_WriteInt8(DEM_NETEVENT);
 	Net_WriteString(name.GetChars());
 	Net_WriteInt8(3);
@@ -388,6 +390,8 @@ bool EventManager::SendNetworkEvent(FString name, int arg1, int arg2, int arg3, 
 	Net_WriteInt32(arg2);
 	Net_WriteInt32(arg3);
 	Net_WriteInt8(manual);
+	if (predicted)
+		Net_StopPredictingEvent();
 
 	return true;
 }
@@ -1668,9 +1672,10 @@ DEFINE_ACTION_FUNCTION(DEventHandler, SendNetworkEvent)
 	PARAM_INT(arg1);
 	PARAM_INT(arg2);
 	PARAM_INT(arg3);
+	PARAM_BOOL(predictable);
 	//
 
-	ACTION_RETURN_BOOL(currentVMLevel->localEventManager->SendNetworkEvent(name, arg1, arg2, arg3, false));
+	ACTION_RETURN_BOOL(currentVMLevel->localEventManager->SendNetworkEvent(name, arg1, arg2, arg3, false, predictable));
 }
 
 DEFINE_ACTION_FUNCTION(DEventHandler, SendInterfaceEvent)
@@ -2444,9 +2449,9 @@ CCMD(netevent)
 
 	int argc = argv.argc();
 
-	if (argc < 2 || argc > 5)
+	if (argc < 2 || argc > 6)
 	{
-		Printf("Usage: netevent <name> [arg1] [arg2] [arg3]\n");
+		Printf("Usage: netevent <name> [arg1] [arg2] [arg3] [predict]\n");
 	}
 	else
 	{
@@ -2454,7 +2459,8 @@ CCMD(netevent)
 		int argn = min<int>(argc - 2, countof(arg));
 		for (int i = 0; i < argn; i++)
 			arg[i] = atoi(argv[2 + i]);
+		bool predict = argc > 5 ? atoi(argv[5]) : false;
 		// call networked
-		primaryLevel->localEventManager->SendNetworkEvent(argv[1], arg[0], arg[1], arg[2], true);
+		primaryLevel->localEventManager->SendNetworkEvent(argv[1], arg[0], arg[1], arg[2], true, predict);
 	}
 }

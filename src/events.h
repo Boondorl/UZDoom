@@ -566,7 +566,7 @@ struct EventManager
 	void NewGame();
 
 	// send networked event. unified function.
-	bool SendNetworkEvent(FString name, int arg1, int arg2, int arg3, bool manual);
+	bool SendNetworkEvent(FString name, int arg1, int arg2, int arg3, bool manual, bool predicted);
 	// Send a custom network command from ZScript.
 	bool SendNetworkCommand(const FName& cmd, VMVa_List& args);
 	// Send a pre-built command buffer over.
