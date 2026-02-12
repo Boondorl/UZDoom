@@ -750,8 +750,8 @@ void NetworkEntityManager::SetClientNetworkEntity(DObject* mo, unsigned playNum)
 			return;
 
 		const uint32_t curID = mo->GetNetworkID();
-
-		s_netEntities[curID] = oldBody;
+		if (curID != WorldNetID)
+			s_netEntities[curID] = oldBody;
 		oldBody->ClearNetworkID();
 		oldBody->SetNetworkID(curID);
 		RemoveNetworkOwner(oldBody);
@@ -971,7 +971,9 @@ void NetworkEntityManager::RollbackEntity(DObject* ent)
 	uint32_t id = ent->GetNetworkID();
 	if (id != WorldNetID)
 	{
-		assert(s_netEntities[id] == ent || s_netEntities[id] == nullptr);
+		// Only replace what's in slot if it's being safely rolled back (this is mostly
+		// need for handling morphing).
+		assert(s_netEntities[id] == nullptr || s_netEntities[id]->IsPredicting());
 		s_netEntities[id] = ent;
 	}
 

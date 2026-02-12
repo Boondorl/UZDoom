@@ -1734,7 +1734,6 @@ class PlayerPawn : Actor
 		player.mo.CheckUse();
 		if (!IsPredicting() || sv_enhancedprediction)
 		{
-			// Boon TODO: Unmorphing should always be prediction safe.
 			// Note that after this point the PlayerPawn may have changed due to getting unmorphed or getting its skull popped so 'self' is no longer safe to use.
 			// This also must not read mo into a local variable because several functions in this block can change the attached PlayerPawn.
 			player.mo.CheckUndoMorph();

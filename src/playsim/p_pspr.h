@@ -172,7 +172,7 @@ class DPSprite : public DObject
 public:
 	DPSprite(player_t *owner, AActor *caller, int id);
 
-	static void NewTick();
+	static void NewTick(bool predicting);
 	void SetState(FState *newstate, bool pending = false);
 
 	int			GetID()							const { return ID; }

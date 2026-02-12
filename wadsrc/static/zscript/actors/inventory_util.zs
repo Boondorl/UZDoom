@@ -787,6 +787,7 @@ extend class Actor
 		for (let item = Inv; item != null; item = item.Inv)
 		{
 			item.Owner = self;
+			// Boon TODO: This needs to transfer network owner
 			item.SetNetworkOwner(player);
 		}
 	}

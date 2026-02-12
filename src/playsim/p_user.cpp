@@ -2013,7 +2013,7 @@ void P_PredictClient()
 			continue;
 
 		if (sv_enhancedprediction)
-			DPSprite::NewTick();
+			DPSprite::NewTick(true);
 
 		GetOwnedThinkerList(toTick);
 		TMap<int, TArray<DThinker*>>::Iterator it = { toTick };
@@ -2117,6 +2117,7 @@ void P_UnPredictClient()
 		if (reader.mObjectErrors)
 			I_Error("Failed to rollback game state");
 		P_RollbackPlayers(reader);
+		// Boon TODO: Move this to after all relinking
 		reader.Close();
 
 		for (auto o : backups)

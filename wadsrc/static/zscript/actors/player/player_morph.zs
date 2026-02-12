@@ -163,7 +163,7 @@ extend class PlayerPawn
 		morphed.Score = Score;
 		morphed.ScoreIcon = ScoreIcon;
 		morphed.Health = morphed.SpawnHealth();
-		if (TID && (style & MRF_NEWTIDBEHAVIOUR))
+		if (!IsPredicting() && TID && (style & MRF_NEWTIDBEHAVIOUR))
 		{
 			morphed.ChangeTid(TID);
 			ChangeTid(0);
@@ -220,7 +220,7 @@ extend class PlayerPawn
 		PostMorph(morphed, false);		// No longer the current body
 		morphed.PostMorph(self, true);	// This is the current body
 
-		if (enterFlash)
+		if (enterFlash && !IsPredicting())
 		{
 			Actor fog = Spawn(enterFlash, morphed.Pos.PlusZ(GameInfo.TelefogHeight), ALLOW_REPLACE);
 			if (fog)
@@ -314,7 +314,7 @@ extend class PlayerPawn
 		EMorphFlags style = alt.GetMorphStyle();
 		Weapon premorphWeap = p.PremorphWeapon;
 
-		if (TID && (style & MRF_NEWTIDBEHAVIOUR))
+		if (!IsPredicting() && TID && (style & MRF_NEWTIDBEHAVIOUR))
 		{
 			alt.ChangeTid(TID);
 			ChangeTID(0);
@@ -336,7 +336,9 @@ extend class PlayerPawn
 		if (level2)
 			level2.Destroy();
 
-		WeaponSlots.SetupWeaponSlots(alt);
+		// This does some networking stuff so will need to remain unpredicted.
+		if (!IsPredicting())
+			WeaponSlots.SetupWeaponSlots(alt);
 		let morphWeap = p.ReadyWeapon;
 		if (premorphWeap)
 		{
@@ -376,7 +378,7 @@ extend class PlayerPawn
 		PostUnmorph(alt, false);		// This body is no longer current.
 		alt.PostUnmorph(self, true);	// altmo body is current.
 
-		if (exitFlash)
+		if (exitFlash && !IsPredicting())
 		{
 			Actor fog = Spawn(exitFlash, alt.Vec3Angle(20.0, alt.Angle, GameInfo.TelefogHeight), ALLOW_REPLACE);
 			if (fog)

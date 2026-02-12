@@ -164,7 +164,8 @@ extend class Actor
 		{
 			if (morphed)
 			{
-				morphed.ClearCounters();
+				if (!morphed.IsPredicting())
+					morphed.ClearCounters();
 				morphed.Destroy();
 			}
 			
@@ -186,7 +187,7 @@ extend class Actor
 		for (int i; i < 5; ++i)
 			morphed.Args[i] = Args[i];
 
-		if (TID && (style & MRF_NEWTIDBEHAVIOUR))
+		if (!IsPredicting() && TID && (style & MRF_NEWTIDBEHAVIOUR))
 		{
 			morphed.ChangeTID(TID);
 			ChangeTID(0);
@@ -236,7 +237,7 @@ extend class Actor
 		PostMorph(morphed, false);
 		morphed.PostMorph(self, true);
 		
-		if (enterFlash)
+		if (enterFlash && !IsPredicting())
 		{
 			Actor fog = Spawn(enterFlash, morphed.Pos.PlusZ(GameInfo.TELEFOGHEIGHT), ALLOW_REPLACE);
 			if (fog)
@@ -312,7 +313,7 @@ extend class Actor
 		alt.A_ChangeLinkFlags((PremorphProperties & MPROP_NO_BLOCKMAP), (PremorphProperties & MPROP_NO_SECTOR));
 
 		EMorphFlags style = GetMorphStyle();
-		if (TID && (style & MRF_NEWTIDBEHAVIOUR))
+		if (!IsPredicting() && TID && (style & MRF_NEWTIDBEHAVIOUR))
 		{
 			alt.ChangeTID(TID);
 			ChangeTID(0);
@@ -335,14 +336,16 @@ extend class Actor
 		PostUnmorph(alt, false);		// From is false here: Leaving the caller's body.
 		alt.PostUnmorph(self, true);	// True here: Entering this body from here.
 		
-		if (MorphExitFlash)
+		if (!IsPredicting())
 		{
-			Actor fog = Spawn(MorphExitFlash, alt.Pos.PlusZ(GameInfo.TELEFOGHEIGHT), ALLOW_REPLACE);
-			if (fog)
-				fog.Target = alt;
+			if (MorphExitFlash)
+			{
+				Actor fog = Spawn(MorphExitFlash, alt.Pos.PlusZ(GameInfo.TELEFOGHEIGHT), ALLOW_REPLACE);
+				if (fog)
+					fog.Target = alt;
+			}
+			ClearCounters();
 		}
-
-		ClearCounters();
 		Destroy();
 		return true;
 	}

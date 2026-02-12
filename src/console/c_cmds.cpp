@@ -213,7 +213,7 @@ CCMD (morphme)
 	if (CheckCheatmode ())
 		return;
 
-	// Boon TODO: Predict me
+	Net_StartPredictingEvent();
 	if (argv.argc() == 1)
 	{
 		Net_WriteInt8 (DEM_GENERICCHEAT);
@@ -224,6 +224,7 @@ CCMD (morphme)
 		Net_WriteInt8 (DEM_MORPHEX);
 		Net_WriteString (argv[1]);
 	}
+	Net_StopPredictingEvent();
 }
 
 CCMD (anubis)

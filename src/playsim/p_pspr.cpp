@@ -451,7 +451,7 @@ std::pair<FRenderStyle, float> DPSprite::GetRenderStyle(FRenderStyle ownerstyle,
 //
 //---------------------------------------------------------------------------
 
-void DPSprite::NewTick()
+void DPSprite::NewTick(bool predicting)
 {
 	// This function should be called after the beginning of a tick, before any possible
 	// prprite-event, or near the end, after any possible psprite event.
@@ -465,6 +465,8 @@ void DPSprite::NewTick()
 			{
 				pspr->processPending = true;
 				pspr->ResetInterpolation();
+				if (predicting)
+					pspr->firstTic = false;
 
 				pspr = pspr->Next;
 			}

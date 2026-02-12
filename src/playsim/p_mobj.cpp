@@ -6140,6 +6140,7 @@ int MorphPointerSubstitution(AActor* from, AActor* to)
 	// Since the check is good, move the inventory items over. This should always be done when
 	// morphing to emulate Heretic/Hexen's behavior since those stored the inventory in their
 	// player structs.
+	// Boon TODO: This is erasing network ownership
 	IFVM(Actor, ObtainInventory)
 	{
 		VMValue params[] = { to, from };

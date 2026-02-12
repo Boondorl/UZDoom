@@ -203,7 +203,7 @@ void P_Ticker (void)
 		return;
 	}
 
-	DPSprite::NewTick();
+	DPSprite::NewTick(false);
 
 	// [RH] Frozen mode is only changed every 4 tics, to make it work with A_Tracer().
 	// This may not be perfect but it is not really relevant for sublevels that tracer homing behavior is preserved.

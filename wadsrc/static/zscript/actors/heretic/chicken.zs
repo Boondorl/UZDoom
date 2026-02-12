@@ -355,6 +355,9 @@ extend class Actor
 
 	void A_Feathers()
 	{
+		if (IsPredicting())
+			return;
+			
 		int count;
 
 		if (health > 0)
