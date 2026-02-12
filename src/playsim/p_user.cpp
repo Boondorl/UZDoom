@@ -464,7 +464,7 @@ struct FPredictionData
 {
 	bool bResetPrediction = false;
 	int LastPredictedTic = 0;
-	int HighestPredictedTic = -1; // Boon TODO: This needs to be reset on command reset
+	int HighestPredictedTic = -1;
 
 	TArray<TObjPtr<DObject*>> RollbackObjectRefs = {};	// Try and reuse existing Objects when deserializing.
 	TArray<FObjectBackup> RollbackObjects = {};			// If these Objects no longer exist, they must be recreated instead of left as a null pointer.
@@ -1777,6 +1777,17 @@ void P_PlayerThink (player_t *player)
 		double spd = (player->mo->flags & MF_NOGRAVITY) ? player->mo->Vel.Length() : player->mo->Vel.XY().Length();
 		player->mo->Level->velocities[player - players].SetVelocity(spd);
 	}
+}
+
+void P_ResetPredictionData()
+{
+	// This will be called while not predicting so only data that carries
+	// across server tics needs to be cleared.
+	PredictionData.bResetPrediction = false;
+	PredictionData.LastPredictedTic = ClientTic;
+	PredictionData.HighestPredictedTic = ClientTic - 1;
+	PredictionData.ResetPos();
+	PredictionData.PredictedEvents.Clear();
 }
 
 void P_PredictionLerpReset()

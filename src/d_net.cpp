@@ -599,6 +599,7 @@ void Net_ResetCommands(bool midTic)
 	}
 
 	NetEvents.ResetStream();
+	P_ResetPredictionData();
 }
 
 void Net_SetWaiting()

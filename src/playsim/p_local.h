@@ -79,6 +79,7 @@ void	P_UpdateNewestTic(int tic);
 void	P_PredictClient ();
 void	P_UnPredictClient ();
 void	P_PredictionLerpReset();
+void	P_ResetPredictionData();
 
 //
 // P_MOBJ
