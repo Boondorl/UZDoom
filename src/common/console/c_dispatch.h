@@ -33,6 +33,7 @@
 #include "tarray.h"
 #include "c_commandline.h"
 #include "zstring.h"
+#include "fs_filesystem.h"
 #include <array>
 
 class FConfigFile;
@@ -46,7 +47,7 @@ struct FExecList
 
 	void AddCommand(const char *cmd, const char *file = nullptr);
 	void ExecCommands() const;
-	void AddPullins(std::vector<std::string> &wads, FConfigFile *config) const;
+	void AddPullins(std::vector<FileSys::ResourceName> &wads, FConfigFile *config) const;
 };
 
 extern bool ParsingKeyConf, UnsafeExecutionContext;

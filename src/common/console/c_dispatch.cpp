@@ -1010,11 +1010,11 @@ void FExecList::ExecCommands() const
 	}
 }
 
-void FExecList::AddPullins(std::vector<std::string>& wads, FConfigFile *config) const
+void FExecList::AddPullins(std::vector<FileSys::ResourceName>& wads, FConfigFile *config) const
 {
 	for (unsigned i = 0; i < Pullins.Size(); ++i)
 	{
-		D_AddFile(wads, Pullins[i].GetChars(), true, -1, config);
+		D_AddFile(wads, Pullins[i].GetChars(), true, -1, config, false);
 	}
 }
 

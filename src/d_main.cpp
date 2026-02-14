@@ -2008,7 +2008,7 @@ FExecList *D_MultiExec (FArgs *list, FExecList *exec)
 	return exec;
 }
 
-static void GetCmdLineFiles(std::vector<std::string>& wadfiles, bool optional)
+static void GetCmdLineFiles(std::vector<FileSys::ResourceName>& wadfiles, bool optional)
 {
 	FString *args;
 	int i;
@@ -2022,11 +2022,20 @@ static void GetCmdLineFiles(std::vector<std::string>& wadfiles, bool optional)
 	// ones we added earlier.
 	for (i = optional ? 0 : int(wadfiles.size()); i < argc; ++i)
 	{
+		// Since optfiles shouldn't trigger the check but must still not be marked as optional
+		// for online purposes, any newly added files will need to be forcefully set to non-optional
+		// for the time being.
+		const size_t s = wadfiles.size();
 		D_AddWildFile(wadfiles, args[i].GetChars(), ".wad", GameConfig, optional);
+		if (wadfiles.size() > s)
+		{
+			for (size_t j = 0u; j < wadfiles.size() - s; ++j)
+				wadfiles[s + j].bOptional = false;
+		}
 	}
 }
 
-static FString ParseGameInfo(std::vector<std::string> &pwads, const char *fn, const char *data, int size)
+static FString ParseGameInfo(std::vector<FileSys::ResourceName> &pwads, const char *fn, const char *data, int size)
 {
 	FScanner sc;
 	FString iwad;
@@ -2068,11 +2077,11 @@ static FString ParseGameInfo(std::vector<std::string> &pwads, const char *fn, co
 				}
 				if (!DirEntryExists(checkpath.GetChars(), &isDir))
 				{
-					pos += D_AddFile(pwads, sc.String, true, pos, GameConfig);
+					pos += D_AddFile(pwads, sc.String, true, pos, GameConfig, false);
 				}
 				else
 				{
-					pos += D_AddFile(pwads, checkpath.GetChars(), true, pos, GameConfig);
+					pos += D_AddFile(pwads, checkpath.GetChars(), true, pos, GameConfig, false);
 				}
 			}
 			while (sc.CheckToken(','));
@@ -2160,7 +2169,7 @@ void GetReserved(LumpFilterInfo& lfi)
 	lfi.blockednames = { "*.bat", "*.exe", "__macosx/*", "*/__macosx/*", "*~" };
 }
 
-static FString CheckGameInfo(std::vector<std::string> & pwads)
+static FString CheckGameInfo(std::vector<FileSys::ResourceName>& pwads)
 {
 	FileSystem check;
 
@@ -2168,8 +2177,7 @@ static FString CheckGameInfo(std::vector<std::string> & pwads)
 	GetReserved(lfi);
 
 	// Open the entire list as a temporary file system and look for a GAMEINFO lump. The last one will automatically win.
-	std::vector<std::string> empty;
-	if (check.InitMultipleFiles(pwads, empty, &lfi, nullptr))
+	if (check.InitMultipleFiles(pwads, &lfi, nullptr))
 	{
 		int num = check.CheckNumForName("GAMEINFO");
 		if (num >= 0)
@@ -2229,7 +2237,7 @@ static void D_DoomInit()
 //
 //==========================================================================
 
-static void AddAutoloadFiles(const char *autoname, std::vector<std::string>& allwads)
+static void AddAutoloadFiles(const char *autoname, std::vector<FileSys::ResourceName>& allwads)
 {
 	LumpFilterIWAD.Format("%s.", autoname);	// The '.' is appened to simplify parsing the string
 
@@ -2240,19 +2248,19 @@ static void AddAutoloadFiles(const char *autoname, std::vector<std::string>& all
 		{
 			const char *lightswad = BaseFileSearch ("lights.pk3", NULL, true, GameConfig);
 			if (lightswad)
-				D_AddFile (allwads, lightswad, true, -1, GameConfig);
+				D_AddFile (allwads, lightswad, true, -1, GameConfig, true);
 		}
 		if ((GameStartupInfo.LoadBrightmaps == 1 || (GameStartupInfo.LoadBrightmaps != 0 && autoloadbrightmaps)) && !(Args->CheckParm(FArg_nobrightmaps)))
 		{
 			const char *bmwad = BaseFileSearch ("brightmaps.pk3", NULL, true, GameConfig);
 			if (bmwad)
-				D_AddFile (allwads, bmwad, true, -1, GameConfig);
+				D_AddFile (allwads, bmwad, true, -1, GameConfig, true);
 		}
 		if ((GameStartupInfo.LoadWidescreen == 1 || (GameStartupInfo.LoadWidescreen != 0 && autoloadwidescreen)) && !(Args->CheckParm(FArg_nowidescreen)))
 		{
 			const char *wswad = BaseFileSearch ("game_widescreen_gfx.pk3", NULL, true, GameConfig);
 			if (wswad)
-				D_AddFile (allwads, wswad, true, -1, GameConfig);
+				D_AddFile (allwads, wswad, true, -1, GameConfig, true);
 		}
 	}
 
@@ -2268,7 +2276,7 @@ static void AddAutoloadFiles(const char *autoname, std::vector<std::string>& all
 		// it for something else, so this gets to stay here.
 		const char *wad = BaseFileSearch ("zvox.wad", NULL, false, GameConfig);
 		if (wad)
-			D_AddFile (allwads, wad, true, -1, GameConfig);
+			D_AddFile (allwads, wad, true, -1, GameConfig, true);
 
 		// [RH] Add any .wad files in the skins directory
 #ifdef __unix__
@@ -2277,12 +2285,12 @@ static void AddAutoloadFiles(const char *autoname, std::vector<std::string>& all
 		file = progdir;
 #endif
 		file += "skins";
-		D_AddDirectory (allwads, file.GetChars(), "*.wad", GameConfig);
+		D_AddDirectory (allwads, file.GetChars(), "*.wad", GameConfig, true);
 
 #ifdef __unix__
 		FString skinDir = FStringf("%s/games/" GAMENAMELOWERCASE "/skins", GetDataPath());
 		file = NicePath(skinDir.GetChars());
-		D_AddDirectory (allwads, file.GetChars(), "*.wad", GameConfig);
+		D_AddDirectory (allwads, file.GetChars(), "*.wad", GameConfig, true);
 #endif
 
 		// Add common (global) wads
@@ -3377,7 +3385,7 @@ static int FileSystemPrintf(FSMessageLevel level, const char* fmt, ...)
 //
 //==========================================================================
 
-static int D_InitGame(const FIWADInfo* iwad_info, std::vector<std::string>& allwads, std::vector<std::string>& optwads, std::vector<std::string>& pwads)
+static int D_InitGame(const FIWADInfo* iwad_info, std::vector<FileSys::ResourceName>& allwads, std::vector<FileSys::ResourceName>& pwads)
 {
 	NetworkEntityManager::InitializeNetworkEntities();
 
@@ -3421,7 +3429,7 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<std::string>& allw
 	FBaseCVar::DisableCallbacks();
 	GameConfig->DoGameSetup (gameinfo.ConfigName.GetChars());
 
-	AddAutoloadFiles(iwad_info->Autoname.GetChars(), optwads);
+	AddAutoloadFiles(iwad_info->Autoname.GetChars(), allwads);
 
 	// Process automatically executed files
 	FExecList *exec;
@@ -3486,14 +3494,12 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<std::string>& allw
 	);
 
 	bool allowduplicates = Args->CheckParm(FArg_allowduplicates);
-	if (!fileSystem.InitMultipleFiles(allwads, optwads, &lfi, FileSystemPrintf, allowduplicates))
+	if (!fileSystem.InitMultipleFiles(allwads, &lfi, FileSystemPrintf, allowduplicates))
 	{
 		I_FatalError("FileSystem: no files found");
 	}
 	allwads.clear();
 	allwads.shrink_to_fit();
-	optwads.clear();
-	optwads.shrink_to_fit();
 	SetMapxxFlag();
 
 	D_GrabCVarDefaults(); //parse DEFCVARS
@@ -4081,7 +4087,7 @@ static int D_DoomMain_Internal (void)
 		// Load zdoom.pk3 alone so that we can get access to the internal gameinfos before
 		// the IWAD is known.
 
-		std::vector<std::string> pwads;
+		std::vector<FileSys::ResourceName> pwads;
 		GetCmdLineFiles(pwads, false);
 		FString iwad = CheckGameInfo(pwads);
 
@@ -4089,10 +4095,9 @@ static int D_DoomMain_Internal (void)
 		// restart is initiated without a defined IWAD assume for now that it's not going to change.
 		if (iwad.IsEmpty()) iwad = lastIWAD;
 
-		std::vector<std::string> allwads;
-		std::vector<std::string> optwads;
+		std::vector<FileSys::ResourceName> allwads;
 
-		const FIWADInfo *iwad_info = iwad_man->FindIWAD(allwads, optwads, iwad.GetChars(), basewad.GetChars(), optionalwad.GetChars());
+		const FIWADInfo *iwad_info = iwad_man->FindIWAD(allwads, iwad.GetChars(), basewad.GetChars(), optionalwad.GetChars());
 
 		GetCmdLineFiles(pwads, false); // [RL0] Update with files passed on the launcher extra args
 		// For now these need to remain verifiable over the network.
@@ -4141,13 +4146,11 @@ static int D_DoomMain_Internal (void)
 				GameStartupInfo.SteamAppId = "";
 		}
 
-		int ret = D_InitGame(iwad_info, allwads, optwads, pwads);
+		int ret = D_InitGame(iwad_info, allwads, pwads);
 		pwads.clear();
 		pwads.shrink_to_fit();
 		allwads.clear();
 		allwads.shrink_to_fit();
-		optwads.clear();
-		optwads.shrink_to_fit();
 		delete iwad_man;	// now we won't need this anymore
 		iwad_man = NULL;
 		if (ret != 0) return ret;

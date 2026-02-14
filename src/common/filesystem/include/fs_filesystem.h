@@ -44,6 +44,13 @@ struct FolderEntry
 	unsigned lumpnum;
 };
 
+struct ResourceName
+{
+	std::string Name;
+	bool bOptional;
+	ResourceName(std::string& name, bool optional) : Name(name), bOptional(optional) {}
+};
+
 class FileSystem
 {
 public:
@@ -58,7 +65,7 @@ public:
 	void SetMaxIwadNum(int x) { MaxIwadIndex = x; }
 
 	bool InitSingleFile(const char *filename, FileSystemMessageFunc Printf = nullptr);
-	bool InitMultipleFiles (std::vector<std::string>& filenames, std::vector<std::string>& optfilenames, LumpFilterInfo* filter = nullptr, FileSystemMessageFunc Printf = nullptr, bool allowduplicates = false);
+	bool InitMultipleFiles (std::vector<ResourceName>& filenames, LumpFilterInfo* filter = nullptr, FileSystemMessageFunc Printf = nullptr, bool allowduplicates = false);
 	void AddFile (const char *filename, FileReader *wadinfo, LumpFilterInfo* filter, FileSystemMessageFunc Printf, bool optional);
 	int CheckIfResourceFileLoaded (const char *name) noexcept;
 	void AddAdditionalFile(const char* filename, FileReader* wadinfo = NULL) {}
@@ -162,7 +169,7 @@ public:
 
 	bool IsOptionalResource(int wadnum) const
 	{
-		return wadnum >= 0 && wadnum < (int)Files.size() ? Files[wadnum]->IsOptional() : true;
+		return (size_t)wadnum < Files.size() ? Files[wadnum]->IsOptional() : true;
 	}
 
 	int AddFromBuffer(const char* name, char* data, int size, int id, int flags);
