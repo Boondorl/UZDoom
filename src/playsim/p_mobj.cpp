@@ -6449,7 +6449,7 @@ AActor *FLevelLocals::SpawnPlayer (FPlayerStart *mthing, int playernum, int flag
 	else if ((multiplayer || (flags2 & LEVEL2_ALLOWRESPAWN) || sv_singleplayerrespawn ||
 		!!G_SkillProperty(SKILLP_PlayerRespawn)) && state == PST_REBORN && oldactor != NULL)
 	{ // Special inventory handling for respawning in coop
-		IFVM(PlayerPawn, FilterCoopRespawnInventory)
+		IFVIRTUALPTRNAME(p->mo, NAME_PlayerPawn, FilterCoopRespawnInventory)
 		{
 			VMValue params[] = { p->mo, oldactor, ((heldWeap == nullptr || (heldWeap->ObjectFlags & OF_EuthanizeMe)) ? nullptr : heldWeap) };
 			VMCall(func, params, 3, nullptr, 0);
