@@ -412,7 +412,7 @@ level_info_t *level_info_t::CheckLevelRedirect ()
 		auto var = FindCVar(RedirectCVAR.GetChars(), NULL);
 		if (var && (var->GetRealType() == CVAR_Bool) && !(var->GetFlags() & CVAR_IGNORE))	// only check Bool cvars that are currently defined
 		{
-			if (var->GetFlags() & CVAR_USERINFO)
+			if ((var->GetFlags() & CVAR_USERINFO) && !(var->GetFlags() & CVAR_OPTIONAL))
 			{
 				// user sync'd cvar, check for all players
 				for (unsigned int i = 0; i < MAXPLAYERS; ++i)

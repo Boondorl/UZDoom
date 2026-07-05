@@ -285,7 +285,7 @@ void FBaseCVar::SetGenericRep (UCVarValue value, ECVarType type)
 		Flags &= ~CVAR_UNSAFECONTEXT;
 		return;
 	}
-	if ((Flags & CVAR_SERVERINFO) && callbacks && callbacks->SendServerInfoChange)
+	if ((Flags & CVAR_SERVERINFO) && !(Flags & CVAR_OPTIONAL) && callbacks && callbacks->SendServerInfoChange)
 	{
 		if (callbacks->SendServerInfoChange(this, value, type)) return;
 	}
@@ -1254,7 +1254,7 @@ void FilterCompactCVars (TArray<FBaseCVar *> &cvars, uint32_t filter)
 	while (it.NextPair(pair))
 	{
 		auto cvar = pair->Value;
-		if ((cvar->Flags & filter) && !(cvar->Flags & CVAR_IGNORE))
+		if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_IGNORE | CVAR_OPTIONAL)))
 			cvars.Push(cvar);
 	}
 	// Now sort them, so they're in a deterministic order and not whatever
@@ -1294,7 +1294,7 @@ FString C_GetMassCVarString (uint32_t filter, bool compact)
 		while (it.NextPair(pair))
 		{
 			cvar = pair->Value;
-			if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE|CVAR_IGNORE)))
+			if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE|CVAR_IGNORE|CVAR_OPTIONAL)))
 			{
 				UCVarValue val = cvar->GetGenericRep(CVAR_String);
 				dump << '\\' << cvar->GetName() << '\\' << val.String;
@@ -1749,7 +1749,7 @@ void FBaseCVar::ListVars (const char *filter, int listtype)
 			{
 				++count;
 
-				Printf ("%c%c%c%c%c %s = %s",
+				Printf ("%c%c%c%c%c%c %s = %s",
 					flags & CVAR_ARCHIVE ? 'A' : ' ',
 					flags & CVAR_USERINFO ? 'U' :
 						flags & CVAR_SERVERINFO ? 'S' :
@@ -1759,6 +1759,7 @@ void FBaseCVar::ListVars (const char *filter, int listtype)
 						flags & CVAR_UNSETTABLE ? '*' : ' ',
 					flags & CVAR_MOD ? 'M' : ' ',
 					flags & CVAR_IGNORE ? 'X' : ' ',
+					flags & CVAR_OPTIONAL ? 'O' : ' ',
 					var->GetName(),
 					var->GetHumanString());
 

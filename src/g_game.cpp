@@ -2004,7 +2004,7 @@ void C_SerializeCVars(FSerializer& arc, const char* label, uint32_t filter)
 			{
 				auto cvar = pair->Value;
 
-				if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE | CVAR_IGNORE | CVAR_CONFIG_ONLY)))
+				if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE | CVAR_IGNORE | CVAR_CONFIG_ONLY | CVAR_OPTIONAL)))
 				{
 					UCVarValue val = cvar->GetGenericRep(CVAR_String);
 					char* c = const_cast<char*>(val.String);
@@ -2019,7 +2019,7 @@ void C_SerializeCVars(FSerializer& arc, const char* label, uint32_t filter)
 			while (it.NextPair(pair))
 			{
 				auto cvar = pair->Value;
-				if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE | CVAR_IGNORE | CVAR_CONFIG_ONLY)))
+				if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE | CVAR_IGNORE | CVAR_CONFIG_ONLY | CVAR_OPTIONAL)))
 				{
 					UCVarValue val;
 					char* c = nullptr;

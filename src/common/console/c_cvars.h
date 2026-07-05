@@ -69,6 +69,7 @@ enum
 
 	CVAR_SYSTEM_ONLY		= 1 << 21, // System-related cvar that should only ever be changed by the user
 	CVAR_HIDDEN				= 1 << 22, // Don't show in console tab complete
+	CVAR_OPTIONAL			= 1 << 23, // Might not exist on all clients in a net game, so don't network it.
 };
 
 enum ECVarType

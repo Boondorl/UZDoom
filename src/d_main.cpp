@@ -1833,6 +1833,7 @@ void ParseCVarInfo()
 		FScanner sc(lump);
 		sc.SetCMode(true);
 
+		const bool optional = fileSystem.IsOptionalResource(fileSystem.GetFileContainer(lump));
 		while (sc.GetToken())
 		{
 			FString cvarname;
@@ -1884,6 +1885,9 @@ void ParseCVarInfo()
 				}
 				sc.MustGetAnyToken();
 			}
+
+			if (optional)
+				cvarflags |= CVAR_OPTIONAL;
 
 			// Possibility of defining a cvar as 'server nosave' or 'user nosave' is kept for
 			// compatibility reasons.

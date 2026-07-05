@@ -4998,7 +4998,7 @@ void DLevelScript::DoSetCVar(FBaseCVar *cvar, int value, bool is_string, bool fo
 	// For serverinfo variables, only the arbitrator should set it.
 	// The actual change to this cvar will not show up until it's
 	// been replicated to all peers.
-	if ((cvar->GetFlags() & CVAR_SERVERINFO) && consoleplayer != Net_Arbitrator)
+	if ((cvar->GetFlags() & CVAR_SERVERINFO) && !(cvar->GetFlags() & CVAR_OPTIONAL) && consoleplayer != Net_Arbitrator)
 	{
 		return;
 	}

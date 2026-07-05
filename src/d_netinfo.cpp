@@ -457,7 +457,7 @@ void userinfo_t::Reset(int pnum)
 
 			int flags = cvar->GetFlags();
 
-			newcvar = C_CreateCVar(NULL, type, (flags & CVAR_MOD) | ((flags & CVAR_ZS_CUSTOM) << 1) );
+			newcvar = C_CreateCVar(NULL, type, (flags & (CVAR_MOD | CVAR_OPTIONAL)) | ((flags & CVAR_ZS_CUSTOM) << 1) );
 			newcvar->SetGenericRepDefault(cvar->GetGenericRepDefault(CVAR_String), CVAR_String);
 
 			if(flags & CVAR_ZS_CUSTOM)
@@ -567,8 +567,16 @@ void D_UserInfoChanged (FBaseCVar *cvar)
 
 	mysnprintf (foo, countof(foo), "\\%s\\%s", cvar->GetName(), escaped_val.GetChars());
 
-	Net_WriteInt8 (DEM_UINFCHANGED);
-	Net_WriteString (foo);
+	if (cvar->GetFlags() & CVAR_OPTIONAL)
+	{
+		TArrayView<uint8_t> view = { reinterpret_cast<uint8_t*>(&foo[0]), (unsigned)(strlen(foo) + 1u) };
+		D_ReadUserInfoStrings(consoleplayer, view, true);
+	}
+	else
+	{
+		Net_WriteInt8(DEM_UINFCHANGED);
+		Net_WriteString(foo);
+	}
 }
 
 static const char *SetServerVar (char *name, ECVarType type, TArrayView<uint8_t>& stream, bool singlebit)
