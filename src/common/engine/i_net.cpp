@@ -96,7 +96,7 @@ FARG(dup, "Multiplayer", "Send less player movement commands over the network.",
 FARG(port, "Multiplayer", "Specifies an alternative IP port for a network game.", "x",
 	"Specifies an alternate IP port for this machine to use during a network game. By default,"
 	" port 5029 is used.");
-FARG(password, "", "", "",
+FARG(password, "Multiplayer", "Sets a password to be able to join the lobby. Can be up to 255 characters long.", "Password123!@#",
 	"");
 
 // As per http://support.microsoft.com/kb/q192599/ the standard
