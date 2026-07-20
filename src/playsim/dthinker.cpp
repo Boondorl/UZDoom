@@ -42,7 +42,6 @@
 
 static int ThinkCount, ClientSideThinkCount;
 static cycle_t ThinkCycles, ClientSideThinkCycles;
-extern cycle_t BotSupportCycles;
 extern cycle_t ActionCycles;
 
 IMPLEMENT_CLASS(DThinker, false, false)

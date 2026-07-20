@@ -80,7 +80,7 @@ bool DBot::CanReach(AActor* mo, bool doJump)
 
     // Intentionally ignore portals here.
     const double jumpHeight = doJump ? GetJumpHeight() : 0.0;
-	const bool doHazardCheck = !_player->mo->Sector->IsDangerous(_player->mo->Pos(), _player->mo->Height);
+	const bool doHazardCheck = !_player->mo->Sector->IsDangerous(_player->mo->Pos(), _player->mo->Height, _player->mo->tid);
     constexpr int MaxBlocks = 3;
 
 	const DVector3 dir = _player->mo->Vec3To(mo);
@@ -123,7 +123,7 @@ bool DBot::CanReach(AActor* mo, bool doJump)
 
 					//Determine if going to use backsector/frontsector.
 					sector_t* sec = (line->backsector == prevSec) ? line->frontsector : line->backsector;
-					if (doHazardCheck && sec->IsDangerous({ hitPos, hitZ }, _player->mo->Height))
+					if (doHazardCheck && sec->IsDangerous({ hitPos, hitZ }, _player->mo->Height, _player->mo->tid))
 						return false;
 
 					const double ceilZ = NextHighestCeilingAt(sec, hitPos.X, hitPos.Y, hitZ, hitZ + _player->mo->Height);
@@ -271,8 +271,8 @@ bool DBot::CheckMove(const DVector2& pos, bool* jumped, bool* interacted)
     }
 
 	// Only do a hazard check if we're not currently in a hazard zone.
-	if (!_player->mo->Sector->IsDangerous(_player->mo->Pos(), _player->mo->Height)
-		&& tm.sector->IsDangerous(tm.pos, _player->mo->Height))
+	if (!_player->mo->Sector->IsDangerous(_player->mo->Pos(), _player->mo->Height, _player->mo->tid)
+		&& tm.sector->IsDangerous(tm.pos, _player->mo->Height, _player->mo->tid))
 	{
 		return false;
 	}
