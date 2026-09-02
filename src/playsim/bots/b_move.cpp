@@ -55,7 +55,7 @@ double DBot::GetJumpHeight() const
 
 // Make sure that bots can't pick up any items when checking their position since they're
 // considered actual players and ZDoom throws every interaction inside of P_CheckPosition...
-bool DBot::FakeCheckPosition(const DVector2& pos, FCheckPosition& tm, bool actorsOnly)
+bool DBot::FakeCheckPosition(const DVector2& pos, FCheckPosition& tm, bool actorsOnly) const
 {
     const ActorFlags savedFlags = _player->mo->flags;
     _player->mo->flags &= ~MF_PICKUP;
@@ -67,7 +67,7 @@ bool DBot::FakeCheckPosition(const DVector2& pos, FCheckPosition& tm, bool actor
 // Checks to see if the bot is capable of reaching a target actor taking
 // level geometry into account. This is mostly for stepping up stairs and
 // avoiding running directly into hazards, but won't take large dropoffs into account.
-bool DBot::CanReach(AActor* mo, bool doJump)
+bool DBot::CanReach(AActor* mo, bool doJump) const
 {
     if (mo == nullptr)
         return false;
@@ -180,26 +180,24 @@ int P_CheckKeys(AActor* owner, int keynum, bool remote, bool quiet);
 
 // Check to ensure the spot ahead of the bot is a valid place that can be walked. Tries
 // to prevent walking over ledges and will automatically jump as well.
-bool DBot::CheckMove(const DVector2& pos, bool* jumped, bool* interacted)
+bool DBot::CheckMove(const DVector2& pos, EBotCmds cmds, EBotCmds* desiredCmds) const
 {
-	if (jumped != nullptr)
-		*jumped = false;
-	if (interacted != nullptr)
-		*interacted = false;
+	if (desiredCmds != nullptr)
+		*desiredCmds = 0;
 
     // No jump check since the bot will just warp up ledges anyway.
     if (_player->mo->flags & MF_NOCLIP)
         return true;
 
     const double curZ = _player->mo->Z();
-    const double jumpHeight = jumped != nullptr ? GetJumpHeight() : 0.0;
+	const double jumpHeight = (cmds & BCMD_JUMP) ? GetJumpHeight() : 0.0;
 	const DVector2 usePos = _player->mo->Pos().XY() + _player->mo->Angles.Yaw.ToVector(_player->mo->FloatVar(NAME_UseRange));
     FCheckPosition tm = {};
     if (!FakeCheckPosition(pos, tm))
     {
 		if (_player->mo->BlockingLine != nullptr)
 		{
-			if (interacted == nullptr)
+			if (!(cmds & BCMD_USE))
 				return false;
 
 			auto line = _player->mo->BlockingLine;
@@ -238,7 +236,8 @@ bool DBot::CheckMove(const DVector2& pos, bool* jumped, bool* interacted)
 					return false;
 			}
 
-			*interacted = true;
+			if (desiredCmds != nullptr)
+				*desiredCmds |= BCMD_USE;
 			return false;
 		}
 		else
@@ -278,14 +277,14 @@ bool DBot::CheckMove(const DVector2& pos, bool* jumped, bool* interacted)
 	}
 
     // Check if it's jumpable.
-    if (jumped != nullptr && tm.floorz > curZ + _player->mo->MaxStepHeight)
-		*jumped = true;
+	if (desiredCmds != nullptr && tm.floorz > curZ + _player->mo->MaxStepHeight)
+		*desiredCmds |= BCMD_JUMP;
 
     return true;
 }
 
 // Try and move the bot in its current movedir.
-bool DBot::Move(bool running, bool doJump, bool doInteract, bool stuck)
+bool DBot::Move(EBotCmds cmds, bool stuck) const
 {
 	if (_player->mo->movedir >= DI_NODIR)
 	{
@@ -300,11 +299,11 @@ bool DBot::Move(bool running, bool doJump, bool doInteract, bool stuck)
     const DVector2 pos = { _player->mo->X() + moveCheck * xspeed[_player->mo->movedir],
                             _player->mo->Y() + moveCheck * yspeed[_player->mo->movedir] };
 
-	bool jumped = false, interacted = false;
-	const bool res = CheckMove(pos, doJump ? &jumped : nullptr, doInteract ? &interacted : nullptr);
-	if (jumped)
+	EBotCmds desiredCmds = 0;
+	const bool res = CheckMove(pos, cmds, &desiredCmds);
+	if (desiredCmds & BCMD_JUMP)
 		SetButtons(BT_JUMP, true);
-	if (interacted)
+	if (desiredCmds & BCMD_USE)
 		SetButtons(BT_USE, true);
 	if (!res && !stuck)
 		return false;
@@ -324,15 +323,15 @@ bool DBot::Move(bool running, bool doJump, bool doInteract, bool stuck)
     if (forw == MDIR_FORWARDS && absAng > 90.0)
         forw = MDIR_BACKWARDS;
 
-    SetMove(forw, side, MDIR_NO_CHANGE, running);
+    SetMove(forw, side, MDIR_NO_CHANGE, (cmds & BCMD_RUN));
     return true;
 }
 
 // Similar to Move() but will also set a cool down on the random turning if it could move.
 // Only used when trying to pick a new direction to move.
-bool DBot::TryWalk(bool running, bool doJump, bool doInteract, bool stuck)
+bool DBot::TryWalk(EBotCmds cmds, bool stuck) const
 {
-    if (!Move(running, doJump, doInteract, stuck))
+    if (!Move(cmds, stuck))
         return false;
 
     constexpr int CoolDown = TICRATE / 5;
@@ -340,11 +339,11 @@ bool DBot::TryWalk(bool running, bool doJump, bool doInteract, bool stuck)
     return true;
 }
 
-void DBot::NewMoveDirection(AActor* goal, bool runAway, bool running, bool doJump, bool doInteract)
+void DBot::NewMoveDirection(AActor* goal, bool runAway, EBotCmds cmds) const
 {
 	int turnChance = 7;
 	int facingDir = _player->mo->movedir;
-	if (facingDir == DI_NODIR)
+	if (facingDir >= DI_NODIR)
 		facingDir = pr_botnewchasedir() & 7;
 
 	int baseDir = facingDir;
@@ -371,39 +370,39 @@ void DBot::NewMoveDirection(AActor* goal, bool runAway, bool running, bool doJum
         baseDir = ((pr_botnewchasedir() & 1) * 2 - 1 + baseDir) % 8;
 
     _player->mo->movedir = baseDir;
-    if (TryWalk(running, doJump, doInteract))
+    if (TryWalk(cmds))
         return;
 
     _player->mo->movedir = (baseDir + 1) % 8;
-    if (TryWalk(running, doJump, doInteract))
+	if (TryWalk(cmds))
         return;
 
     _player->mo->movedir = (baseDir - 1) % 8;
-    if (TryWalk(running, doJump, doInteract))
+	if (TryWalk(cmds))
         return;
 
     _player->mo->movedir = (baseDir + 2) % 8;
-    if (TryWalk(running, doJump, doInteract))
+	if (TryWalk(cmds))
         return;
 
     _player->mo->movedir = (baseDir - 2) % 8;
-    if (TryWalk(running, doJump, doInteract))
+	if (TryWalk(cmds))
         return;
 
     _player->mo->movedir = (baseDir + 3) % 8;
-    if (TryWalk(running, doJump, doInteract))
+	if (TryWalk(cmds))
         return;
 
     _player->mo->movedir = (baseDir - 3) % 8;
-    if (TryWalk(running, doJump, doInteract))
+	if (TryWalk(cmds))
         return;
 
     _player->mo->movedir = (baseDir + 4) % 8;
-    if (TryWalk(running, doJump, doInteract))
+	if (TryWalk(cmds))
         return;
 
     // Couldn't move at all, so pick a random direction to see
 	// if we can wiggle out.
     _player->mo->movedir = pr_botnewchasedir() & 7;
-	TryWalk(running, doJump, doInteract, true);
+	TryWalk(cmds, true);
 }

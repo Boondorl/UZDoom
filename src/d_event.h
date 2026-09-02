@@ -25,7 +25,7 @@
 #include <functional>
 #include "d_eventbase.h"
 #include "gamestate.h"
-
+#include "tflags.h"
 
 
 
@@ -68,6 +68,9 @@ typedef enum
 
 	BT_RUN			= 1<<25,
 } buttoncode_t;
+
+typedef TFlags<buttoncode_t> EButtonCodes;
+DEFINE_TFLAGS_OPERATORS(EButtonCodes);
 
 // Called by IO functions when input is detected.
 void D_Render(std::function<void()> action, bool interpolate);

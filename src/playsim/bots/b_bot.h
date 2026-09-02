@@ -60,6 +60,16 @@ enum EBotAngleCmd
 	ACMD_ROLL
 };
 
+enum EBotCmd : unsigned
+{
+	BCMD_JUMP	= 1,
+	BCMD_RUN	= 1 << 1,
+	BCMD_USE	= 1 << 2,
+};
+
+typedef TFlags<EBotCmd> EBotCmds;
+DEFINE_TFLAGS_OPERATORS(EBotCmds)
+
 // Allow for modders to set up any custom properties they want in BOTDEF. Includes wrapper functionality
 // for getting simple data types (others like vectors can be implemented ZScript side). Name is more generic since
 // this can technically be used for anything for any reason.
@@ -200,6 +210,36 @@ public:
 		return def;
 	}
 
+	const FString& GetDefaultString(FName key, const FString &def = {}) const
+	{
+		return _default != nullptr ? _default->GetString(key, def) : def;
+	}
+
+	bool GetDefaultBool(FName key, bool def = false) const
+	{
+		return _default != nullptr ? _default->GetBool(key, def) : def;
+	}
+
+	int GetDefaultInt(FName key, int def = 0) const
+	{
+		return _default != nullptr ? _default->GetInt(key, def) : def;
+	}
+
+	double GetDefaultDouble(FName key, double def = 0.0) const
+	{
+		return _default != nullptr ? _default->GetDouble(key, def) : def;
+	}
+
+	int GetDefaultWholeNumber(FName key, int def = 0) const
+	{
+		return _default != nullptr ? _default->GetWholeNumber(key, def) : def;
+	}
+
+	double GetDefaultRealNumber(FName key, double def = 0.0) const
+	{
+		return _default != nullptr ? _default->GetRealNumber(key, def) : def;
+	}
+
 	FString AsString(FName key, const FString& def = {}) const
 	{
 		auto value = _properties.CheckKey(key);
@@ -229,12 +269,12 @@ private:
 	player_t* _player;	// Player info for the bot. This gets reset every time the game loads into a new map.
 	FName _botID;		// Tracks which bot definition it's tied to.
 
-	void NormalizeSpeed(short& cmd, const int* speeds, bool running);	// Ensure that speeds adhere to running properly.
-	void SetAngleCommand(short& cmd, DAngle curAng, DAngle destAng);	// Convert a delta angle into a valid turn command.
-	bool TryWalk(bool running = true, bool doJump = true, bool doInteract = true, bool stuck = false);				// Same as Move but also sets a turn cool down when moving.
+	static short NormalizeSpeed(short cmd, int walkSpeed, int runSpeed, bool running, bool desiredRun);	// Ensure that speeds adhere to running properly.
+	static short GetAngleCommand(DAngle curAng, DAngle destAng);						// Convert a delta angle into a valid turn command.
+	bool TryWalk(EBotCmds cmds = BCMD_JUMP | BCMD_RUN | BCMD_USE, bool stuck = false) const;	// Same as Move but also sets a turn cool down when moving.
 
 public:
-	static const int DEFAULT_STAT = STAT_BOT; // Needed so the Thinker creator knows what stat to put it in.
+	static const int DEFAULT_STAT = STAT_BOT;
 
 	FEntityProperties Properties; // Stores current information about the bot. Uses the properties from its bot ID as defaults.
 	TObjPtr<AActor*> Evade;
@@ -251,21 +291,20 @@ public:
 
 	void CallBotThink(); // Handles overall thinking logic. Called directly before PlayerThink.
 
-	// Boon TODO: Clean up all these const functions
-	bool IsActorInView(AActor* mo, DAngle fov = DAngle60);	// Check if the bot has sight of the Actor within a view cone.
-	bool CanReach(AActor* mo, bool doJump = true); // Checks to see if a valid movement can be made towards the target.
-	bool CheckShotPath(const DVector3& dest, FName projectileType = NAME_None, double minDistance = 0.0); // Checks if anything is blocking the ReadyWeapon missile's path.
-	AActor* FindTarget(DAngle fov = DAngle60);					// Tries to find a target.
-	unsigned FindPartner();											// Looks for a player to stick near, bot or real.
-	bool IsValidItem(AActor* item);								// Checks to see if the item is able to be picked up.
+	bool IsActorInView(AActor* mo, DAngle fov = DAngle90) const;	// Check if the bot has sight of the Actor within a view cone.
+	bool CanReach(AActor* mo, bool doJump = true) const; // Checks to see if a valid movement can be made towards the target.
+	bool CheckShotPath(const DVector3& dest, FName projectileType = NAME_None, double minDistance = 0.0) const; // Checks if anything is blocking the ReadyWeapon missile's path.
+	AActor* FindTarget(DAngle fov = DAngle90) const;					// Tries to find a target.
+	unsigned FindPartner() const;											// Looks for a player to stick near, bot or real.
+	bool IsValidItem(AActor* item) const;								// Checks to see if the item is able to be picked up.
 	double GetJumpHeight() const;
-	bool FakeCheckPosition(const DVector2& pos, FCheckPosition& tm, bool actorsOnly = false); // Same as CheckPosition but prevent picking up items.
-	bool CheckMove(const DVector2& pos, bool* jumped = nullptr, bool* interacted = nullptr);		// Check if a valid movement can be made to the given position. Also jumps if needed if that move is valid.
-	bool Move(bool running = true, bool doJump = true, bool doInteract = true, bool stuck = false);		// Check to see if a movement is valid in the current moveDir.
-	void NewMoveDirection(AActor* goal = nullptr, bool runAway = false, bool running = true, bool doJump = true, bool doInteract = true); // Attempts to get a new direction to move towards the bot's goal.
-	void SetMove(EBotMoveDirection forward = MDIR_NO_CHANGE, EBotMoveDirection side = MDIR_NO_CHANGE, EBotMoveDirection up = MDIR_NO_CHANGE, bool running = true); // Sets the move commands.
-	void SetButtons(int cmd, bool set);						// Sets the button commands.
-	void SetAngle(DAngle dest, EBotAngleCmd type);			// Sets the angle commands.
+	bool FakeCheckPosition(const DVector2& pos, FCheckPosition& tm, bool actorsOnly = false) const;	// Same as CheckPosition but prevent picking up items.
+	bool CheckMove(const DVector2& pos, EBotCmds cmds, EBotCmds* desiredCmds) const;					// Check if a valid movement can be made to the given position. Also jumps if needed if that move is valid.
+	bool Move(EBotCmds cmds = BCMD_JUMP | BCMD_RUN | BCMD_USE, bool stuck = false) const;				// Check to see if a movement is valid in the current moveDir.
+	void NewMoveDirection(AActor* goal = nullptr, bool runAway = false, EBotCmds cmds = BCMD_JUMP | BCMD_RUN | BCMD_USE) const; // Attempts to get a new direction to move towards the bot's goal.
+	void SetMove(EBotMoveDirection forward = MDIR_NO_CHANGE, EBotMoveDirection side = MDIR_NO_CHANGE, EBotMoveDirection up = MDIR_NO_CHANGE, bool running = true) const; // Sets the move commands.
+	void SetButtons(EButtonCodes cmd, bool set) const;			// Sets the button commands.
+	void SetAngle(DAngle dest, EBotAngleCmd type) const;			// Sets the angle commands.
 };
 
 FString D_EscapeUserInfo(const char* str);

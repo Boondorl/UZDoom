@@ -59,7 +59,7 @@ static bool IsHexenArmorValid(AActor* mo, AActor* item)
 }
 
 // Check to see if the bot is capable of picking up a given item.
-bool DBot::IsValidItem(AActor* item)
+bool DBot::IsValidItem(AActor* item) const
 {
 	// Not something that can be picked up.
 	if (item == nullptr || !(item->flags & MF_SPECIAL) || !item->IsKindOf(NAME_Inventory))
@@ -194,7 +194,7 @@ bool DBot::IsValidItem(AActor* item)
 }
 
 // Simple check to see if a given Actor is within view of the bot.
-bool DBot::IsActorInView(AActor* mo, DAngle fov)
+bool DBot::IsActorInView(AActor* mo, DAngle fov) const
 {
 	const DAngle viewFOV = fov <= nullAngle ? DAngle180 : fov;
 	return mo != nullptr
@@ -204,7 +204,7 @@ bool DBot::IsActorInView(AActor* mo, DAngle fov)
 
 // Sets the bot's FriendPlayer value to the player index it wants to stick with. Ignores bots
 // since that can cause them to swarm around each other like a hive of angry bees.
-unsigned DBot::FindPartner()
+unsigned DBot::FindPartner() const
 {
 	unsigned newFriend = Level->PlayerNum(_player) + 1;
 	double closest = std::numeric_limits<double>::infinity();
@@ -227,7 +227,7 @@ unsigned DBot::FindPartner()
 }
 
 // Attempts to set the bot's target. If not in deathmatch mode, tries to get a monster within 16 blockmap units.
-AActor* DBot::FindTarget(DAngle fov)
+AActor* DBot::FindTarget(DAngle fov) const
 {
 	const DAngle viewFOV = fov <= nullAngle ? DAngle180 : fov;
 	if (!deathmatch)
@@ -236,7 +236,7 @@ AActor* DBot::FindTarget(DAngle fov)
 	constexpr double DarknessRange = 320.0 * 320.0; // Bots can see roughly 10m in front of them in darkness
 	constexpr int DarknessThreshold = 50;
 
-	AActor *target = nullptr;
+	AActor* target = nullptr;
 	double closest = std::numeric_limits<double>::infinity();
 	for (unsigned i = 0u; i < MAXPLAYERS; ++i)
 	{
@@ -262,7 +262,7 @@ AActor* DBot::FindTarget(DAngle fov)
 // Fires off a series of tracers to emulate a missile moving down along a path. Collision checking
 // of the Actor type is intentionally kept lazy since more robust solutions can be written from
 // ZScript.
-bool DBot::CheckShotPath(const DVector3& dest, FName projectileType, double minDistance)
+bool DBot::CheckShotPath(const DVector3& dest, FName projectileType, double minDistance) const
 {
 	const PClassActor* missileType = nullptr;
 	if (projectileType != NAME_None)
@@ -280,7 +280,7 @@ bool DBot::CheckShotPath(const DVector3& dest, FName projectileType, double minD
 
 		radius = def->radius;
 		height = def->Height;
-		ripper = def->flags2 & MF2_RIP;
+		ripper = (def->flags2 & MF2_RIP);
 	}
 
 	const DVector3 origin = _player->mo->PosAtZ(_player->mo->Center() - _player->mo->Floorclip + _player->mo->AttackOffset());

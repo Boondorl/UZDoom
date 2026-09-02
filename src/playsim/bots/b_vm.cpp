@@ -312,15 +312,15 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, SetMove, SetMove)
 	return 0;
 }
 
-static void SetButtons(DBot* self, int buttons, bool set)
+static void SetButtons(DBot* self, unsigned buttons, bool set)
 {
-	self->SetButtons(buttons, set);
+	self->SetButtons(EButtonCodes::FromInt(buttons), set);
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DBot, SetButtons, SetButtons)
 {
 	PARAM_SELF_PROLOGUE(DBot);
-	PARAM_INT(buttons);
+	PARAM_UINT(buttons);
 	PARAM_BOOL(set);
 
 	SetButtons(self, buttons, set);
@@ -491,14 +491,12 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, CanReach, CanReach)
 	ACTION_RETURN_BOOL(CanReach(self, mo, jump));
 }
 
-static int CheckMove(DBot* self, double x, double y, bool jump, bool allowInteract, int* jumped, int* interacted)
+static int CheckMove(DBot* self, double x, double y, unsigned cmds, unsigned* desiredCmds)
 {
-	bool j = false, i = false;
-	bool res = self->CheckMove({ x, y }, jump ? &j : nullptr, allowInteract ? &i : nullptr);
-	if (jumped != nullptr)
-		*jumped = j;
-	if (interacted != nullptr)
-		*interacted = i;
+	EBotCmds desired = 0;
+	bool res = self->CheckMove({ x, y }, EBotCmds::FromInt(cmds), &desired);
+	if (desiredCmds != nullptr)
+		*desiredCmds = desired;
 	return res;
 }
 
@@ -507,38 +505,33 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, CheckMove, CheckMove)
 	PARAM_SELF_PROLOGUE(DBot);
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
-	PARAM_BOOL(jump);
-	PARAM_BOOL(allowInteract);
+	PARAM_UINT(cmds);
 
-	int jumped = false, interacted = false;
-	bool res = CheckMove(self, x, y, jump, allowInteract, &jumped, &interacted);
+	unsigned desiredCmds = 0;
+	bool res = CheckMove(self, x, y, cmds, &desiredCmds);
 	if (numret > 0)
 		ret[0].SetInt(res);
 	if (numret > 1)
-		ret[1].SetInt(jumped);
-	if (numret > 2)
-		ret[2].SetInt(interacted);
+		ret[1].SetInt(desiredCmds);
 	return numret;
 }
 
-static int Move(DBot* self, bool running, bool jump, bool allowInteract)
+static int Move(DBot* self, unsigned cmds)
 {
-	return self->Move(running, jump, allowInteract);
+	return self->Move(EBotCmds::FromInt(cmds));
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DBot, Move, Move)
 {
 	PARAM_SELF_PROLOGUE(DBot);
-	PARAM_BOOL(running);
-	PARAM_BOOL(jump);
-	PARAM_BOOL(allowInteract);
+	PARAM_UINT(cmds);
 
-	ACTION_RETURN_BOOL(Move(self, running, jump, allowInteract));
+	ACTION_RETURN_BOOL(Move(self, cmds));
 }
 
-static void NewMoveDirection(DBot* self, AActor* goal, bool runAway, bool running, bool jump, bool allowInteract)
+static void NewMoveDirection(DBot* self, AActor* goal, bool runAway, unsigned cmds)
 {
-	self->NewMoveDirection(goal, runAway, running, jump, allowInteract);
+	self->NewMoveDirection(goal, runAway, EBotCmds::FromInt(cmds));
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DBot, NewMoveDirection, NewMoveDirection)
@@ -546,10 +539,8 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, NewMoveDirection, NewMoveDirection)
 	PARAM_SELF_PROLOGUE(DBot);
 	PARAM_POINTER(mo, AActor);
 	PARAM_BOOL(runAway);
-	PARAM_BOOL(running)
-	PARAM_BOOL(jump);
-	PARAM_BOOL(allowInteract);
+	PARAM_UINT(cmds);
 
-	NewMoveDirection(self, mo, runAway, running, jump, allowInteract);
+	NewMoveDirection(self, mo, runAway, cmds);
 	return 0;
 }

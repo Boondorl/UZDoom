@@ -19,8 +19,6 @@
 
 struct EntityProperties native
 {
-	// Boon TODO: Return a list of properties? Is that even useful?
-	//       	  Default getters?
 	native void SetString(Name key, string value);
 	native void SetBool(Name key, bool value);
 	native void SetInt(Name key, int value);
@@ -53,10 +51,17 @@ enum EBotMoveDirection
 	MDIR_DOWN = MDIR_BACKWARDS
 }
 
+enum EBotCmd : uint
+{
+	BCMD_JUMP	= 1,
+	BCMD_RUN	= 1 << 1,
+	BCMD_USE	= 1 << 2,
+}
+
 class Bot : Thinker native
 {
 	const DEF_REACTION_TICS = int(0.3 * TICRATE);
-	const DEF_SIGHT_FOV = 80.0;
+	const DEF_SIGHT_FOV = 90.0;
 	const DEF_ITEM_RANGE = 480.0;
 	const DARKNESS_THRESHOLD = 50;
 	const MIN_RESPAWN_TIME = int(0.5 * TICRATE);
@@ -101,10 +106,9 @@ class Bot : Thinker native
 	native clearscope double GetJumpHeight() const;
 	native bool FakeCheckPosition(Vector2 dest, out FCheckPosition tm = null, bool actorsOnly = false);
 	native bool CanReach(Actor mo, bool jump = true);
-	// Boon TODO: Return desired inputs
-	native bool, bool, bool CheckMove(Vector2 dest, bool jump = true, bool allowInteract = true);
-	native bool Move(bool running = true, bool jump = true, bool allowInteract = true);
-	native void NewMoveDirection(Actor goal = null, bool runAway = false, bool running = true, bool jump = true, bool allowInteract = true);
+	native bool, EBotCmd CheckMove(Vector2 dest, EBotCmd cmds = BCMD_JUMP | BCMD_USE);
+	native bool Move(EBotCmd cmds = BCMD_JUMP | BCMD_USE | BCMD_RUN);
+	native void NewMoveDirection(Actor goal = null, bool runAway = false, EBotCmd cmds = BCMD_JUMP | BCMD_USE | BCMD_RUN);
 
 	clearscope PlayerPawn GetPawn() const
 	{
@@ -415,7 +419,10 @@ class Bot : Thinker native
 		{
 			Evade = partner;
 			SetCoolDown('Evade', 0);
-			NewMoveDirection(Evade, true, deathmatch);
+			EBotCmd cmds = BCMD_JUMP | BCMD_USE;
+			if (deathmatch)
+				cmds |= BCMD_RUN;
+			NewMoveDirection(Evade, true, cmds);
 		}
 	}
 
@@ -836,15 +843,16 @@ class Bot : Thinker native
 		Actor goal = GetGoal();
 		let pawn = GetPawn();
 
+		EBotCmd cmds = BCMD_JUMP | BCMD_USE;
 		bool running = deathmatch || Evade || goal || GetTarget();
 		pawn.MoveCount -= running ? 2 : 1;
-		if (pawn.MoveCount < 0 || !Move(running))
+		if (pawn.MoveCount < 0 || !Move(cmds | (BCMD_RUN * running)))
 		{
 			bool avoidingPartner = Evade == GetPartner();
 			if (Evade && (!avoidingPartner || !goal))
-				NewMoveDirection(Evade, true, deathmatch || !avoidingPartner);
+				NewMoveDirection(Evade, true, cmds | (BCMD_RUN * (deathmatch || !avoidingPartner)));
 			else
-				NewMoveDirection(goal, running: running);
+				NewMoveDirection(goal, cmds: cmds | (BCMD_RUN * running));
 		}
 	}
 
