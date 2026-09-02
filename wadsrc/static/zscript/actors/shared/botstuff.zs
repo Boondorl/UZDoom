@@ -562,7 +562,7 @@ class Bot : Thinker native
 				SetGoal(closest);
 				SetCoolDown('Goal', GOAL_COOL_DOWN_TICS);
 				SetCoolDown('GoalCheck', GOAL_REACH_CHECK_TICS);
-				MovePos = closets.Pos.XY;
+				MovePos = closest.Pos.XY;
 				return;
 			}
 		}
@@ -884,8 +884,9 @@ class Bot : Thinker native
 
 	virtual void HandleMovement()
 	{
-		Actor goal = GetGoal();
-		Actor evading = GetEvading();
+		let goal = GetGoal();
+		let evading = GetEvading();
+		let target = GetTarget();
 		let pawn = GetPawn();
 
 		EBotCmd cmds = BCMD_JUMP | BCMD_USE;
@@ -1054,7 +1055,7 @@ class Bot : Thinker native
 
 // Unused; only here for backwards compat
 
-deprecated("5.1") class CajunBodyNode : Actor
+class CajunBodyNode : Actor deprecated("5.1")
 {
 	Default
 	{
@@ -1064,7 +1065,7 @@ deprecated("5.1") class CajunBodyNode : Actor
 	}
 }
 
-deprecated("5.1") class CajunTrace : Actor
+class CajunTrace : Actor deprecated("5.1")
 {
 	Default
 	{

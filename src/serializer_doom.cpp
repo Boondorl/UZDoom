@@ -264,6 +264,33 @@ FSerializer& Serialize(FSerializer& arc, const char* key, ZSMap<FName, int>& val
 	return arc;
 }
 
+FSerializer& Serialize(FSerializer& arc, const char* key, ZSMap<FName, AActor*>& value, ZSMap<FName, AActor*>* defval)
+{
+	if (!arc.BeginObject(key))
+		return arc;
+
+	if (arc.isWriting())
+	{
+		ZSMap<FName, AActor*>::Iterator it = { value };
+		ZSMap<FName, AActor*>::Pair* pair = nullptr;
+		while (it.NextPair(pair))
+			arc(pair->Key.GetChars(), pair->Value);
+	}
+	else
+	{
+		const char* k = nullptr;
+		while ((k = arc.GetKey()) != nullptr)
+		{
+			AActor* val;
+			arc(k, val);
+			value[k] = val;
+		}
+	}
+
+	arc.EndObject();
+	return arc;
+}
+
 FSerializer& Serialize(FSerializer& arc, const char* key, TMap<FName, std::variant<bool, int, double, FString>>& value, TMap<FName, std::variant<bool, int, double, FString>>* def)
 {
 	if (!arc.BeginObject(key))

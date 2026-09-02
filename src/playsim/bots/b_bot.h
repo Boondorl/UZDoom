@@ -280,7 +280,7 @@ public:
 	DVector3 AimPos;
 	DVector2 MovePos;
 	ZSMap<FName, int> CoolDowns;
-	ZSMap<FName, TObjPtr<AActor*>> Targets;
+	ZSMap<FName, AActor*> Targets;
 
 	void Construct(player_t* player, FName index);	// Set the default values of the class fields when the Thinker is created.
 	void OnDestroy() override;						// Clear the Properties map.
