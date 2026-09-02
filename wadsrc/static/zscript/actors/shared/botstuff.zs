@@ -31,6 +31,13 @@ struct EntityProperties native
 	native clearscope int GetWholeNumber(Name key, int def = 0) const;
 	native clearscope double GetRealNumber(Name key, double def = 0.0) const;
 
+	native clearscope string GetDefaultString(Name key, string def = "") const;
+	native clearscope bool GetDefaultBool(Name key, bool def = false) const;
+	native clearscope int GetDefaultInt(Name key, int def = 0) const;
+	native clearscope double GetDefaultDouble(Name key, double def = 0.0) const;
+	native clearscope int GetDefaultWholeNumber(Name key, int def = 0) const;
+	native clearscope double GetDefaultRealNumber(Name key, double def = 0.0) const;
+
 	native void RemoveProperty(Name key);
 	native void ResetProperty(Name key);
 	native void ResetAllProperties();

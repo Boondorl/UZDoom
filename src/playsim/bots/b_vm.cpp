@@ -54,6 +54,22 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetString, GetString)
 	ACTION_RETURN_STRING(res);
 }
 
+static void GetDefaultString(FEntityProperties *self, int key, const FString *def, FString *res)
+{
+	*res = self->GetDefaultString(ENamedName(key), *def);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetDefaultString, GetDefaultString)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FEntityProperties);
+	PARAM_INT(key);
+	PARAM_STRING(def);
+
+	FString res = {};
+	GetDefaultString(self, key, &def, &res);
+	ACTION_RETURN_STRING(res);
+}
+
 static int GetInt(FEntityProperties* self, int key, int def)
 {
 	return self->GetInt(ENamedName(key), def);
@@ -66,6 +82,20 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetInt, GetInt)
 	PARAM_INT(def);
 
 	ACTION_RETURN_INT(GetInt(self, key, def));
+}
+
+static int GetDefaultInt(FEntityProperties *self, int key, int def)
+{
+	return self->GetDefaultInt(ENamedName(key), def);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetDefaultInt, GetDefaultInt)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FEntityProperties);
+	PARAM_INT(key);
+	PARAM_INT(def);
+
+	ACTION_RETURN_INT(GetDefaultInt(self, key, def));
 }
 
 static int GetBool(FEntityProperties* self, int key, bool def)
@@ -82,6 +112,20 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetBool, GetBool)
 	ACTION_RETURN_BOOL(GetBool(self, key, def));
 }
 
+static int GetDefaultBool(FEntityProperties *self, int key, bool def)
+{
+	return self->GetDefaultBool(ENamedName(key), def);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetDefaultBool, GetDefaultBool)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FEntityProperties);
+	PARAM_INT(key);
+	PARAM_BOOL(def);
+
+	ACTION_RETURN_BOOL(GetDefaultBool(self, key, def));
+}
+
 static double GetDouble(FEntityProperties* self, int key, double def)
 {
 	return self->GetDouble(ENamedName(key), def);
@@ -94,6 +138,20 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetDouble, GetDouble)
 	PARAM_FLOAT(def);
 
 	ACTION_RETURN_FLOAT(GetDouble(self, key, def));
+}
+
+static double GetDefaultDouble(FEntityProperties *self, int key, double def)
+{
+	return self->GetDefaultDouble(ENamedName(key), def);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetDefaultDouble, GetDefaultDouble)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FEntityProperties);
+	PARAM_INT(key);
+	PARAM_FLOAT(def);
+
+	ACTION_RETURN_FLOAT(GetDefaultDouble(self, key, def));
 }
 
 static int GetWholeNumber(FEntityProperties* self, int key, int def)
@@ -110,6 +168,20 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetWholeNumber, GetWholeNumber)
 	ACTION_RETURN_FLOAT(GetWholeNumber(self, key, def));
 }
 
+static int GetDefaultWholeNumber(FEntityProperties *self, int key, int def)
+{
+	return self->GetDefaultWholeNumber(ENamedName(key), def);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetDefaultWholeNumber, GetDefaultWholeNumber)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FEntityProperties);
+	PARAM_INT(key);
+	PARAM_INT(def);
+
+	ACTION_RETURN_FLOAT(GetDefaultWholeNumber(self, key, def));
+}
+
 static double GetRealNumber(FEntityProperties* self, int key, double def)
 {
 	return self->GetRealNumber(ENamedName(key), def);
@@ -122,6 +194,20 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetRealNumber, GetRealNumber)
 	PARAM_FLOAT(def);
 
 	ACTION_RETURN_FLOAT(GetRealNumber(self, key, def));
+}
+
+static double GetDefaultRealNumber(FEntityProperties *self, int key, double def)
+{
+	return self->GetDefaultRealNumber(ENamedName(key), def);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, GetDefaultRealNumber, GetDefaultRealNumber)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FEntityProperties);
+	PARAM_INT(key);
+	PARAM_FLOAT(def);
+
+	ACTION_RETURN_FLOAT(GetDefaultRealNumber(self, key, def));
 }
 
 static void SetString(FEntityProperties* self, int key, const FString* value)
