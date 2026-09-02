@@ -60,7 +60,9 @@ void DBot::Serialize(FSerializer& arc)
 		FEntityProperties::PropertyDictionary& props = *const_cast<FEntityProperties::PropertyDictionary*>(&Properties.GetProperties());
 		arc("botid", _botID)
 			("aimpos", AimPos)
-			("movepos", MovePos)
+			("goalpos", GoalPos)
+			("evadepos", EvadePos)
+			("targetpos", TargetPos)
 			("cooldowns", CoolDowns)
 			("targets", Targets)
 			("properties", props);
@@ -70,7 +72,9 @@ void DBot::Serialize(FSerializer& arc)
 		FEntityProperties::PropertyDictionary props = {};
 		arc("botid", _botID)
 			("aimpos", AimPos)
-			("movepos", MovePos)
+			("goalpos", GoalPos)
+			("evadepos", EvadePos)
+			("targetpos", TargetPos)
 			("cooldowns", CoolDowns)
 			("targets", Targets)
 			("properties", props);

@@ -90,7 +90,7 @@ class Bot : Thinker native
 
 	native @EntityProperties Properties;
 	native Vector3 AimPos;
-	native Vector2 MovePos;
+	native Vector2 GoalPos, EvadePos, TargetPos;
 
 	private native Map<Name, int> _coolDowns;
 	private native Map<Name, Actor> _targets;
@@ -223,6 +223,8 @@ class Bot : Thinker native
 	void SetTarget(Actor target)
 	{
 		SetBotTarget('Target', target == GetPawn() ? null : target);
+		if (GetTarget())
+			TargetPos = target.Pos.XY;
 	}
 
 	void SetPartner(Actor partner)
@@ -233,11 +235,14 @@ class Bot : Thinker native
 	void SetGoal(Actor goal)
 	{
 		SetBotTarget('Goal', goal == GetPawn() ? null : goal);
+		GoalPos = GetGoal() ? goal.Pos.XY : GetPawn().Pos.XY;
 	}
 
 	void SetEvading(Actor evading)
 	{
 		SetBotTarget('Evading', evading == GetPawn() ? null : evading);
+		if (GetEvading())
+			EvadePos = evading.Pos.XY;
 	}
 
 	virtual void BotThink()
@@ -331,8 +336,6 @@ class Bot : Thinker native
 				SetTarget(target);
 				SetCoolDown('Target', TARGET_COOL_DOWN_TICS);
 				SetCoolDown('LastSeen', SIGHT_COOL_DOWN_TICS);
-				if (!GetGoal())
-					MovePos = target.Pos.XY;
 				if (target != curTarg)
 					SetCoolDown('Fire', 0);
 			}
@@ -430,8 +433,7 @@ class Bot : Thinker native
 				if (target)
 					evadeTics /= 2;
 				SetCoolDown('Evade', evadeTics);
-				MovePos = closest.Pos.XY;
-				NewMoveDirection(MovePos, true);
+				NewMoveDirection(EvadePos, true);
 			}
 		}
 
@@ -450,8 +452,7 @@ class Bot : Thinker native
 			{
 				SetEvading(target);
 				SetCoolDown('Evade', 0);
-				MovePos = target.Pos.XY;
-				NewMoveDirection(MovePos, true);
+				NewMoveDirection(EvadePos, true);
 				return;
 			}
 		}
@@ -464,8 +465,7 @@ class Bot : Thinker native
 			EBotCmd cmds = BCMD_JUMP | BCMD_USE;
 			if (deathmatch)
 				cmds |= BCMD_RUN;
-			MovePos = partner.Pos.XY;
-			NewMoveDirection(MovePos, true, cmds);
+			NewMoveDirection(EvadePos, true, cmds);
 		}
 	}
 
@@ -507,7 +507,6 @@ class Bot : Thinker native
 			{
 				SetGoal(target);
 				SetCoolDown('Goal', 0);
-				MovePos = target.Pos.XY;
 				return;
 			}
 		}
@@ -566,7 +565,6 @@ class Bot : Thinker native
 				SetGoal(closest);
 				SetCoolDown('Goal', GOAL_COOL_DOWN_TICS);
 				SetCoolDown('GoalCheck', GOAL_REACH_CHECK_TICS);
-				MovePos = closest.Pos.XY;
 				return;
 			}
 		}
@@ -581,7 +579,6 @@ class Bot : Thinker native
 				&& CanReach(partner))
 			{
 				SetGoal(partner);
-				MovePos = partner.Pos.XY;
 			}
 			else
 			{
@@ -890,35 +887,31 @@ class Bot : Thinker native
 		let pawn = GetPawn();
 
 		EBotCmd cmds = BCMD_JUMP | BCMD_USE;
-		bool running = deathmatch || evading || goal || GetTarget();
+		bool running = deathmatch || evading || goal || target;
 		pawn.MoveCount -= running ? 2 : 1;
 		if (pawn.MoveCount < 0 || !Move(cmds | (BCMD_RUN * running)))
 		{
+			// If chasing its target, only update the move position when actually in view. When
+			// it loses sight it'll chase after the last seen position instead.
+			bool chasing = target && IsActorInView(target, 360.0);
+			if (chasing)
+				TargetPos = target.Pos.XY;
+
+			if (goal)
+				GoalPos = goal.Pos.XY;
+			else if (chasing || !target)
+				GoalPos = pawn.Pos.XY;
+			else
+				GoalPos = TargetPos;
+
+			if (evading)
+				EvadePos = evading.Pos.XY;
+
 			bool avoidingPartner = evading == GetPartner();
 			if (evading && (!avoidingPartner || !goal))
-			{
-				MovePos = evading.Pos.XY;
-				NewMoveDirection(MovePos, true, cmds | (BCMD_RUN * (deathmatch || !avoidingPartner)));
-			}
+				NewMoveDirection(EvadePos, true, cmds | (BCMD_RUN * (deathmatch || !avoidingPartner)));
 			else
-			{
-				if (goal)
-				{
-					MovePos = goal.Pos.XY;
-				}
-				else if (target)
-				{
-					// If chasing its target, only update the move position when actually in view.
-					if (IsActorInView(target, 360.0))
-						MovePos = target.Pos.XY;
-				}
-				else
-				{
-					MovePos = pawn.Pos.XY;
-				}
-
-				NewMoveDirection(MovePos, cmds: cmds | (BCMD_RUN * running));
-			}
+				NewMoveDirection(GoalPos, cmds: cmds | (BCMD_RUN * running));
 		}
 	}
 
@@ -1020,7 +1013,7 @@ class Bot : Thinker native
 		player.ReadyWeapon = null;
 		player.PendingWeapon = pawn.PickNewWeapon(null);
 
-		MovePos = pawn.Pos.XY;
+		GoalPos = pawn.Pos.XY;
 		pawn.MoveDir = int(pawn.Angle / 45.0);
 	}
 
@@ -1035,7 +1028,7 @@ class Bot : Thinker native
 	virtual void BotDied(Actor source, Actor inflictor, EDmgFlags dmgFlags = 0, Name meansOfDeath = 'None')
 	{
 		AimPos = (0.0, 0.0, 0.0);
-		MovePos = (0.0, 0.0);
+		GoalPos = EvadePos = TargetPos = (0.0, 0.0);
 		ResetCoolDowns();
 		ResetBotTargets();
 		GetPlayer().Respawn_Time += Random[BotRespawn](MIN_RESPAWN_TIME, MAX_RESPAWN_TIME);

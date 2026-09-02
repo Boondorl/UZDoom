@@ -328,7 +328,9 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, ResetAllProperties, ResetAllPro
 
 DEFINE_FIELD(DBot, Properties)
 DEFINE_FIELD(DBot, AimPos)
-DEFINE_FIELD(DBot, MovePos)
+DEFINE_FIELD(DBot, GoalPos)
+DEFINE_FIELD(DBot, EvadePos)
+DEFINE_FIELD(DBot, TargetPos)
 DEFINE_FIELD_NAMED(DBot, CoolDowns, _coolDowns)
 DEFINE_FIELD_NAMED(DBot, Targets, _targets)
 

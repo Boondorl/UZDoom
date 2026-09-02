@@ -278,7 +278,7 @@ public:
 
 	FEntityProperties Properties; // Stores current information about the bot. Uses the properties from its bot ID as defaults.
 	DVector3 AimPos;
-	DVector2 MovePos;
+	DVector2 GoalPos, EvadePos, TargetPos;
 	ZSMap<FName, int> CoolDowns;
 	ZSMap<FName, AActor*> Targets;
 
