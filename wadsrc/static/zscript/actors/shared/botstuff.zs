@@ -177,6 +177,12 @@ class Bot : Thinker native
 		return range * range;
 	}
 
+	clearscope void GetList(Name prop, out Array<string> list, string delimiter = ",", EmptyTokenType type = TOK_SKIPEMPTY) const
+	{
+		string str = Properties.GetString(prop);
+		str.Split(list, delimiter, type);
+	}
+
 	void SetCoolDown(Name key, int time)
 	{
 		if (time <= 0)
@@ -288,7 +294,7 @@ class Bot : Thinker native
 			SetCoolDown('Fire', Properties.GetWholeNumber('ReactionTime', DEF_REACTION_TICS));
 
 		let pawn = GetPawn();
-		Actor target = GetTarget();
+		let target = GetTarget();
 		double viewFOV = Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV);
 		// Check if the current target is still valid.
 		if (target
@@ -314,7 +320,7 @@ class Bot : Thinker native
 			|| (!IsOnCoolDown('Target') && (attacker || (deathmatch && target.Player)))
 			|| !IsTargetDamageable(target))
 		{
-			Actor curTarg = target;
+			let curTarg = target;
 			if (attacker)
 				target = attacker;
 			else
@@ -488,7 +494,7 @@ class Bot : Thinker native
 			return;
 
 		// If using a close quarters weapon or too far away, chase its target directly.
-		Actor target = GetTarget();
+		let target = GetTarget();
 		if (target && player.ReadyWeapon)
 		{
 			let weapInfo = GetWeaponInfo(player.ReadyWeapon);
@@ -517,9 +523,7 @@ class Bot : Thinker native
 		if (itemRange > 0.0 && !IsOnCoolDown('Goal') && (deathmatch || !Random[BotItem]()))
 		{
 			Array<string> classes;
-			string pref = Properties.GetString('PreferredWeapons');
-			if (pref.IsNotEmpty())
-				pref.Split(classes, ",", TOK_SKIPEMPTY);
+			GetList('PreferredWeapons', classes);
 
 			Inventory closest;
 			double closestDist = double.infinity;
@@ -648,19 +652,15 @@ class Bot : Thinker native
 		if (weap.bMeleeWeapon)
 			weight *= 0.7;
 
-		string pref = Properties.GetString('PreferredWeapons');
-		if (pref.IsNotEmpty())
+		Array<string> classes;
+		GetList('PreferredWeapons', classes);
+		string weapType = weap.GetClassName();
+		foreach (cls : classes)
 		{
-			string weapType = weap.GetClassName();
-			Array<string> classes;
-			pref.Split(classes, ",", TOK_SKIPEMPTY);
-			foreach (cls : classes)
+			if (weapType ~== cls)
 			{
-				if (weapType ~== cls)
-				{
-					weight *= 2.0;
-					break;
-				}
+				weight *= 2.0;
+				break;
 			}
 		}
 		
@@ -810,8 +810,8 @@ class Bot : Thinker native
 		bool aimingAtTarget;
 		Vector3 viewPos = pawn.Pos.PlusZ(pawn.ViewHeight - pawn.FloorClip);
 
-		Actor target = GetTarget();
-		Actor goal = GetGoal();
+		let target = GetTarget();
+		let goal = GetGoal();
 		if (target && (IsOnCoolDown('LastSeen') || IsActorInView(target, Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV))))
 		{
 			aimingAtTarget = true;
@@ -929,7 +929,7 @@ class Bot : Thinker native
 			return false;
 
 		let player = GetPlayer();
-		Actor target = GetTarget();
+		let target = GetTarget();
 		if (!target || !player.ReadyWeapon || player.PendingWeapon != WP_NOCHANGE || !IsActorInView(target, Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV)))
 			return false;
 
@@ -990,26 +990,23 @@ class Bot : Thinker native
 	{
 		if (property == 'PlayerClass')
 		{
-			string pref = Properties.GetString('PreferredPlayerClasses');
-			if (pref.IsNotEmpty())
+			Array<string> classes;
+			GetList('PreferredPlayerClasses', classes);
+			Array<string> pTypes;
+			foreach (cls : classes)
 			{
-				Array<string> classes;
-				pref.Split(classes, ",", TOK_SKIPEMPTY);
-				Array<string> pTypes;
-				foreach (cls : classes)
+				foreach (info : PlayerClasses)
 				{
-					foreach (info : PlayerClasses)
+					if (PlayerPawn.GetPrintableDisplayName(info.Type) ~== cls)
 					{
-						if (PlayerPawn.GetPrintableDisplayName(info.Type) ~== cls)
-						{
-							pTypes.Push(cls);
-							break;
-						}
+						pTypes.Push(cls);
+						break;
 					}
 				}
-				if (pTypes.Size())
-					value = pTypes[Random[BotClass](0, pTypes.Size()-1)];
 			}
+
+			if (pTypes.Size())
+				value = pTypes[Random[BotClass](0, pTypes.Size() - 1)];
 		}
 
 		return value;
