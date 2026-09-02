@@ -89,13 +89,11 @@ class Bot : Thinker native
 	const BASE_IMPRECISION = 7.5;
 
 	native @EntityProperties Properties;
-	native Actor Evade;
+	native Vector3 AimPos;
+	native Vector2 MovePos;
 
-	protected native Vector3 AimPos;
-
-	// Boon TODO: Targets should probably also use a dictionary, that way any custom
-	// logic isn't interfering with how the bots operate.
 	private native Map<Name, int> _coolDowns;
+	private native Map<Name, Actor> _targets;
 
 	native clearscope PlayerInfo GetPlayer() const;
 	native void SetMove(EBotMoveDirection forward = MDIR_NO_CHANGE, EBotMoveDirection side = MDIR_NO_CHANGE, EBotMoveDirection up = MDIR_NO_CHANGE, bool running = true);
@@ -107,15 +105,15 @@ class Bot : Thinker native
 	native bool IsActorInView(Actor mo, double fov = DEF_SIGHT_FOV);
 	native bool CheckShotPath(Vector3 dest, Name projectileType = 'None', double minDistance = 0.0);
 	native Actor FindTarget(double fov = DEF_SIGHT_FOV);
-	native uint FindPartner();
+	native Actor FindPartner();
 	native bool IsValidItem(Inventory item);
 
 	native clearscope double GetJumpHeight() const;
-	native bool FakeCheckPosition(Vector2 dest, out FCheckPosition tm = null, bool actorsOnly = false);
-	native bool CanReach(Actor mo, bool jump = true);
+	native bool TestPosition(Vector2 dest, out FCheckPosition tm = null, bool actorsOnly = false);
+	native bool CanReach(Actor mo, EBotCmd cmds = BCMD_JUMP | BCMD_USE);
 	native bool, EBotCmd CheckMove(Vector2 dest, EBotCmd cmds = BCMD_JUMP | BCMD_USE);
 	native bool Move(EBotCmd cmds = BCMD_JUMP | BCMD_USE | BCMD_RUN);
-	native void NewMoveDirection(Actor goal = null, bool runAway = false, EBotCmd cmds = BCMD_JUMP | BCMD_USE | BCMD_RUN);
+	native void NewMoveDirection(Vector2 goalPos, bool runAway = false, EBotCmd cmds = BCMD_JUMP | BCMD_USE | BCMD_RUN);
 
 	clearscope PlayerPawn GetPawn() const
 	{
@@ -124,22 +122,22 @@ class Bot : Thinker native
 
 	clearscope Actor GetTarget() const
 	{
-		return GetPawn().Target;
+		return GetBotTarget('Target');
 	}
 
-	clearscope PlayerPawn GetPartner() const
+	clearscope Actor GetPartner() const
 	{
-		let pawn = GetPawn();
-		let partner = pawn.FriendPlayer > 0u && pawn.FriendPlayer <= MAXPLAYERS ? Players[pawn.FriendPlayer - 1u].Mo : null;
-		if (partner == pawn)
-			partner = null;
-
-		return partner;
+		return GetBotTarget('Partner');
 	}
 
 	clearscope Actor GetGoal() const
 	{
-		return GetPawn().Goal;
+		return GetBotTarget('Goal');
+	}
+
+	clearscope Actor GetEvading() const
+	{
+		return GetBotTarget('Evading');
 	}
 
 	clearscope bool IsTargetValid(Actor target) const
@@ -181,7 +179,10 @@ class Bot : Thinker native
 
 	void SetCoolDown(Name key, int time)
 	{
-		_coolDowns.Insert(key, Level.Time + time);
+		if (time <= 0)
+			_coolDowns.Remove(key);
+		else
+			_coolDowns.Insert(key, Level.Time + time);
 	}
 
 	clearscope bool IsOnCoolDown(Name key) const
@@ -195,23 +196,42 @@ class Bot : Thinker native
 		_coolDowns.Clear();
 	}
 
-	void SetTarget(Actor target)
+	void SetBotTarget(Name target, Actor mo)
 	{
-		GetPawn().Target = target;
+		if (!mo)
+			_targets.Remove(target);
+		else
+			_targets.Insert(target, mo);
 	}
 
-	void SetPartner(uint pNum)
+	clearscope Actor GetBotTarget(Name target) const
 	{
-		let pawn = GetPawn();
-		if (!pNum || pNum > MAXPLAYERS || !PlayerInGame[pNum - 1u])
-			pawn.FriendPlayer = pawn.PlayerNumber() + 1;
-		else
-			pawn.FriendPlayer = pNum;
+		return _targets.GetIfExists(target);
+	}
+
+	void ResetBotTargets()
+	{
+		_targets.Clear();
+	}
+
+	void SetTarget(Actor target)
+	{
+		SetBotTarget('Target', target == GetPawn() ? null : target);
+	}
+
+	void SetPartner(Actor partner)
+	{
+		SetBotTarget('Partner', partner == GetPawn() ? null : partner);
 	}
 
 	void SetGoal(Actor goal)
 	{
-		GetPawn().Goal = goal;
+		SetBotTarget('Goal', goal == GetPawn() ? null : goal);
+	}
+
+	void SetEvading(Actor evading)
+	{
+		SetBotTarget('Evading', evading == GetPawn() ? null : evading);
 	}
 
 	virtual void BotThink()
@@ -236,13 +256,14 @@ class Bot : Thinker native
 	virtual void BotDeathThink()
 	{
 		// Bots will automatically respawn in deathmatch but for coop
-		// play they still need to hit the use button.
+		// they still need to hit the use button.
 		if (GetPlayer().Respawn_Time <= Level.Time)
 			SetButtons(BT_USE, true);
 	}
 
 	virtual void SearchForPartner()
 	{
+		// Check if the current partner is still valid.
 		let partner = GetPartner();
 		if (partner)
 		{
@@ -251,10 +272,10 @@ class Bot : Thinker native
 
 			if (partner == GetGoal())
 				SetGoal(null);
-			if (partner == Evade)
-				Evade = null;
+			if (partner == GetEvading())
+				SetEvading(null);
 
-			SetPartner(0u);
+			SetPartner(null);
 		}
 
 		if (!deathmatch || teamplay)
@@ -269,13 +290,14 @@ class Bot : Thinker native
 		let pawn = GetPawn();
 		Actor target = GetTarget();
 		double viewFOV = Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV);
+		// Check if the current target is still valid.
 		if (target
 			&& (!IsTargetValid(target) || (!IsOnCoolDown('LastSeen') && !IsActorInView(target, viewFOV))))
 		{
 			if (target == GetGoal())
 				SetGoal(null);
-			if (target == Evade)
-				Evade = null;
+			if (target == GetEvading())
+				SetEvading(null);
 
 			SetTarget(null);
 			SetCoolDown('Target', 0);
@@ -287,6 +309,7 @@ class Bot : Thinker native
 
 		let player = GetPlayer();
 		Actor attacker = IsTargetValid(player.Attacker) ? player.Attacker : null;
+		// If it doesn't have a target, look for a new one and prioritize its attacker.
 		if (!target
 			|| (!IsOnCoolDown('Target') && (attacker || (deathmatch && target.Player)))
 			|| !IsTargetDamageable(target))
@@ -302,6 +325,8 @@ class Bot : Thinker native
 				SetTarget(target);
 				SetCoolDown('Target', TARGET_COOL_DOWN_TICS);
 				SetCoolDown('LastSeen', SIGHT_COOL_DOWN_TICS);
+				if (!GetGoal())
+					MovePos = target.Pos.XY;
 				if (target != curTarg)
 					SetCoolDown('Fire', 0);
 			}
@@ -315,7 +340,8 @@ class Bot : Thinker native
 		let player = GetPlayer();
 		let pawn = GetPawn();
 		let partner = GetPartner();
-		Actor target = GetTarget();
+		let target = GetTarget();
+		let evading = GetEvading();
 
 		// If we can chase down targets with the weapon, don't try and evade them.
 		let rwInfo = GetWeaponInfo(player.ReadyWeapon);
@@ -330,44 +356,44 @@ class Bot : Thinker native
 			defRange = 0.0;
 		}
 
+		// Check if the current thing we're evading no longer needs to be avoided.
 		double evasiveness = Properties.GetRealNumber('Evasiveness', 1.0);
-		if (Evade)
+		if (evading)
 		{
-			if (Evade == target)
+			if (evading == target)
 			{
 				double minRange = GetRangeSquared(rwInfo, 'MinCombatRange', mod: 'Timidness');
-				
 				let weapInfo = target.Player ? GetWeaponInfo(target.Player.ReadyWeapon) : null;
 				double runRange = GetRangeSquared(weapInfo, 'FrightenRange', defRange, modDef: evasiveness);
 
 				double dist = pawn.Distance3DSquared(target);
 				if ((minRange <= 0.0 || dist > minRange) && (runRange <= 0.0 || dist > runRange))
-					Evade = null;
+					SetEvading(null);
 			}
-			else if (Evade == partner)
+			else if (evading == partner)
 			{
 				if (pawn.Distance3DSquared(partner) > PARTNER_BACK_OFF_RANGE_SQ)
-					Evade = null;
+					SetEvading(null);
 			}
 			else
 			{
-				double runRange = GetRangeSquared(Level.GetEntityInfo(Evade.GetClassName()), 'FrightenRange', 256.0, modDef: evasiveness);
-				if (runRange <= 0.0 || pawn.Distance3DSquared(Evade) > runRange)
-					Evade = null;
+				double runRange = GetRangeSquared(Level.GetEntityInfo(evading.GetClassName()), 'FrightenRange', 256.0, modDef: evasiveness);
+				if (runRange <= 0.0 || pawn.Distance3DSquared(evading) > runRange)
+					SetEvading(null);
 			}
 		}
 
-		if (!Evade)
+		if (!GetEvading())
 			SetCoolDown('Evade', 0);
 
+		// Check for if anything nearby needs to be evaded.
 		if (evasiveness > 0.0 && !IsOnCoolDown('Evade'))
 		{
 			Actor mo;
 			Actor closest;
 			double closestDist = double.infinity;
 			double viewFOV = Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV);
-			let it = ThinkerIterator.Create("Actor", STAT_DEFAULT);
-			while (mo = Actor(it.Next()))
+			foreach (Actor mo : ThinkerIterator.Create('Actor', STAT_DEFAULT))
 			{
 				// Make sure to prioritize projectiles over the target itself. If there's nothing else to
 				// dodge, the target will be chosen to evade if in range.
@@ -393,48 +419,53 @@ class Bot : Thinker native
 
 			if (closest)
 			{
-				Evade = closest;
+				SetEvading(closest);
 				int evadeTics = EVADE_COOL_DOWN_TICS;
 				if (target)
 					evadeTics /= 2;
 				SetCoolDown('Evade', evadeTics);
-				NewMoveDirection(Evade, true);
+				MovePos = closest.Pos.XY;
+				NewMoveDirection(MovePos, true);
 			}
 		}
 
-		if (Evade)
+		if (GetEvading())
 			return;
 
+		// If there was nothing to evade, check if its target needs to be evaded.
 		if (target)
 		{
 			double minRange = GetRangeSquared(rwInfo, 'MinCombatRange', mod: 'Timidness');
-			
 			let weapInfo = target.Player ? GetWeaponInfo(target.Player.ReadyWeapon) : null;
 			double runRange = GetRangeSquared(weapInfo, 'FrightenRange', defRange, modDef: evasiveness);
 
 			double dist = pawn.Distance3DSquared(target);
 			if ((minRange > 0.0 && dist <= minRange) || (runRange > 0.0 && dist <= runRange))
 			{
-				Evade = target;
+				SetEvading(target);
 				SetCoolDown('Evade', 0);
-				NewMoveDirection(Evade, true);
+				MovePos = target.Pos.XY;
+				NewMoveDirection(MovePos, true);
 				return;
 			}
 		}
 
+		// If nothing else, see if it needs to step back from its partner.
 		if (partner && pawn.Distance3DSquared(partner) <= PARTNER_BACK_OFF_RANGE_SQ)
 		{
-			Evade = partner;
+			SetEvading(partner);
 			SetCoolDown('Evade', 0);
 			EBotCmd cmds = BCMD_JUMP | BCMD_USE;
 			if (deathmatch)
 				cmds |= BCMD_RUN;
-			NewMoveDirection(Evade, true, cmds);
+			MovePos = partner.Pos.XY;
+			NewMoveDirection(MovePos, true, cmds);
 		}
 	}
 
 	virtual void UpdateGoal()
 	{
+		// Check to see if the item it's chasing is still valid.
 		let curItem = Inventory(GetGoal());
 		if (curItem)
 		{
@@ -451,10 +482,12 @@ class Bot : Thinker native
 
 		let player = GetPlayer();
 		let pawn = GetPawn();
+		// If on low health and it's going after a health item, keep it as its goal.
 		bool isLowHealth = player.Health <= int(0.25 * pawn.GetMaxHealth(true));
 		if (curItem && curItem.bIsHealth && isLowHealth)
 			return;
 
+		// If using a close quarters weapon or too far away, chase its target directly.
 		Actor target = GetTarget();
 		if (target && player.ReadyWeapon)
 		{
@@ -468,6 +501,7 @@ class Bot : Thinker native
 			{
 				SetGoal(target);
 				SetCoolDown('Goal', 0);
+				MovePos = target.Pos.XY;
 				return;
 			}
 		}
@@ -478,7 +512,7 @@ class Bot : Thinker native
 		if (!GetGoal())
 			SetCoolDown('Goal', 0);
 
-		// Bots won't steal items as much in coop.
+		// Find an item to pick up. Bots won't steal them as much in coop.
 		double itemRange = GetRange(Properties, 'ScavengeRange', DEF_ITEM_RANGE, 'Timidness');
 		if (itemRange > 0.0 && !IsOnCoolDown('Goal') && (deathmatch || !Random[BotItem]()))
 		{
@@ -491,18 +525,18 @@ class Bot : Thinker native
 			double closestDist = double.infinity;
 			double viewFOV = Properties.GetRealNumber('ViewFOV', DEF_SIGHT_FOV);
 			double rangeSq = itemRange * itemRange;
-			let it = BlockThingsIterator.Create(pawn, itemRange);
-			while (it.Next())
+			foreach (mo : BlockThingsIterator.Create(pawn, itemRange))
 			{
-				Inventory item = Inventory(it.thing);
+				Inventory item = Inventory(mo);
 				if (!item)
 					continue;
 
 				double dist = pawn.Distance3DSquared(item);
+				// If an important item, make it higher priority.
 				if (item.bBigPowerup || (item.bIsHealth && isLowHealth))
 					dist *= 0.5625; // 0.75 * 0.75
 				
-				if (item is "Weapon")
+				if (item is 'Weapon')
 				{
 					string wType = item.GetClassName();
 					foreach (cls : classes)
@@ -528,19 +562,22 @@ class Bot : Thinker native
 				SetGoal(closest);
 				SetCoolDown('Goal', GOAL_COOL_DOWN_TICS);
 				SetCoolDown('GoalCheck', GOAL_REACH_CHECK_TICS);
+				MovePos = closets.Pos.XY;
 				return;
 			}
 		}
 		
+		// If nothing to chase, hover around its partner.
 		let partner = GetPartner();
-		Actor goal = GetGoal();
+		let goal = GetGoal();
 		if (partner && (!goal || partner == goal))
 		{
 			if (pawn.Distance3DSquared(partner) > PARTNER_WALK_RANGE_SQ
-				&& pawn.CheckSight(partner, SF_IGNOREVISIBILITY|SF_SEEPASTSHOOTABLELINES|SF_IGNOREWATERBOUNDARY)
+				&& pawn.CheckSight(partner, SF_IGNOREVISIBILITY | SF_SEEPASTSHOOTABLELINES | SF_IGNOREWATERBOUNDARY)
 				&& CanReach(partner))
 			{
 				SetGoal(partner);
+				MovePos = partner.Pos.XY;
 			}
 			else
 			{
@@ -576,7 +613,7 @@ class Bot : Thinker native
 		let ammo2 = weap.Ammo2;
 		if (!ammo1 && !ammo2)
 			weight = 0.5;
-		else if (sv_infiniteammo || GetPawn().FindInventory("PowerInfiniteAmmo", true))
+		else if (sv_infiniteammo || GetPawn().FindInventory('PowerInfiniteAmmo', true))
 			weight = 1.0;
 		else if (ammo1 && !ammo2)
 			weight = double(ammo1.Amount) / ammo1.MaxAmount;
@@ -639,7 +676,7 @@ class Bot : Thinker native
 		if (player.PendingWeapon != WP_NOCHANGE || !(player.WeaponState & WF_WEAPONSWITCHOK) || player.IsTotallyFrozen())
 			return;
 
-		bool strong = pawn.FindInventory("PowerStrength") != null;
+		bool strong = pawn.FindInventory('PowerStrength') != null;
 		double dist = target ? pawn.Distance3D(target) : -1.0;
 		Weapon weap = player.ReadyWeapon;
 
@@ -664,7 +701,7 @@ class Bot : Thinker native
 		if (!mustChange && FRandom[BotSwitch](0.0, 1.0) >= switchChance)
 			return;
 
-		bool tomed = pawn.FindInventory("PowerWeaponLevel2", true) != null;
+		bool tomed = pawn.FindInventory('PowerWeaponLevel2', true) != null;
 		double maxWeight, maxOptimalWeight;
 		Array<double> allWeights, optimalWeights;
 		Array<Weapon> allWeapons, optimalWeapons;
@@ -799,7 +836,7 @@ class Bot : Thinker native
 				}
 			}
 		}
-		else if (goal is "Inventory")
+		else if (goal is 'Inventory')
 		{
 			AimPos = goal.Pos.PlusZ(goal.Height * 0.5 - goal.FloorClip);
 		}
@@ -848,18 +885,39 @@ class Bot : Thinker native
 	virtual void HandleMovement()
 	{
 		Actor goal = GetGoal();
+		Actor evading = GetEvading();
 		let pawn = GetPawn();
 
 		EBotCmd cmds = BCMD_JUMP | BCMD_USE;
-		bool running = deathmatch || Evade || goal || GetTarget();
+		bool running = deathmatch || evading || goal || GetTarget();
 		pawn.MoveCount -= running ? 2 : 1;
 		if (pawn.MoveCount < 0 || !Move(cmds | (BCMD_RUN * running)))
 		{
-			bool avoidingPartner = Evade == GetPartner();
-			if (Evade && (!avoidingPartner || !goal))
-				NewMoveDirection(Evade, true, cmds | (BCMD_RUN * (deathmatch || !avoidingPartner)));
+			bool avoidingPartner = evading == GetPartner();
+			if (evading && (!avoidingPartner || !goal))
+			{
+				MovePos = evading.Pos.XY;
+				NewMoveDirection(MovePos, true, cmds | (BCMD_RUN * (deathmatch || !avoidingPartner)));
+			}
 			else
-				NewMoveDirection(goal, cmds: cmds | (BCMD_RUN * running));
+			{
+				if (goal)
+				{
+					MovePos = goal.Pos.XY;
+				}
+				else if (target)
+				{
+					// If chasing its target, only update the move position when actually in view.
+					if (IsActorInView(target, 360.0))
+						MovePos = target.Pos.XY;
+				}
+				else
+				{
+					MovePos = pawn.Pos.XY;
+				}
+
+				NewMoveDirection(MovePos, cmds: cmds | (BCMD_RUN * running));
+			}
 		}
 	}
 
@@ -958,14 +1016,13 @@ class Bot : Thinker native
 
 	virtual void BotRespawned()
 	{
-		SetTarget(null);
-
 		let player = GetPlayer();
 		let pawn = GetPawn();
 
 		player.ReadyWeapon = null;
 		player.PendingWeapon = pawn.PickNewWeapon(null);
 
+		MovePos = pawn.Pos.XY;
 		pawn.MoveDir = int(pawn.Angle / 45.0);
 	}
 
@@ -980,10 +1037,9 @@ class Bot : Thinker native
 	virtual void BotDied(Actor source, Actor inflictor, EDmgFlags dmgFlags = 0, Name meansOfDeath = 'None')
 	{
 		AimPos = (0.0, 0.0, 0.0);
+		MovePos = (0.0, 0.0);
 		ResetCoolDowns();
-		Evade = null;
-		SetGoal(null);
-		SetPartner(0u);
+		ResetBotTargets();
 		GetPlayer().Respawn_Time += Random[BotRespawn](MIN_RESPAWN_TIME, MAX_RESPAWN_TIME);
 	}
 
@@ -998,7 +1054,7 @@ class Bot : Thinker native
 
 // Unused; only here for backwards compat
 
-class CajunBodyNode : Actor
+deprecated("5.1") class CajunBodyNode : Actor
 {
 	Default
 	{
@@ -1008,7 +1064,7 @@ class CajunBodyNode : Actor
 	}
 }
 
-class CajunTrace : Actor
+deprecated("5.1") class CajunTrace : Actor
 {
 	Default
 	{

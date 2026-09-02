@@ -202,13 +202,13 @@ bool DBot::IsActorInView(AActor* mo, DAngle fov) const
 			&& P_CheckSight(_player->mo, mo, SF_SEEPASTSHOOTABLELINES | SF_IGNOREWATERBOUNDARY);
 }
 
-// Sets the bot's FriendPlayer value to the player index it wants to stick with. Ignores bots
+// Finds the nearest player that the bot will want to stick with. Ignores bots
 // since that can cause them to swarm around each other like a hive of angry bees.
-unsigned DBot::FindPartner() const
+AActor* DBot::FindPartner() const
 {
-	unsigned newFriend = Level->PlayerNum(_player) + 1;
+	AActor* newFriend = nullptr;
 	double closest = std::numeric_limits<double>::infinity();
-	for (unsigned i = 0u; i < MAXPLAYERS; ++i)
+	for (size_t i = 0u; i < MAXPLAYERS; ++i)
 	{
 		AActor* client = Level->Players[i]->mo;
 		if (Level->PlayerInGame(i) && _player != Level->Players[i] && Level->Players[i]->Bot == nullptr
@@ -218,7 +218,7 @@ unsigned DBot::FindPartner() const
 			if (dist < closest)
 			{
 				closest = dist;
-				newFriend = i + 1u;
+				newFriend = client;
 			}
 		}
 	}
@@ -238,7 +238,7 @@ AActor* DBot::FindTarget(DAngle fov) const
 
 	AActor* target = nullptr;
 	double closest = std::numeric_limits<double>::infinity();
-	for (unsigned i = 0u; i < MAXPLAYERS; ++i)
+	for (size_t i = 0u; i < MAXPLAYERS; ++i)
 	{
 		AActor* client = Level->Players[i]->mo;
 		if (Level->PlayerInGame(i) && _player != Level->Players[i]

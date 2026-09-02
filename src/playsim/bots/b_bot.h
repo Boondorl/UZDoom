@@ -92,6 +92,7 @@ public:
 	void Clear()
 	{
 		_properties.Clear();
+		_default = nullptr;
 	}
 
 	void ResetProperty(FName key)
@@ -263,7 +264,6 @@ public:
 class DBot : public DThinker
 {
 	DECLARE_CLASS(DBot, DThinker)
-	HAS_OBJECT_POINTERS
 
 private:
 	player_t* _player;	// Player info for the bot. This gets reset every time the game loads into a new map.
@@ -277,9 +277,10 @@ public:
 	static const int DEFAULT_STAT = STAT_BOT;
 
 	FEntityProperties Properties; // Stores current information about the bot. Uses the properties from its bot ID as defaults.
-	TObjPtr<AActor*> Evade;
 	DVector3 AimPos;
+	DVector2 MovePos;
 	ZSMap<FName, int> CoolDowns;
+	ZSMap<FName, TObjPtr<AActor*>> Targets;
 
 	void Construct(player_t* player, FName index);	// Set the default values of the class fields when the Thinker is created.
 	void OnDestroy() override;						// Clear the Properties map.
@@ -292,16 +293,16 @@ public:
 	void CallBotThink(); // Handles overall thinking logic. Called directly before PlayerThink.
 
 	bool IsActorInView(AActor* mo, DAngle fov = DAngle90) const;	// Check if the bot has sight of the Actor within a view cone.
-	bool CanReach(AActor* mo, bool doJump = true) const; // Checks to see if a valid movement can be made towards the target.
+	bool CanReach(AActor* mo, EBotCmds cmds = BCMD_JUMP | BCMD_USE) const; // Checks to see if a valid movement can be made towards the target.
 	bool CheckShotPath(const DVector3& dest, FName projectileType = NAME_None, double minDistance = 0.0) const; // Checks if anything is blocking the ReadyWeapon missile's path.
 	AActor* FindTarget(DAngle fov = DAngle90) const;					// Tries to find a target.
-	unsigned FindPartner() const;											// Looks for a player to stick near, bot or real.
+	AActor* FindPartner() const;											// Looks for a player to stick near, bot or real.
 	bool IsValidItem(AActor* item) const;								// Checks to see if the item is able to be picked up.
 	double GetJumpHeight() const;
-	bool FakeCheckPosition(const DVector2& pos, FCheckPosition& tm, bool actorsOnly = false) const;	// Same as CheckPosition but prevent picking up items.
+	bool TestPosition(const DVector2& pos, FCheckPosition& tm, bool actorsOnly = false) const;	// Same as CheckPosition but prevent picking up items.
 	bool CheckMove(const DVector2& pos, EBotCmds cmds, EBotCmds* desiredCmds) const;					// Check if a valid movement can be made to the given position. Also jumps if needed if that move is valid.
 	bool Move(EBotCmds cmds = BCMD_JUMP | BCMD_RUN | BCMD_USE, bool stuck = false) const;				// Check to see if a movement is valid in the current moveDir.
-	void NewMoveDirection(AActor* goal = nullptr, bool runAway = false, EBotCmds cmds = BCMD_JUMP | BCMD_RUN | BCMD_USE) const; // Attempts to get a new direction to move towards the bot's goal.
+	void NewMoveDirection(const DVector2& goalPos, bool runAway = false, EBotCmds cmds = BCMD_JUMP | BCMD_RUN | BCMD_USE) const; // Attempts to get a new direction to move towards the bot's goal.
 	void SetMove(EBotMoveDirection forward = MDIR_NO_CHANGE, EBotMoveDirection side = MDIR_NO_CHANGE, EBotMoveDirection up = MDIR_NO_CHANGE, bool running = true) const; // Sets the move commands.
 	void SetButtons(EButtonCodes cmd, bool set) const;			// Sets the button commands.
 	void SetAngle(DAngle dest, EBotAngleCmd type) const;			// Sets the angle commands.

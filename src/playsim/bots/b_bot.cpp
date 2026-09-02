@@ -29,10 +29,7 @@
 
 extern int forwardmove[2], sidemove[2], flyspeed[2];
 
-IMPLEMENT_CLASS(DBot, false, true)
-IMPLEMENT_POINTERS_START(DBot)
-	IMPLEMENT_POINTER(Evade)
-IMPLEMENT_POINTERS_END
+IMPLEMENT_CLASS(DBot, false, false)
 
 // For Thinkers the default constructor isn't called at all, so these need to be initialized here.
 void DBot::Construct(player_t* player, FName botID)
@@ -47,6 +44,7 @@ void DBot::OnDestroy()
 {
 	Properties.Clear();
 	CoolDowns.Clear();
+	Targets.Clear();
 
 	Super::OnDestroy();
 }
@@ -61,18 +59,20 @@ void DBot::Serialize(FSerializer& arc)
 	{
 		FEntityProperties::PropertyDictionary& props = *const_cast<FEntityProperties::PropertyDictionary*>(&Properties.GetProperties());
 		arc("botid", _botID)
-			("evade", Evade)
 			("aimpos", AimPos)
+			("movepos", MovePos)
 			("cooldowns", CoolDowns)
+			("targets", Targets)
 			("properties", props);
 	}
 	else
 	{
 		FEntityProperties::PropertyDictionary props = {};
 		arc("botid", _botID)
-			("evade", Evade)
 			("aimpos", AimPos)
+			("movepos", MovePos)
 			("cooldowns", CoolDowns)
+			("targets", Targets)
 			("properties", props);
 
 		const FBotDefinition* def = DBotManager::BotDefinitions.CheckKey(_botID);

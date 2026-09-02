@@ -55,7 +55,7 @@ double DBot::GetJumpHeight() const
 
 // Make sure that bots can't pick up any items when checking their position since they're
 // considered actual players and ZDoom throws every interaction inside of P_CheckPosition...
-bool DBot::FakeCheckPosition(const DVector2& pos, FCheckPosition& tm, bool actorsOnly) const
+bool DBot::TestPosition(const DVector2& pos, FCheckPosition& tm, bool actorsOnly) const
 {
     const ActorFlags savedFlags = _player->mo->flags;
     _player->mo->flags &= ~MF_PICKUP;
@@ -67,7 +67,7 @@ bool DBot::FakeCheckPosition(const DVector2& pos, FCheckPosition& tm, bool actor
 // Checks to see if the bot is capable of reaching a target actor taking
 // level geometry into account. This is mostly for stepping up stairs and
 // avoiding running directly into hazards, but won't take large dropoffs into account.
-bool DBot::CanReach(AActor* mo, bool doJump) const
+bool DBot::CanReach(AActor* mo, EBotCmds cmds) const
 {
     if (mo == nullptr)
         return false;
@@ -79,7 +79,7 @@ bool DBot::CanReach(AActor* mo, bool doJump) const
         return false;
 
     // Intentionally ignore portals here.
-    const double jumpHeight = doJump ? GetJumpHeight() : 0.0;
+    const double jumpHeight = (cmds & BCMD_JUMP) ? GetJumpHeight() : 0.0;
 	const bool doHazardCheck = !_player->mo->Sector->IsDangerous(_player->mo->Pos(), _player->mo->Height, _player->mo->tid);
     constexpr int MaxBlocks = 3;
 
@@ -193,7 +193,7 @@ bool DBot::CheckMove(const DVector2& pos, EBotCmds cmds, EBotCmds* desiredCmds) 
 	const double jumpHeight = (cmds & BCMD_JUMP) ? GetJumpHeight() : 0.0;
 	const DVector2 usePos = _player->mo->Pos().XY() + _player->mo->Angles.Yaw.ToVector(_player->mo->FloatVar(NAME_UseRange));
     FCheckPosition tm = {};
-    if (!FakeCheckPosition(pos, tm))
+    if (!TestPosition(pos, tm))
     {
 		if (_player->mo->BlockingLine != nullptr)
 		{
@@ -339,7 +339,7 @@ bool DBot::TryWalk(EBotCmds cmds, bool stuck) const
     return true;
 }
 
-void DBot::NewMoveDirection(AActor* goal, bool runAway, EBotCmds cmds) const
+void DBot::NewMoveDirection(const DVector2& goalPos, bool runAway, EBotCmds cmds) const
 {
 	int turnChance = 7;
 	int facingDir = _player->mo->movedir;
@@ -347,11 +347,13 @@ void DBot::NewMoveDirection(AActor* goal, bool runAway, EBotCmds cmds) const
 		facingDir = pr_botnewchasedir() & 7;
 
 	int baseDir = facingDir;
-    if (goal != nullptr)
+    if (!goalPos.ApproximatelyEquals(_player->mo->Pos().XY()))
     {
         constexpr double AngToDir = 1.0 / 45.0;
 
-        double desired = _player->mo->AngleTo(goal).Degrees();
+		const DVector2 dir = goalPos - _player->mo->Pos().XY()
+								+ Level->Displacements.getOffset(Level->PointInSector(goalPos)->PortalGroup, _player->mo->Sector->PortalGroup);
+        double desired = g_atan2(dir.Y, dir.X) * (180.0 / M_PI);
         while (desired < 0.0)
             desired += 360.0;
 

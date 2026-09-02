@@ -327,9 +327,10 @@ DEFINE_ACTION_FUNCTION_NATIVE(FEntityProperties, ResetAllProperties, ResetAllPro
 // DBot
 
 DEFINE_FIELD(DBot, Properties)
-DEFINE_FIELD(DBot, Evade)
 DEFINE_FIELD(DBot, AimPos)
+DEFINE_FIELD(DBot, MovePos)
 DEFINE_FIELD_NAMED(DBot, CoolDowns, _coolDowns)
+DEFINE_FIELD_NAMED(DBot, Targets, _targets)
 
 static FEntityProperties* GetEntityInfo(int ent, int base)
 {
@@ -499,7 +500,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, FindTarget, FindTarget)
 	ACTION_RETURN_POINTER(FindTarget(self, fov));
 }
 
-static int FindPartner(DBot* self)
+static AActor* FindPartner(DBot* self)
 {
 	return self->FindPartner();
 }
@@ -508,7 +509,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, FindPartner, FindPartner)
 {
 	PARAM_SELF_PROLOGUE(DBot);
 
-	ACTION_RETURN_INT(FindPartner(self));
+	ACTION_RETURN_POINTER(FindPartner(self));
 }
 
 static int IsValidItem(DBot* self, AActor* item)
@@ -524,23 +525,23 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, IsValidItem, IsValidItem)
 	ACTION_RETURN_BOOL(IsValidItem(self, item));
 }
 
-static int FakeCheckPosition(DBot* self, double x, double y, FCheckPosition* tm, bool actorsOnly)
+static int TestPosition(DBot* self, double x, double y, FCheckPosition* tm, bool actorsOnly)
 {
 	int res = 0;
 	if (tm == nullptr)
 	{
 		FCheckPosition temp = {};
-		res = self->FakeCheckPosition({ x, y }, temp, actorsOnly);
+		res = self->TestPosition({ x, y }, temp, actorsOnly);
 	}
 	else
 	{
-		res = self->FakeCheckPosition({ x, y }, *tm, actorsOnly);
+		res = self->TestPosition({ x, y }, *tm, actorsOnly);
 	}
 
 	return res;
 }
 
-DEFINE_ACTION_FUNCTION_NATIVE(DBot, FakeCheckPosition, FakeCheckPosition)
+DEFINE_ACTION_FUNCTION_NATIVE(DBot, TestPosition, TestPosition)
 {
 	PARAM_SELF_PROLOGUE(DBot);
 	PARAM_FLOAT(x);
@@ -548,7 +549,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, FakeCheckPosition, FakeCheckPosition)
 	PARAM_POINTER(tm, FCheckPosition);
 	PARAM_BOOL(actorsOnly);
 
-	ACTION_RETURN_BOOL(FakeCheckPosition(self, x, y, tm, actorsOnly));
+	ACTION_RETURN_BOOL(TestPosition(self, x, y, tm, actorsOnly));
 }
 
 static double GetJumpHeight(DBot* self)
@@ -563,18 +564,18 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, GetJumpHeight, GetJumpHeight)
 	ACTION_RETURN_FLOAT(GetJumpHeight(self));
 }
 
-static int CanReach(DBot* self, AActor* mo, bool jump)
+static int CanReach(DBot* self, AActor* mo, unsigned cmds)
 {
-	return self->CanReach(mo, jump);
+	return self->CanReach(mo, EBotCmds::FromInt(cmds));
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DBot, CanReach, CanReach)
 {
 	PARAM_SELF_PROLOGUE(DBot);
 	PARAM_POINTER(mo, AActor);
-	PARAM_BOOL(jump);
+	PARAM_UINT(cmds);
 
-	ACTION_RETURN_BOOL(CanReach(self, mo, jump));
+	ACTION_RETURN_BOOL(CanReach(self, mo, cmds));
 }
 
 static int CheckMove(DBot* self, double x, double y, unsigned cmds, unsigned* desiredCmds)
@@ -615,18 +616,19 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBot, Move, Move)
 	ACTION_RETURN_BOOL(Move(self, cmds));
 }
 
-static void NewMoveDirection(DBot* self, AActor* goal, bool runAway, unsigned cmds)
+static void NewMoveDirection(DBot* self, double x, double y, bool runAway, unsigned cmds)
 {
-	self->NewMoveDirection(goal, runAway, EBotCmds::FromInt(cmds));
+	self->NewMoveDirection({x, y}, runAway, EBotCmds::FromInt(cmds));
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DBot, NewMoveDirection, NewMoveDirection)
 {
 	PARAM_SELF_PROLOGUE(DBot);
-	PARAM_POINTER(mo, AActor);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
 	PARAM_BOOL(runAway);
 	PARAM_UINT(cmds);
 
-	NewMoveDirection(self, mo, runAway, cmds);
+	NewMoveDirection(self, x, y, runAway, cmds);
 	return 0;
 }
